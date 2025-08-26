@@ -71,6 +71,8 @@ POST /v1/chat/completions
 ```
 
 **Example Usage**:
+
+OpenRouter models (with `/` in model name):
 ```bash
 curl -X POST http://localhost:3001/v1/chat/completions \
   -H "Content-Type: application/json" \
@@ -80,7 +82,19 @@ curl -X POST http://localhost:3001/v1/chat/completions \
   }'
 ```
 
-The endpoint accepts standard OpenAI-compatible chat completion requests and forwards them to OpenRouter.
+OpenAI models (without `/` in model name):
+```bash
+curl -X POST http://localhost:3001/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+```
+
+The proxy automatically routes requests:
+- Models with `/` (e.g., `anthropic/claude-3.5-sonnet`) → OpenRouter
+- Models without `/` (e.g., `gpt-4o`) → OpenAI
 
 ## Development
 

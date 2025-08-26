@@ -1,24 +1,14 @@
 import { Request, Response } from 'express';
-import fetch from 'node-fetch';
+import { ProviderManager } from './provider-manager.js';
 
-const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
+const providerManager = new ProviderManager();
 
 export async function getModels(req: Request, res: Response) {
   try {
-    console.log('📋 Fetching models from OpenRouter');
+    console.log('📋 Fetching models from all available providers');
     
-    const response = await fetch(OPENROUTER_MODELS_URL, {
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenRouter models API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    res.json(data);
+    const allModels = await providerManager.getAllModels();
+    res.json(allModels);
   } catch (error) {
     console.error('❌ Error fetching models:', error);
     res.status(500).json({ 

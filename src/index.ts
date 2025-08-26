@@ -1,10 +1,10 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-import { openRouterProxy } from './openrouter-proxy.js';
+import { chatCompletionProxy } from './chat-proxy.js';
 import { getModels } from './models.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -23,9 +23,9 @@ app.get('/health', (req, res) => {
 // Models endpoint
 app.get('/v1/models', getModels);
 
-// Chat completions endpoint
-app.post('/v1/chat/completions', openRouterProxy);
+// Chat completions endpoint  
+app.post('/v1/chat/completions', chatCompletionProxy);
 
 app.listen(PORT, () => {
-  console.log(`🚀 OpenRouter Proxy Backend running on port ${PORT}`);
+  console.log(`🚀 AI Proxy Backend running on port ${PORT}`);
 });
