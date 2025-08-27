@@ -54,3 +54,20 @@ export interface AIProvider {
 }
 
 export type ProviderName = 'openai' | 'openrouter';
+
+export interface ConversationMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
+export interface ConversationHistory {
+  messages: ConversationMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}

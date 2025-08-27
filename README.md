@@ -1,106 +1,56 @@
-# OpenRouter Proxy Backend
+# AI Proxy Backend
 
-Backend proxy for OpenRouter AI models. Simple API to access 100+ AI models with API key security.
+Multi-provider AI proxy with shared conversations across clients. Supports OpenAI and OpenRouter models through one API.
 
 ## Features
 
-- 🤖 **Multi-model**: Access to 100+ AI models through OpenRouter
-- 🔒 **API Key Security**: End-users do not need API keys
-- 🚀 **Simple Setup**: Minimal configuration required
-- ⚡ **Fast**: Direct proxy to OpenRouter with minimal overhead
+- 🤖 **Multi-provider**: OpenAI + OpenRouter models
+- 💬 **Shared conversations**: Context across all clients  
+- 🧠 **Auto context**: Single messages include conversation history
 
 ## Quick Start
 
-### Prerequisites
+```bash
+# Install
+npm install
 
-- Node.js 18+ 
-- npm or pnpm
-- OpenRouter API key
+# Setup .env
+OPENROUTER_API_KEY=your_key_here
+OPENAI_API_KEY=your_key_here
+PORT=3001
 
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <your-repo-url>
-   cd proxy
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-   ```bash
-   # Create .env file with your OpenRouter API key
-   echo "OPENROUTER_API_KEY=your_api_key_here" > .env
-   ```
-
-4. **Start the server**
-   ```bash
-   # Development mode
-   npm run dev
-   
-   # Production mode
-   npm run build
-   npm start
-   ```
-
-## Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Server port | `3001` |
-| `OPENROUTER_API_KEY` | Your OpenRouter API key | **Required** |
+# Run
+npm run dev
+```
 
 ## API Endpoints
 
-### Health Check
-```http
-GET /health
-```
-
-### Get Available Models
-```http
-GET /v1/models
-```
-
-### Chat Completions
-```http
-POST /v1/chat/completions
-```
-
-**Example Usage**:
-
-OpenRouter models (with `/` in model name):
 ```bash
-curl -X POST http://localhost:3001/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "anthropic/claude-3.5-sonnet",
-    "messages": [{"role": "user", "content": "Hello"}]
-  }'
+POST /v1/chat/completions  # Chat with any model
+GET  /v1/conversation      # Get conversation history  
+DELETE /v1/conversation    # Reset conversation
+GET  /v1/models           # List available models
 ```
 
-OpenAI models (without `/` in model name):
 ```bash
+# Chat with OpenAI models
 curl -X POST http://localhost:3001/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "gpt-4o",
-    "messages": [{"role": "user", "content": "Hello"}]
-  }'
+  -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "Hello"}]}'
+
+# Chat with OpenRouter models (use model/provider format)
+curl -X POST http://localhost:3001/v1/chat/completions \
+  -d '{"model": "anthropic/claude-3.5-sonnet", "messages": [{"role": "user", "content": "Hello"}]}'
+
+# Multiple clients share the same conversation
+# Client A sends a message, Client B continues with context automatically included
 ```
 
-The proxy automatically routes requests:
-- Models with `/` (e.g., `anthropic/claude-3.5-sonnet`) → OpenRouter
-- Models without `/` (e.g., `gpt-4o`) → OpenAI
+**Multi-client proxy**: Web apps, mobile apps, and scripts share one conversation across OpenAI/OpenRouter models.
 
 ## Development
 
-### Scripts
-
-- `npm run dev` - Start development server with hot reload
-- `npm run build` - Build TypeScript to JavaScript
-- `npm start` - Start production server
-- `npm run clean` - Clean build artifacts
+```bash
+npm run dev    # Development server
+npm run build  # Build TypeScript
+npm start      # Production server
+```

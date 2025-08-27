@@ -14,17 +14,24 @@ export class ProviderManager {
         case 'openrouter':
           this.providers.set('openrouter', new OpenRouterProvider());
           break;
+        default:
+          throw new Error(`Unknown provider: ${name}`);
       }
     }
-    return this.providers.get(name)!;
+    const provider = this.providers.get(name);
+    if (!provider) {
+      throw new Error(`Failed to create provider: ${name}`);
+    }
+    return provider;
   }
+
+  private static readonly PROVIDER_NAMES: ProviderName[] = ['openai', 'openrouter'];
 
   getAvailableProviders(): ProviderName[] {
     const availableProviders: ProviderName[] = [];
     
     // Check each provider by creating them on-demand
-    const providerNames: ProviderName[] = ['openai', 'openrouter'];
-    for (const name of providerNames) {
+    for (const name of ProviderManager.PROVIDER_NAMES) {
       const provider = this.getOrCreateProvider(name);
       if (provider.isConfigured()) {
         availableProviders.push(name);
@@ -57,7 +64,6 @@ export class ProviderManager {
 
   async handleChatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
     const selectedProvider = this.pickOptimal(request.model);
-
 
     if (!selectedProvider) {
       throw new Error('No configured AI providers available');
