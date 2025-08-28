@@ -71,3 +71,30 @@ export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }
+
+export interface AnthropicMessagesRequest {
+  model: string;
+  messages: Array<{ role: 'user' | 'assistant'; content: string; }>;
+  max_tokens: number;
+  system?: string;
+  temperature?: number;
+  stream?: boolean;
+  [key: string]: any;
+}
+
+export interface AnthropicMessagesResponse {
+  id: string;
+  type: 'message';
+  role: 'assistant';
+  content: Array<{
+    type: 'text';
+    text: string;
+  }>;
+  model: string;
+  stop_reason: 'end_turn' | 'max_tokens' | 'stop_sequence' | 'tool_use';
+  stop_sequence?: string;
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+  };
+}

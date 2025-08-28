@@ -2,17 +2,10 @@ import { Request, Response } from 'express';
 import { ProviderManager } from './provider-manager.js';
 import { ChatCompletionRequest, ChatMessage } from './types.js';
 import { conversationStore } from './conversation-store.js';
+import { validateChatCompletionRequest } from './utils/validation.js';
+import { handleError, APIError } from './utils/error-handler.js';
 
 const providerManager = new ProviderManager();
-
-const VALID_ROLES = ['system', 'user', 'assistant'] as const;
-
-function validateMessage(msg: any): msg is ChatMessage {
-  return msg && 
-         typeof msg.role === 'string' && 
-         VALID_ROLES.includes(msg.role as any) &&
-         typeof msg.content === 'string';
-}
 
 function manageContext(messages: ChatMessage[]): ChatMessage[] {
   // If only a single message is provided, append conversation history
@@ -32,20 +25,9 @@ export async function chatCompletionProxy(req: Request, res: Response) {
   try {
     const { messages, model, stream = false, ...otherParams } = req.body;
 
-    if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({ error: 'Messages array is required' });
-    }
-
-    if (messages.length === 0) {
-      return res.status(400).json({ error: 'At least one message is required' });
-    }
-
-    if (!messages.every(validateMessage)) {
-      return res.status(400).json({ error: 'Invalid message format. Each message must have role (system/user/assistant) and content (string)' });
-    }
-
-    if (!model) {
-      return res.status(400).json({ error: 'Model is required' });
+    const validationError = validateChatCompletionRequest(req.body);
+    if (validationError) {
+      throw new APIError(400, validationError);
     }
 
     console.log(`🚀 The model is here ${model}`);
@@ -74,13 +56,8 @@ export async function chatCompletionProxy(req: Request, res: Response) {
       conversationStore.addMessage('assistant', assistantMessage.content);
     }
 
-    // Response is already JSON parsed from the provider
     res.json(response);
   } catch (error) {
-    console.error('Chat completion proxy error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    handleError(error, res, false);
   }
 }

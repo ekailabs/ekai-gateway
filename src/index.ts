@@ -6,6 +6,7 @@ import cors from 'cors';
 import { chatCompletionProxy } from './chat-proxy.js';
 import { getModels } from './models.js';
 import { getConversationHistory, resetConversationHistory } from './conversation-routes.js';
+import { anthropicToOpenAIMiddleware } from './anthropic-middleware.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -26,6 +27,9 @@ app.get('/v1/models', getModels);
 
 // Chat completions endpoint  
 app.post('/v1/chat/completions', chatCompletionProxy);
+
+// Anthropic Messages endpoint (reuses chat completion logic with format conversion)
+app.post('/v1/messages', anthropicToOpenAIMiddleware, chatCompletionProxy);
 
 // Conversation management endpoints
 app.get('/v1/conversation', getConversationHistory);
