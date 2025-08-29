@@ -1,6 +1,7 @@
 import fetch from 'node-fetch';
 import { AIProvider, ChatCompletionRequest, ChatCompletionResponse, ModelsResponse } from '../types.js';
 import { APIError } from '../utils/error-handler.js';
+import { usageTracker } from '../utils/usage-tracker.js';
 
 export abstract class BaseProvider implements AIProvider {
   abstract readonly name: string;
@@ -42,10 +43,14 @@ export abstract class BaseProvider implements AIProvider {
   }
 
   async chatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
-    return this.makeAPIRequest<ChatCompletionResponse>('/chat/completions', {
+    const response = await this.makeAPIRequest<ChatCompletionResponse>('/chat/completions', {
       method: 'POST',
       body: JSON.stringify(request)
     });
+    
+    usageTracker.trackUsage(this.name, request.model, response);
+    
+    return response;
   }
 
   async getModels(): Promise<ModelsResponse> {

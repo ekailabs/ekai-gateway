@@ -7,6 +7,7 @@ import { chatCompletionProxy } from './chat-proxy.js';
 import { getModels } from './models.js';
 import { getConversationHistory, resetConversationHistory } from './conversation-routes.js';
 import { anthropicToOpenAIMiddleware } from './anthropic-middleware.js';
+import { getUsage } from './usage-routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -34,6 +35,9 @@ app.post('/v1/messages', anthropicToOpenAIMiddleware, chatCompletionProxy);
 // Conversation management endpoints
 app.get('/v1/conversation', getConversationHistory);
 app.delete('/v1/conversation', resetConversationHistory);
+
+// Usage tracking endpoint
+app.get('/usage', getUsage);
 
 app.listen(PORT, () => {
   console.log(`🚀 AI Proxy Backend running on port ${PORT}`);

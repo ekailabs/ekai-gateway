@@ -8,6 +8,7 @@ Multi-provider AI proxy with shared conversations across clients. Supports OpenA
 - 🔄 **Dual APIs**: OpenAI-compatible + Anthropic-compatible endpoints
 - 💬 **Shared conversations**: Context across all clients  
 - 🧠 **Auto context**: Single messages include conversation history
+- 💰 **Real-time billing**: Track token usage and costs automatically
 
 ## Quick Start
 
@@ -32,6 +33,7 @@ POST /v1/messages          # Anthropic-compatible messages endpoint
 GET  /v1/conversation      # Get conversation history  
 DELETE /v1/conversation    # Reset conversation
 GET  /v1/models           # List available models
+GET  /usage               # View token usage and costs
 ```
 
 ```bash
@@ -47,9 +49,12 @@ curl -X POST http://localhost:3001/v1/messages \
 
 # Both endpoints support the same models and share conversation context
 # Client A uses OpenAI format, Client B uses Anthropic format - same conversation!
+
+# Check usage and costs
+curl http://localhost:3001/usage
 ```
 
-**Multi-client proxy**: Web apps, mobile apps, and scripts share one conversation across OpenAI/OpenRouter models.
+**Multi-client proxy**: Web apps, mobile apps, and scripts share one conversation across OpenAI/OpenRouter models with automatic cost tracking.
 
 ## Development
 
