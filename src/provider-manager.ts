@@ -1,6 +1,7 @@
 import { AIProvider, ProviderName, ChatCompletionRequest, ChatCompletionResponse, ModelsResponse, Model } from './types.js';
 import { OpenAIProvider } from './providers/openai-provider.js';
 import { OpenRouterProvider } from './providers/openrouter-provider.js';
+import { AnthropicProvider } from './providers/anthropic-provider.js';
 
 export class ProviderManager {
   private providers: Map<ProviderName, AIProvider> = new Map();
@@ -14,6 +15,9 @@ export class ProviderManager {
         case 'openrouter':
           this.providers.set('openrouter', new OpenRouterProvider());
           break;
+        case 'anthropic':
+          this.providers.set('anthropic', new AnthropicProvider());
+          break;
         default:
           throw new Error(`Unknown provider: ${name}`);
       }
@@ -25,7 +29,7 @@ export class ProviderManager {
     return provider;
   }
 
-  private static readonly PROVIDER_NAMES: ProviderName[] = ['openai', 'openrouter'];
+  private static readonly PROVIDER_NAMES: ProviderName[] = ['openai', 'openrouter', 'anthropic'];
 
   getAvailableProviders(): ProviderName[] {
     const availableProviders: ProviderName[] = [];
@@ -46,7 +50,6 @@ export class ProviderManager {
   }
 
   pickOptimal(modelName: string): ProviderName | null {
-    // ideal: we go through list of models, compare prices or privacy/compliance and then pick ones
     const availableProviders = this.getAvailableProviders();
     console.log('Available Providers:', availableProviders);
     
@@ -54,12 +57,23 @@ export class ProviderManager {
       return null;
     }
 
-    // TODO: check if model is OpenAI model v1/models/ then do it. 
+    // Route Claude models to Anthropic
+    if (modelName.startsWith('claude-') && availableProviders.includes('anthropic')) {
+      return 'anthropic';
+    }
+    
+    // Route OpenAI models (no slash) to OpenAI
     if (!modelName.includes('/') && availableProviders.includes('openai')) {
       return 'openai';
-    } else {
+    }
+    
+    // Route everything else to OpenRouter
+    if (availableProviders.includes('openrouter')) {
       return 'openrouter';
     }
+
+    // Fallback to any available provider
+    return availableProviders[0];
   }
 
   async handleChatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {

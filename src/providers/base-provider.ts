@@ -7,10 +7,36 @@ export abstract class BaseProvider implements AIProvider {
   abstract readonly name: string;
   protected abstract readonly baseUrl: string;
   protected abstract readonly apiKey: string | undefined;
-  protected readonly extraHeaders?: Record<string, string>;
 
   isConfigured(): boolean {
     return !!this.apiKey;
+  }
+
+  // Template method pattern: allow providers to customize headers
+  protected getHeaders(): Record<string, string> {
+    return {
+      'Authorization': `Bearer ${this.apiKey}`,
+      'Content-Type': 'application/json'
+    };
+  }
+
+  // Template method pattern: allow providers to transform requests
+  protected transformRequest(request: ChatCompletionRequest): any {
+    return request;
+  }
+
+  // Template method pattern: allow providers to transform responses
+  protected transformResponse(response: any): ChatCompletionResponse {
+    return response;
+  }
+
+  // Template method pattern: allow providers to customize endpoint
+  protected getChatCompletionEndpoint(): string {
+    return '/chat/completions';
+  }
+
+  protected getModelsEndpoint(): string {
+    return '/models';
   }
 
   protected async makeAPIRequest<T>(endpoint: string, options: any = {}): Promise<T> {
@@ -20,9 +46,7 @@ export abstract class BaseProvider implements AIProvider {
 
     const url = `${this.baseUrl}${endpoint}`;
     const headers = {
-      'Authorization': `Bearer ${this.apiKey}`,
-      'Content-Type': 'application/json',
-      ...this.extraHeaders,
+      ...this.getHeaders(),
       ...options.headers
     };
 
@@ -43,17 +67,19 @@ export abstract class BaseProvider implements AIProvider {
   }
 
   async chatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
-    const response = await this.makeAPIRequest<ChatCompletionResponse>('/chat/completions', {
+    const transformedRequest = this.transformRequest(request);
+    const response = await this.makeAPIRequest(this.getChatCompletionEndpoint(), {
       method: 'POST',
-      body: JSON.stringify(request)
+      body: JSON.stringify(transformedRequest)
     });
     
-    usageTracker.trackUsage(this.name, request.model, response);
+    const transformedResponse = this.transformResponse(response);
+    usageTracker.trackUsage(this.name, request.model, transformedResponse);
     
-    return response;
+    return transformedResponse;
   }
 
   async getModels(): Promise<ModelsResponse> {
-    return this.makeAPIRequest<ModelsResponse>('/models');
+    return this.makeAPIRequest<ModelsResponse>(this.getModelsEndpoint());
   }
 }
