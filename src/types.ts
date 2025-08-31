@@ -53,7 +53,7 @@ export interface AIProvider {
   getModels(): Promise<ModelsResponse>;
 }
 
-export type ProviderName = 'openai' | 'openrouter';
+export type ProviderName = 'openai' | 'openrouter' | 'anthropic';
 
 export interface ConversationMessage {
   role: 'system' | 'user' | 'assistant';
