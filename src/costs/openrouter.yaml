@@ -1,0 +1,21 @@
+provider: "openrouter"
+currency: "USD"
+unit: "per_1m_tokens"
+models:
+  anthropic/claude-3-5-sonnet:
+    input: 3.00
+    output: 15.00
+    original_provider: "anthropic"
+  meta-llama/llama-3.1-8b-instruct:
+    input: 0.18
+    output: 0.18
+    original_provider: "meta"
+  anthropic/claude-3-haiku:
+    input: 0.25
+    output: 1.25
+    original_provider: "anthropic"
+metadata:
+  last_updated: "2024-01-15"
+  source: "openrouter_pricing"
+  notes: "Prices in USD per 1M tokens, includes OpenRouter markup"
+  version: "1.0"

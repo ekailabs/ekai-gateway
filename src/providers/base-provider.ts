@@ -48,7 +48,12 @@ export abstract class BaseProvider implements AIProvider {
       body: JSON.stringify(request)
     });
     
-    usageTracker.trackUsage(this.name, request.model, response);
+    // Extract token counts and track usage with the new method signature
+    if (response.usage) {
+      const inputTokens = response.usage.prompt_tokens || 0;
+      const outputTokens = response.usage.completion_tokens || 0;
+      usageTracker.trackUsage(request.model, this.name, inputTokens, outputTokens);
+    }
     
     return response;
   }

@@ -1,0 +1,18 @@
+provider: "openai"
+currency: "USD"
+unit: "per_1m_tokens"
+models:
+  gpt-4o:
+    input: 2.50
+    output: 10.00
+  gpt-4o-mini:
+    input: 0.15
+    output: 0.60
+  gpt-3.5-turbo:
+    input: 0.50
+    output: 1.50
+metadata:
+  last_updated: "2024-01-15"
+  source: "official_openai_pricing"
+  notes: "Prices in USD per 1M tokens"
+  version: "1.0"
