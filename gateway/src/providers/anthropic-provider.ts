@@ -1,5 +1,5 @@
 import { BaseProvider } from './base-provider.js';
-import { ChatCompletionRequest, ChatCompletionResponse } from '../types.js';
+import { ChatCompletionRequest, ChatCompletionResponse } from '../../../shared/types/index.js';
 import { APIError } from '../utils/error-handler.js';
 
 interface AnthropicMessage {

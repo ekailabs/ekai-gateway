@@ -1,4 +1,4 @@
-import { AIProvider, ProviderName, ChatCompletionRequest, ChatCompletionResponse, ModelsResponse, Model } from './types.js';
+import { AIProvider, ProviderName, ChatCompletionRequest, ChatCompletionResponse, ModelsResponse, Model } from '../../shared/types/index.js';
 import { OpenAIProvider } from './providers/openai-provider.js';
 import { OpenRouterProvider } from './providers/openrouter-provider.js';
 import { AnthropicProvider } from './providers/anthropic-provider.js';

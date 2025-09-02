@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { AnthropicMessagesRequest, ChatMessage } from './types.js';
+import { AnthropicMessagesRequest, ChatMessage } from '../../shared/types/index.js';
 import { validateAnthropicRequest } from './utils/validation.js';
 import { handleError, APIError } from './utils/error-handler.js';
 import { anthropicResponseTransformer } from './utils/response-transformer.js';

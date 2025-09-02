@@ -1,8 +1,18 @@
 # Ekai Gateway
 
-Multi-provider AI proxy supporting OpenAI, OpenRouter, and Anthropic models through OpenAI-compatible and Anthropic-compatible APIs.
+Multi-provider AI proxy with dashboard supporting OpenAI, OpenRouter, and Anthropic models through OpenAI-compatible and Anthropic-compatible APIs.
 
 **Designed for self-hosted personal use** - run your own instance to securely proxy AI requests using your API keys.
+
+## Project Structure
+
+```
+ekai-gateway/
+├── gateway/          # Backend API and routing
+├── ui/              # Dashboard frontend
+├── shared/          # Shared types and utilities
+└── package.json     # Root package configuration
+```
 
 ## Features
 
@@ -18,7 +28,7 @@ Multi-provider AI proxy supporting OpenAI, OpenRouter, and Anthropic models thro
 # Install
 npm install
 
-# Setup .env
+# Setup .env in gateway/
 OPENROUTER_API_KEY=your_key_here
 OPENAI_API_KEY=your_key_here
 ANTHROPIC_API_KEY=your_key_here

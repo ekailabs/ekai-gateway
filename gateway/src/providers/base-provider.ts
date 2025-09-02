@@ -1,5 +1,5 @@
 import fetch from 'node-fetch';
-import { AIProvider, ChatCompletionRequest, ChatCompletionResponse, ModelsResponse } from '../types.js';
+import { AIProvider, ChatCompletionRequest, ChatCompletionResponse, ModelsResponse } from '../../../shared/types/index.js';
 import { APIError } from '../utils/error-handler.js';
 import { usageTracker } from '../utils/usage-tracker.js';
 
