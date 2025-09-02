@@ -74,7 +74,13 @@ export abstract class BaseProvider implements AIProvider {
     });
     
     const transformedResponse = this.transformResponse(response);
-    usageTracker.trackUsage(this.name, request.model, transformedResponse);
+    
+    // Extract token counts and track usage with the new method signature
+    if (transformedResponse.usage) {
+      const inputTokens = transformedResponse.usage.prompt_tokens || 0;
+      const outputTokens = transformedResponse.usage.completion_tokens || 0;
+      usageTracker.trackUsage(request.model, this.name, inputTokens, outputTokens);
+    }
     
     return transformedResponse;
   }

@@ -3,7 +3,8 @@ import { usageTracker } from './utils/usage-tracker.js';
 
 export function getUsage(req: Request, res: Response) {
   try {
-    const usage = usageTracker.getUsage();
+    // Get usage data from database (more accurate and persistent)
+    const usage = usageTracker.getUsageFromDatabase();
     res.json(usage);
   } catch (error) {
     console.error('Usage endpoint error:', error);

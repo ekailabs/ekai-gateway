@@ -5,7 +5,7 @@ import express from 'express';
 import cors from 'cors';
 import { chatCompletionProxy } from './chat-proxy.js';
 import { getModels } from './models.js';
-import { getConversationHistory, resetConversationHistory } from './conversation-routes.js';
+// Removed conversation routes - no conversation storage
 import { anthropicToOpenAIMiddleware } from './anthropic-middleware.js';
 import { getUsage } from './usage-routes.js';
 
@@ -32,9 +32,7 @@ app.post('/v1/chat/completions', chatCompletionProxy);
 // Anthropic Messages endpoint (reuses chat completion logic with format conversion)
 app.post('/v1/messages', anthropicToOpenAIMiddleware, chatCompletionProxy);
 
-// Conversation management endpoints
-app.get('/v1/conversation', getConversationHistory);
-app.delete('/v1/conversation', resetConversationHistory);
+// Conversation endpoints removed - no conversation storage
 
 // Usage tracking endpoint
 app.get('/usage', getUsage);

@@ -1,87 +1,241 @@
-export interface UsageRecord {
-  requestId: string;
-  provider: string;
-  model: string;
-  timestamp: string;
-  inputTokens: number;
-  outputTokens: number;
-  totalTokens: number;
-  inputCost: number;
-  outputCost: number;
+import { pricingLoader, CostCalculation } from './pricing-loader.js';
+import { dbQueries, type UsageRecord } from '../db/queries.js';
+
+/**
+ * Usage summary interface for consistent return types
+ */
+export interface UsageSummary {
+  totalRequests: number;
   totalCost: number;
+  totalTokens: number;
+  costByProvider: Record<string, number>;
+  costByModel: Record<string, number>;
+  records: UsageRecord[];
 }
 
-const PRICING = {
-  openai: {
-    'gpt-4o': { input: 2.50, output: 10.00 },
-    'gpt-3.5-turbo': { input: 0.50, output: 1.50 },
-    'gpt-4o-mini': { input: 0.15, output: 0.60 }
-  },
-  openrouter: {
-    'anthropic/claude-3-5-sonnet': { input: 3.00, output: 15.00 },
-    'meta-llama/llama-3.1-8b-instruct': { input: 0.18, output: 0.18 },
-    'anthropic/claude-3-haiku': { input: 0.25, output: 1.25 }
+/**
+ * UsageTracker class for tracking AI model usage, costs, and analytics
+ * All data is persisted to SQLite database for reliability and persistence
+ */
+export class UsageTracker {
+  private static readonly MAX_RECORDS_EXPORT = 100;
+  private static readonly HOURS_IN_DAY = 24;
+
+  constructor() {
+    // Ensure pricing is loaded when UsageTracker is instantiated
+    pricingLoader.loadAllPricing();
   }
-} as const;
 
-class UsageTracker {
-  private records: UsageRecord[] = [];
-
-  trackUsage(provider: string, model: string, response: any): UsageRecord | null {
-    const usage = response.usage;
-    if (!usage) return null;
-
-    const inputTokens = usage.prompt_tokens || 0;
-    const outputTokens = usage.completion_tokens || 0;
-    const totalTokens = usage.total_tokens || inputTokens + outputTokens;
-
-    const pricing = this.getPricing(provider, model);
-    if (!pricing) {
-      console.warn(`No pricing found for ${provider}/${model}`);
-      return null;
+  /**
+   * Track a chat completion request and calculate costs
+   * @param model - The AI model name
+   * @param provider - The provider (openai, anthropic, openrouter)
+   * @param inputTokens - Number of input tokens
+   * @param outputTokens - Number of output tokens
+   * @returns Cost calculation or null if pricing not found
+   */
+  trackUsage(
+    model: string, 
+    provider: string, 
+    inputTokens: number, 
+    outputTokens: number
+  ): CostCalculation | null {
+    // Input validation
+    if (!model?.trim() || !provider?.trim()) {
+      throw new Error('Model and provider are required');
+    }
+    
+    if (inputTokens < 0 || outputTokens < 0 || !Number.isInteger(inputTokens) || !Number.isInteger(outputTokens)) {
+      throw new Error('Token counts must be non-negative integers');
     }
 
-    const inputCost = (inputTokens / 1_000_000) * pricing.input;
-    const outputCost = (outputTokens / 1_000_000) * pricing.output;
-    const totalCost = inputCost + outputCost;
-
-    const record: UsageRecord = {
-      requestId: response.id,
-      provider,
-      model,
-      timestamp: new Date().toISOString(),
-      inputTokens,
-      outputTokens,
-      totalTokens,
-      inputCost,
-      outputCost,
-      totalCost
-    };
-
-    this.records.push(record);
-    console.log(`💰 Usage tracked: $${totalCost.toFixed(6)} for ${totalTokens} tokens`);
+    const now = new Date();
     
-    return record;
+    // Calculate cost using the pricing system
+    const costCalculation = pricingLoader.calculateCost(provider, model, inputTokens, outputTokens);
+    
+    if (costCalculation) {
+      // Generate unique request ID
+      const requestId = this.generateRequestId(provider, model, now);
+      
+      // Save to database
+      try {
+        dbQueries.insertUsageRecord({
+          request_id: requestId,
+          provider: provider.toLowerCase(),
+          model,
+          timestamp: now.toISOString(),
+          input_tokens: inputTokens,
+          output_tokens: outputTokens,
+          total_tokens: inputTokens + outputTokens,
+          input_cost: costCalculation.inputCost,
+          output_cost: costCalculation.outputCost,
+          total_cost: costCalculation.totalCost,
+          currency: costCalculation.currency
+        });
+
+        console.log(`💰 Cost for ${model} (${provider}): $${costCalculation.totalCost.toFixed(6)} (${inputTokens} input + ${outputTokens} output tokens)`);
+      } catch (error) {
+        console.error('❌ Failed to save usage record to database:', error);
+        throw new Error(`Failed to track usage: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    } else {
+      console.warn(`⚠️ No pricing found for model: ${model} (${provider})`);
+    }
+
+    return costCalculation;
   }
 
-  getUsage() {
-    const totalCost = this.records.reduce((sum, r) => sum + r.totalCost, 0);
-    const totalTokens = this.records.reduce((sum, r) => sum + r.totalTokens, 0);
-
-    return {
-      totalRequests: this.records.length,
-      totalCost: Number(totalCost.toFixed(6)),
-      totalTokens,
-      records: this.records
-    };
+  /**
+   * Get comprehensive usage summary from database
+   * @param recordLimit - Maximum number of recent records to include (default: 100)
+   * @returns Usage summary with totals, breakdowns, and recent records
+   */
+  getUsageFromDatabase(recordLimit: number = UsageTracker.MAX_RECORDS_EXPORT): UsageSummary {
+    try {
+      return {
+        totalRequests: dbQueries.getTotalRequests(),
+        totalCost: Number(dbQueries.getTotalCost().toFixed(6)),
+        totalTokens: dbQueries.getTotalTokens(),
+        costByProvider: dbQueries.getCostByProvider(),
+        costByModel: dbQueries.getCostByModel(),
+        records: dbQueries.getAllUsageRecords(recordLimit)
+      };
+    } catch (error) {
+      console.error('❌ Failed to get usage from database:', error);
+      // Return empty summary rather than circular reference
+      return {
+        totalRequests: 0,
+        totalCost: 0,
+        totalTokens: 0,
+        costByProvider: {},
+        costByModel: {},
+        records: []
+      };
+    }
   }
 
-  private getPricing(provider: string, model: string): { input: number; output: number } | null {
-    const providerPricing = PRICING[provider as keyof typeof PRICING];
-    if (!providerPricing) return null;
-    
-    return (providerPricing as any)[model] || null;
+  /**
+   * Get cost breakdown by provider
+   * @returns Record mapping provider names to total costs
+   */
+  getCostByProvider(): Record<string, number> {
+    try {
+      return dbQueries.getCostByProvider();
+    } catch (error) {
+      console.error('❌ Failed to get cost by provider from database:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Get cost breakdown by model type (e.g., "gpt-4" from "gpt-4o")
+   * @returns Record mapping model types to total costs
+   */
+  getCostByModelType(): Record<string, number> {
+    try {
+      const costByModel = dbQueries.getCostByModel();
+      const costByModelType: Record<string, number> = {};
+      
+      Object.entries(costByModel).forEach(([model, cost]) => {
+        const modelType = this.extractModelType(model);
+        costByModelType[modelType] = (costByModelType[modelType] || 0) + cost;
+      });
+
+      return costByModelType;
+    } catch (error) {
+      console.error('❌ Failed to get cost by model type from database:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Get hourly cost breakdown for the last 24 hours
+   * @returns Record mapping ISO hour strings to costs
+   */
+  getHourlyCostBreakdown(): Record<string, number> {
+    try {
+      const hourlyCosts: Record<string, number> = {};
+      const now = new Date();
+      const oneDayAgo = new Date(now.getTime() - UsageTracker.HOURS_IN_DAY * 60 * 60 * 1000);
+
+      // Use date range query for better performance
+      const records = dbQueries.getUsageRecordsByDateRange(
+        oneDayAgo.toISOString(), 
+        now.toISOString()
+      );
+      
+      records.forEach(record => {
+        const hourKey = new Date(record.timestamp).toISOString().slice(0, 13) + ':00:00Z';
+        hourlyCosts[hourKey] = (hourlyCosts[hourKey] || 0) + record.total_cost;
+      });
+
+      return hourlyCosts;
+    } catch (error) {
+      console.error('❌ Failed to get hourly cost breakdown from database:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Reset all usage data (clears database)
+   * @returns Promise that resolves when reset is complete
+   */
+  async reset(): Promise<void> {
+    try {
+      // Note: This would require implementing clearAllUsageRecords in dbQueries
+      // For now, just log that it's not implemented
+      console.log('🔄 Usage tracker reset - database clearing not implemented');
+      console.warn('⚠️ Database reset functionality needs to be implemented in dbQueries');
+    } catch (error) {
+      console.error('❌ Failed to reset usage tracker:', error);
+      throw new Error(`Failed to reset usage tracker: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+
+  /**
+   * Get pricing information for all available models
+   * @returns Pricing summary from the pricing loader
+   */
+  getPricingInfo() {
+    return pricingLoader.getPricingSummary();
+  }
+
+  /**
+   * Search for models by name or description
+   * @param query - Search query string
+   * @returns Array of matching models
+   */
+  searchModels(query: string) {
+    if (!query?.trim()) {
+      throw new Error('Search query is required');
+    }
+    return pricingLoader.searchModels(query.trim());
+  }
+
+
+  /**
+   * Generate a unique request ID
+   * @private
+   */
+  private generateRequestId(provider: string, model: string, timestamp: Date): string {
+    const randomSuffix = Math.random().toString(36).substring(2, 11);
+    return `${provider}-${model}-${timestamp.getTime()}-${randomSuffix}`;
+  }
+
+  /**
+   * Extract model type from full model name
+   * @private
+   */
+  private extractModelType(model: string): string {
+    const parts = model.split('-');
+    if (parts.length >= 2) {
+      return `${parts[0]}-${parts[1]}`;
+    }
+    return model; // fallback to full name if parsing fails
   }
 }
 
+// Export singleton instance
 export const usageTracker = new UsageTracker();
