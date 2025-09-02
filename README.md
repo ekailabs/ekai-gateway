@@ -1,6 +1,6 @@
 # AI Proxy Backend
 
-Multi-provider AI proxy with shared conversations across clients. Supports OpenAI, OpenRouter, and Anthropic models through OpenAI-compatible and Anthropic-compatible APIs.
+Multi-provider AI proxy supporting OpenAI, OpenRouter, and Anthropic models through OpenAI-compatible and Anthropic-compatible APIs.
 
 **Designed for self-hosted personal use** - run your own instance to securely proxy AI requests using your API keys.
 
@@ -8,10 +8,9 @@ Multi-provider AI proxy with shared conversations across clients. Supports OpenA
 
 - 🤖 **Multi-provider**: OpenAI + OpenRouter + Anthropic models
 - 🔄 **Dual APIs**: OpenAI-compatible + Anthropic-compatible endpoints
-- 💬 **Shared conversations**: Context across all clients and providers
-- 🧠 **Auto context**: Single messages include conversation history
 - 🔀 **Smart routing**: Automatic provider selection based on model name
 - 💰 **Real-time billing**: Track token usage and costs automatically
+- 🗄️ **Database storage**: SQLite database for persistent usage tracking
 
 ## Quick Start
 
@@ -34,10 +33,9 @@ npm run dev
 ```bash
 POST /v1/chat/completions  # OpenAI-compatible chat endpoint
 POST /v1/messages          # Anthropic-compatible messages endpoint
-GET  /v1/conversation      # Get conversation history  
-DELETE /v1/conversation    # Reset conversation
 GET  /v1/models           # List available models
 GET  /usage               # View token usage and costs
+GET  /health              # Health check endpoint
 ```
 
 ```bash

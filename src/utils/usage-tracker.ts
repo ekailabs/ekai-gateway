@@ -1,5 +1,5 @@
-import { conversationStore } from '../conversation-store.js';
 import { pricingLoader, CostCalculation } from './pricing-loader.js';
+import { dbQueries } from '../db/queries.js';
 
 export interface UsageRecord {
   requestId: string;
@@ -68,6 +68,28 @@ export class UsageTracker {
     const costCalculation = pricingLoader.calculateCost(provider, model, inputTokens, outputTokens);
     
     if (costCalculation) {
+      // Generate unique request ID
+      const requestId = `${provider}-${model}-${now.getTime()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Save to database
+      try {
+        dbQueries.insertUsageRecord({
+          request_id: requestId,
+          provider,
+          model,
+          timestamp: now.toISOString(),
+          input_tokens: inputTokens,
+          output_tokens: outputTokens,
+          total_tokens: inputTokens + outputTokens,
+          input_cost: costCalculation.inputCost,
+          output_cost: costCalculation.outputCost,
+          total_cost: costCalculation.totalCost,
+          currency: costCalculation.currency
+        });
+      } catch (error) {
+        console.error('❌ Failed to save usage record to database:', error);
+      }
+
       // Update metrics
       this.metrics.totalRequests++;
       this.metrics.totalTokens += inputTokens + outputTokens;
@@ -115,6 +137,25 @@ export class UsageTracker {
       totalTokens: this.metrics.totalTokens,
       records: this.requestLog
     };
+  }
+
+  /**
+   * Get usage summary from database (more accurate and persistent)
+   */
+  getUsageFromDatabase() {
+    try {
+      return {
+        totalRequests: dbQueries.getTotalRequests(),
+        totalCost: Number(dbQueries.getTotalCost().toFixed(6)),
+        totalTokens: dbQueries.getTotalTokens(),
+        costByProvider: dbQueries.getCostByProvider(),
+        costByModel: dbQueries.getCostByModel(),
+        records: dbQueries.getAllUsageRecords(100) // Get last 100 records
+      };
+    } catch (error) {
+      console.error('❌ Failed to get usage from database:', error);
+      return this.getUsage(); // Fallback to in-memory
+    }
   }
 
   /**
