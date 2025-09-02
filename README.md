@@ -1,4 +1,4 @@
-# AI Proxy Backend
+# Ekai Gateway
 
 Multi-provider AI proxy supporting OpenAI, OpenRouter, and Anthropic models through OpenAI-compatible and Anthropic-compatible APIs.
 
