@@ -53,7 +53,7 @@ export class DatabaseQueries {
       : 'SELECT * FROM usage_records ORDER BY timestamp DESC';
     
     const stmt = this.db.prepare(query);
-    return limit ? stmt.all(limit) : stmt.all();
+    return limit ? stmt.all(limit) as UsageRecord[] : stmt.all() as UsageRecord[];
   }
 
   // Get usage records by date range
@@ -63,7 +63,7 @@ export class DatabaseQueries {
       WHERE timestamp BETWEEN ? AND ? 
       ORDER BY timestamp DESC
     `);
-    return stmt.all(startDate, endDate);
+    return stmt.all(startDate, endDate) as UsageRecord[];
   }
 
   // Get total cost
