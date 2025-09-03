@@ -28,7 +28,7 @@ ekai-gateway/
 # Install
 npm install
 
-# Setup .env in gateway/
+# Setup .env in repository root
 OPENROUTER_API_KEY=your_key_here
 OPENAI_API_KEY=your_key_here
 ANTHROPIC_API_KEY=your_key_here

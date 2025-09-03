@@ -1,123 +1,51 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, ComposedChart } from 'recharts';
-import { apiService, UsageRecord } from '@/lib/api';
+import { useState } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { groupByDate, formatForChart, calculateBurnRate, detectAnomalies, formatCurrency } from '@/lib/utils';
+import { useUsageData } from '@/hooks/useUsageData';
+import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
+import ErrorState from '@/components/ui/ErrorState';
+import EmptyState from '@/components/ui/EmptyState';
+import ChartTooltip from '@/components/ui/ChartTooltip';
 
 interface TrendChartProps {
   className?: string;
 }
 
 export default function TrendChart({ className = '' }: TrendChartProps) {
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [chartType, setChartType] = useState<'line' | 'bar' | 'composed'>('bar');
+  const { records, loading, error, refetch } = useUsageData();
+  const [chartType, setChartType] = useState<'line' | 'bar'>('bar');
   const [timeframe, setTimeframe] = useState<'hour' | 'day'>('day');
-  const [burnRate, setBurnRate] = useState(0);
-  const [anomalies, setAnomalies] = useState<any[]>([]);
-  const [totalStats, setTotalStats] = useState({
-    totalCost: 0,
-    totalTokens: 0,
-    totalRequests: 0
-  });
 
-  useEffect(() => {
-    fetchData();
-  }, [timeframe]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await apiService.getUsage();
-      const records: UsageRecord[] = response.records || [];
-      
-      // Process data for chart
-      const grouped = groupByDate(records, timeframe);
-      const chartData = formatForChart(grouped);
-      
-      // Calculate metrics
-      const dailyBurnRate = calculateBurnRate(records);
-      const detectedAnomalies = detectAnomalies(records);
-      
-      // Calculate totals
-      const totalCost = records.reduce((sum, r) => sum + r.total_cost, 0);
-      const totalTokens = records.reduce((sum, r) => sum + r.total_tokens, 0);
-      const totalRequests = records.length;
-      
-      setData(chartData);
-      setBurnRate(dailyBurnRate);
-      setAnomalies(detectedAnomalies);
-      setTotalStats({ totalCost, totalTokens, totalRequests });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch data');
-    } finally {
-      setLoading(false);
-    }
+  // Process data for chart
+  const grouped = groupByDate(records, timeframe);
+  const data = formatForChart(grouped);
+  const burnRate = calculateBurnRate(records);
+  const anomalies = detectAnomalies(records);
+  const totalStats = {
+    totalCost: records.reduce((sum, r) => sum + r.total_cost, 0),
+    totalTokens: records.reduce((sum, r) => sum + r.total_tokens, 0),
+    totalRequests: records.length
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="font-semibold">{data.formattedDate}</p>
-          {timeframe === 'hour' && <p className="text-sm text-gray-600">{data.formattedTime}</p>}
-          <p className="text-blue-600">
-            <span className="font-semibold">Cost:</span> {formatCurrency(data.cost)}
-          </p>
-          <p className="text-green-600">
-            <span className="font-semibold">Tokens:</span> {data.tokens.toLocaleString()}
-          </p>
-          <p className="text-purple-600">
-            <span className="font-semibold">Requests:</span> {data.requests}
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
 
   if (loading) {
-    return (
-      <div className={`bg-white p-6 rounded-lg shadow ${className}`}>
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    );
+    return <LoadingSkeleton className={className} />;
   }
 
   if (error) {
-    return (
-      <div className={`bg-white p-6 rounded-lg shadow ${className}`}>
-        <div className="text-red-600">
-          <h3 className="text-lg font-semibold mb-2">Error Loading Data</h3>
-          <p>{error}</p>
-          <button 
-            onClick={fetchData}
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
+    return <ErrorState className={className} message={error} onRetry={refetch} />;
   }
 
   if (data.length === 0) {
     return (
-      <div className={`bg-white p-6 rounded-lg shadow ${className}`}>
-        <h3 className="text-lg font-semibold mb-4">Spend Over Time</h3>
-        <div className="text-center text-gray-500 py-8">
-          <p>No usage data available yet.</p>
-          <p className="text-sm">Make some API requests to see spending trends.</p>
-        </div>
-      </div>
+      <EmptyState 
+        className={className}
+        title="Usage Analytics"
+        description="No usage data available yet."
+        suggestion="Make some API requests to see spending trends."
+      />
     );
   }
 
@@ -183,7 +111,7 @@ export default function TrendChart({ className = '' }: TrendChartProps) {
                     tickFormatter={(value) => `$${value.toFixed(4)}`}
                     tick={{ fontSize: 10 }}
                   />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<ChartTooltip type="cost" />} />
                   <Line 
                     type="monotone" 
                     dataKey="cost" 
@@ -205,7 +133,7 @@ export default function TrendChart({ className = '' }: TrendChartProps) {
                     tickFormatter={(value) => `$${value.toFixed(4)}`}
                     tick={{ fontSize: 10 }}
                   />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<ChartTooltip type="cost" />} />
                   <Bar dataKey="cost" fill="#3b82f6" />
                 </BarChart>
               )}
@@ -230,7 +158,7 @@ export default function TrendChart({ className = '' }: TrendChartProps) {
                     tickFormatter={(value) => value.toLocaleString()}
                     tick={{ fontSize: 10 }}
                   />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<ChartTooltip type="cost" />} />
                   <Line 
                     type="monotone" 
                     dataKey="tokens" 
@@ -252,7 +180,7 @@ export default function TrendChart({ className = '' }: TrendChartProps) {
                     tickFormatter={(value) => value.toLocaleString()}
                     tick={{ fontSize: 10 }}
                   />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<ChartTooltip type="cost" />} />
                   <Bar dataKey="tokens" fill="#10b981" />
                 </BarChart>
               )}

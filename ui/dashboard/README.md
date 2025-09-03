@@ -8,6 +8,7 @@ A comprehensive spend dashboard for tracking AI model usage and pricing across m
 - 📈 **Trend Visualization**: Track spend and token usage over time with interactive charts
 - 🥧 **Provider Breakdown**: See cost distribution across different AI providers (OpenAI, Anthropic, etc.)
 - 🎯 **Model Comparison**: Compare costs and usage across different AI models
+- 📋 **Usage Table**: Detailed tabular view of all API requests with sorting and filtering
 - 💰 **Cost Optimization**: Identify the most cost-effective models for your use cases
 
 ## Dashboard Components
@@ -26,6 +27,12 @@ A comprehensive spend dashboard for tracking AI model usage and pricing across m
 - **Pie Chart**: Visual breakdown of costs by AI model
 - **Model Comparison**: Compare costs across GPT-4, Claude, and other models
 - **Usage Insights**: Identify your most-used models
+
+### UsageTable
+- **Detailed Records**: Sortable table showing all API requests
+- **Request Details**: Timestamp, provider, model, tokens, and costs
+- **Interactive Sorting**: Click column headers to sort data
+- **Summary Statistics**: Total requests, tokens, and costs
 
 ## Getting Started
 
@@ -63,13 +70,42 @@ The dashboard connects to the Ekai Gateway backend through these endpoints:
 - `GET /usage` - Fetch usage statistics and cost data
 - `GET /health` - Check backend health status
 
+## Architecture
+
+### Component Structure
+- **Shared Hook**: `useUsageData` - Centralized API data fetching
+- **UI Components**: Reusable loading, error, and empty state components  
+- **Chart Components**: Interactive visualizations with shared tooltips
+- **Table Component**: Sortable data table with detailed request information
+
+### Code Organization
+```
+src/
+├── components/
+│   ├── TrendChart.tsx      # Time-based analytics
+│   ├── ProviderChart.tsx   # Provider cost breakdown  
+│   ├── ModelChart.tsx      # Model cost comparison
+│   ├── UsageTable.tsx      # Detailed request table
+│   └── ui/                 # Shared UI components
+│       ├── LoadingSkeleton.tsx
+│       ├── ErrorState.tsx
+│       ├── EmptyState.tsx
+│       └── ChartTooltip.tsx
+├── hooks/
+│   └── useUsageData.ts     # Shared data fetching logic
+└── lib/
+    ├── api.ts              # API service functions
+    ├── constants.ts        # Shared constants
+    └── utils.ts            # Utility functions
+```
+
 ## Technology Stack
 
 - **Next.js** - React framework with App Router
 - **TypeScript** - Type-safe development
 - **Tailwind CSS** - Utility-first CSS framework
 - **Recharts** - Beautiful, composable charts for data visualization
-- **Geist Font** - Modern typography
+- **Custom Hooks** - Shared logic and state management
 
 ## Development
 
