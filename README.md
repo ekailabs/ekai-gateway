@@ -1,6 +1,6 @@
 # Ekai Gateway
 
-Multi-provider AI proxy with dashboard supporting OpenAI, OpenRouter, and Anthropic models through OpenAI-compatible and Anthropic-compatible APIs.
+Multi-provider AI proxy with usage dashboard supporting OpenAI, OpenRouter, and Anthropic models through OpenAI-compatible and Anthropic-compatible APIs.
 
 **Designed for self-hosted personal use** - run your own instance to securely proxy AI requests using your API keys.
 
@@ -19,24 +19,26 @@ ekai-gateway/
 - 🤖 **Multi-provider**: OpenAI + OpenRouter + Anthropic models
 - 🔄 **Dual APIs**: OpenAI-compatible + Anthropic-compatible endpoints
 - 🔀 **Smart routing**: Automatic provider selection based on model name
-- 💰 **Real-time billing**: Track token usage and costs automatically
+- 💰 **Usage tracking**: Track token usage and costs with visual dashboard
 - 🗄️ **Database storage**: SQLite database for persistent usage tracking
 
 ## Quick Start
 
 ```bash
-# Install
+# Install dependencies
 npm install
 
-# Setup .env in repository root
+# Setup environment (create .env in repository root)
 OPENROUTER_API_KEY=your_key_here
 OPENAI_API_KEY=your_key_here
 ANTHROPIC_API_KEY=your_key_here
 PORT=3001
 
-# Run
+# Start development servers
 npm run dev
 ```
+
+Access the gateway at `http://localhost:3001` and dashboard at `http://localhost:3000`.
 
 ## API Endpoints
 
@@ -84,7 +86,13 @@ The proxy automatically routes requests to the appropriate provider:
 ## Development
 
 ```bash
-npm run dev    # Development server
+npm run dev    # Start both gateway and dashboard
 npm run build  # Build TypeScript
 npm start      # Production server
+```
+
+**Individual services:**
+```bash
+cd gateway && npm run dev    # Gateway only (port 3001)
+cd ui/dashboard && npm run dev    # Dashboard only (port 3000)
 ```

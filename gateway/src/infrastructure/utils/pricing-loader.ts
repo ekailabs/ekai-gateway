@@ -36,7 +36,7 @@ export interface CostCalculation {
 }
 
 export class PricingLoader {
-  private costsDir = path.join(__dirname, '../costs');
+  private costsDir = path.join(__dirname, '../../costs');
   private pricingCache = new Map<string, PricingConfig>();
   private lastLoadTime = 0;
   private cacheExpiryMs = 5 * 60 * 1000; // 5 minutes

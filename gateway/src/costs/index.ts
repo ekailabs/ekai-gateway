@@ -1,11 +1,11 @@
 // Export the pricing loader and types
-export { pricingLoader, PricingLoader } from '../utils/pricing-loader.js';
+export { pricingLoader, PricingLoader } from '../infrastructure/utils/pricing-loader.js';
 export type { 
   PricingConfig, 
   ModelPricing, 
   PricingMetadata, 
   CostCalculation 
-} from '../utils/pricing-loader.js';
+} from '../infrastructure/utils/pricing-loader.js';
 
 // Re-export for convenience
 export { default as openaiPricing } from './openai.yaml';

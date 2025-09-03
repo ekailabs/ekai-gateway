@@ -5,45 +5,53 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load .env from parent directory (repo root)
+// Load environment variables
 dotenv.config({ path: join(__dirname, '../../.env') });
 
 import express from 'express';
 import cors from 'cors';
-import { chatCompletionProxy } from './chat-proxy.js';
-import { getModels } from './models.js';
-// Removed conversation routes - no conversation storage
-import { anthropicToOpenAIMiddleware } from './anthropic-middleware.js';
-import { getUsage } from './usage-routes.js';
+import { handleOpenAIChat, handleAnthropicChat } from './app/handlers/chat-handler.js';
+import { handleModelsRequest } from './app/handlers/models-handler.js';
+import { handleUsageRequest } from './app/handlers/usage-handler.js';
+import { logger } from './infrastructure/utils/logger.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Enable CORS for all origins
+// Middleware
 app.use(cors());
-
-// Parse JSON bodies
 app.use(express.json());
 
-// Health check endpoint
+// Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  });
 });
 
-// Models endpoint
-app.get('/v1/models', getModels);
+// API Routes
+app.get('/v1/models', handleModelsRequest);
+app.post('/v1/chat/completions', handleOpenAIChat);
+app.post('/v1/messages', handleAnthropicChat);
+app.get('/usage', handleUsageRequest);
 
-// Chat completions endpoint  
-app.post('/v1/chat/completions', chatCompletionProxy);
-
-// Anthropic Messages endpoint (reuses chat completion logic with format conversion)
-app.post('/v1/messages', anthropicToOpenAIMiddleware, chatCompletionProxy);
-
-// Conversation endpoints removed - no conversation storage
-
-// Usage tracking endpoint
-app.get('/usage', getUsage);
-
+// Start server
 app.listen(PORT, () => {
-  console.log(`🚀 AI Proxy Backend running on port ${PORT}`);
+  logger.info(`AI Proxy server started`, { 
+    port: PORT, 
+    environment: process.env.NODE_ENV || 'development' 
+  });
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received, shutting down gracefully');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  logger.info('SIGINT received, shutting down gracefully');
+  process.exit(0);
 });
