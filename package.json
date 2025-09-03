@@ -1,35 +1,29 @@
 {
-  "name": "proxy",
-  "version": "0.1.0",
-  "description": "Chat Proxy Server",
+  "name": "ekai-gateway",
+  "version": "1.0.0",
+  "description": "Ekai Gateway - Multi-provider AI request routing with dashboard",
   "private": true,
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "clean": "rm -rf dist"
-  },
-  "dependencies": {
-    "@types/js-yaml": "^4.0.9",
-    "better-sqlite3": "^12.2.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "js-yaml": "^4.1.0",
-    "node-fetch": "^3.3.2"
+    "dev": "concurrently \"npm run dev:gateway\" \"npm run dev:ui\"",
+    "dev:gateway": "cd gateway && npm run dev",
+    "dev:ui": "cd ui/dashboard && npm run dev",
+    "build": "npm run build:gateway && npm run build:ui",
+    "build:gateway": "cd gateway && npm run build",
+    "build:ui": "cd ui/dashboard && npm run build",
+    "start": "cd gateway && npm start",
+    "install:all": "npm install && cd gateway && npm install && cd ../ui/dashboard && npm install"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
-    "@types/node": "^20.10.0",
-    "tsx": "^4.6.0",
-    "typescript": "^5.3.2"
+    "concurrently": "^8.2.2"
   },
   "keywords": [
     "ai",
+    "proxy",
+    "gateway",
+    "dashboard",
     "openai",
-    "proxy"
+    "anthropic",
+    "openrouter"
   ],
   "author": "Ekai Labs"
 }

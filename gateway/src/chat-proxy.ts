@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { ProviderManager } from './provider-manager.js';
-import { ChatCompletionRequest, ChatMessage } from './types.js';
+import { ChatCompletionRequest, ChatMessage } from '../../shared/types/index.js';
 import { validateChatCompletionRequest } from './utils/validation.js';
 import { handleError, APIError } from './utils/error-handler.js';
 

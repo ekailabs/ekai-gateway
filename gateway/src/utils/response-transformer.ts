@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { AnthropicMessagesResponse } from '../types.js';
+import { AnthropicMessagesResponse } from '../../../shared/types/index.js';
 
 export function createResponseTransformer<TInput, TOutput>(
   transformer: (input: TInput) => TOutput

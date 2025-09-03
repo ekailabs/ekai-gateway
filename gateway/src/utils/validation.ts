@@ -1,4 +1,4 @@
-import { ChatMessage, AnthropicMessagesRequest } from '../types.js';
+import { ChatMessage, AnthropicMessagesRequest } from '../../../shared/types/index.js';
 
 export const VALID_ROLES = ['system', 'user', 'assistant'] as const;
 export const VALID_ANTHROPIC_ROLES = ['user', 'assistant'] as const;
