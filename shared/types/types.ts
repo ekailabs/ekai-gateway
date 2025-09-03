@@ -64,9 +64,12 @@ export interface ChatMessage {
 
 export interface AnthropicMessagesRequest {
   model: string;
-  messages: Array<{ role: 'user' | 'assistant'; content: string; }>;
-  max_tokens: number;
-  system?: string;
+  messages: Array<{ 
+    role: 'user' | 'assistant'; 
+    content: string | Array<{ type: string; text: string; }>; 
+  }>;
+  max_tokens?: number; // Make optional since Claude Code might not send it
+  system?: string | Array<{ type: string; text: string; }>; // Can be string or array
   temperature?: number;
   stream?: boolean;
   [key: string]: any;
