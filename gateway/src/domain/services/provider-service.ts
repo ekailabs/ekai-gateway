@@ -159,27 +159,4 @@ export class ProviderService {
     return provider.getStreamingResponse(request);
   }
 
-  async getAllModels(): Promise<any> {
-    const availableProviders = this.getAvailableProviders();
-    const allModels: any[] = [];
-
-    for (const providerName of availableProviders) {
-      const provider = this.getOrCreateProvider(providerName);
-      try {
-        const modelsResponse = await provider.getModels();
-        const modelsWithProvider = modelsResponse.data.map((model: any) => ({
-          ...model,
-          provider: providerName
-        }));
-        allModels.push(...modelsWithProvider);
-      } catch (error) {
-        logger.error(`Error fetching models from ${providerName}`, error instanceof Error ? error : new Error(String(error)));
-      }
-    }
-
-    return {
-      object: 'list',
-      data: allModels
-    };
-  }
 }

@@ -1,37 +1,21 @@
-import { CanonicalRequest, CanonicalResponse, ModelsResponse } from 'shared/types/index.js';
-import { Response } from 'node-fetch';
+import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
+import { Response as NodeFetchResponse } from 'node-fetch';
 
 // Proper interface with all required methods
 export interface AIProvider {
   readonly name: string;
   isConfigured(): boolean;
   chatCompletion(request: CanonicalRequest): Promise<CanonicalResponse>;
-  getStreamingResponse(request: CanonicalRequest): Promise<Response>;
-  getModels(): Promise<ModelsResponse>;
+  getStreamingResponse(request: CanonicalRequest): Promise<NodeFetchResponse>;
 }
 
 // Type-safe provider transformation interfaces
 export interface ProviderRequest {
-  model: string;
-  messages: Array<{ role: string; content: string }>;
-  max_tokens?: number;
-  temperature?: number;
-  stream?: boolean;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 export interface ProviderResponse {
-  id: string;
-  model: string;
-  created?: number;
-  usage?: {
-    input_tokens?: number;
-    output_tokens?: number;
-    prompt_tokens?: number;
-    completion_tokens?: number;
-    total_tokens?: number;
-  };
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 // HTTP status constants

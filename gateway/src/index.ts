@@ -11,7 +11,6 @@ dotenv.config({ path: join(__dirname, '../../.env') });
 import express from 'express';
 import cors from 'cors';
 import { handleOpenAIChat, handleAnthropicChat } from './app/handlers/chat-handler.js';
-import { handleModelsRequest } from './app/handlers/models-handler.js';
 import { handleUsageRequest } from './app/handlers/usage-handler.js';
 import { logger } from './infrastructure/utils/logger.js';
 
@@ -32,7 +31,6 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
-app.get('/v1/models', handleModelsRequest);
 app.post('/v1/chat/completions', handleOpenAIChat);
 app.post('/v1/messages', handleAnthropicChat);
 app.get('/usage', handleUsageRequest);
