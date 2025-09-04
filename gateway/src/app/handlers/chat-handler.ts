@@ -55,6 +55,21 @@ export class ChatHandler {
     const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, originalRequest, isPassthrough, clientType);
     const clientResponse = this.adapters[clientType].fromCanonical(canonicalResponse);
     
+    // Perform response passthrough validation if applicable
+    if (isPassthrough && clientType && (canonicalResponse as any)._isPassthrough) {
+      try {
+        const { passthroughValidator } = await import('../../infrastructure/utils/passthrough-validator.js');
+        passthroughValidator.validateResponsePassthrough(
+          canonicalResponse,
+          clientResponse,
+          clientType
+        );
+      } catch (validationError) {
+        const { logger } = await import('../../infrastructure/utils/logger.js');
+        logger.error('Response passthrough validation failed', validationError instanceof Error ? validationError : new Error(String(validationError)));
+      }
+    }
+    
     res.status(HTTP_STATUS.OK).json(clientResponse);
   }
 

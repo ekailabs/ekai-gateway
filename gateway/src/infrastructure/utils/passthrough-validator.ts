@@ -129,6 +129,55 @@ export class PassthroughValidator {
   }
 
   /**
+   * Validates passthrough response scenarios by comparing provider response to client response
+   */
+  validateResponsePassthrough(
+    providerResponse: unknown,
+    clientResponse: unknown,
+    clientType: ClientType
+  ): void {
+    if (!providerResponse || !clientResponse) {
+      logger.warn('❌ RESPONSE PASSTHROUGH VALIDATION FAILED', {
+        clientType,
+        model: 'unknown',
+        totalIssues: 1,
+        missingFields: ['Missing response data']
+      });
+      return;
+    }
+
+    const differences: string[] = [];
+    // Reuse existing deepCompare logic
+    this.deepCompare(providerResponse, clientResponse, '', differences);
+    
+    const model = this.getModelName(providerResponse);
+    
+    if (differences.length > 0) {
+      logger.warn('❌ RESPONSE PASSTHROUGH VALIDATION FAILED', {
+        clientType,
+        model,
+        totalIssues: differences.length,
+        missingFields: differences
+      });
+    } else {
+      logger.info('✅ RESPONSE PASSTHROUGH VALIDATION PASSED', {
+        clientType,
+        model,
+        responseType: this.getResponseType(providerResponse)
+      });
+    }
+  }
+
+  private getResponseType(response: unknown): string {
+    if (this.isObject(response)) {
+      if ('choices' in response) return 'chat_completion';
+      if ('content' in response) return 'message';
+      if ('type' in response) return String(response.type);
+    }
+    return 'unknown';
+  }
+
+  /**
    * Determines if this request should be validated as a passthrough
    */
   shouldValidatePassthrough(clientType: ClientType, model: string): boolean {

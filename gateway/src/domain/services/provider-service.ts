@@ -118,7 +118,13 @@ export class ProviderService {
       }
     }
     
-    return provider.chatCompletion(request);
+    const canonicalResponse = await provider.chatCompletion(request);
+    
+    // Store canonical response for potential response validation
+    (canonicalResponse as any)._isPassthrough = isPassthrough;
+    (canonicalResponse as any)._clientType = clientType;
+    
+    return canonicalResponse;
   }
 
   async processStreamingRequest(
