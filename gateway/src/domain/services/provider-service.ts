@@ -4,6 +4,7 @@ import { AnthropicProvider } from '../providers/anthropic-provider.js';
 import { OpenAIProvider } from '../providers/openai-provider.js';
 import { OpenRouterProvider } from '../providers/openrouter-provider.js';
 import { logger } from '../../infrastructure/utils/logger.js';
+import { passthroughValidator } from '../../infrastructure/utils/passthrough-validator.js';
 
 type ProviderName = 'anthropic' | 'openai' | 'openrouter';
 
@@ -87,7 +88,12 @@ export class ProviderService {
     return availableProviders[0];
   }
 
-  async processChatCompletion(request: CanonicalRequest): Promise<CanonicalResponse> {
+  async processChatCompletion(
+    request: CanonicalRequest, 
+    originalRequest?: unknown, 
+    isPassthrough?: boolean, 
+    clientType?: 'openai' | 'anthropic'
+  ): Promise<CanonicalResponse> {
     const provider = this.getConfiguredProvider(request);
     
     logger.info(`Processing chat completion`, {
@@ -95,6 +101,22 @@ export class ProviderService {
       model: request.model,
       streaming: request.stream
     });
+    
+    // Perform passthrough validation if applicable
+    if (isPassthrough && originalRequest && clientType) {
+      try {
+        // Get the actual provider request that will be sent
+        const providerRequest = (provider as any).transformRequest(request);
+        
+        passthroughValidator.validatePassthrough(
+          originalRequest, 
+          providerRequest, 
+          clientType
+        );
+      } catch (validationError) {
+        logger.error('Passthrough validation failed', validationError instanceof Error ? validationError : new Error(String(validationError)));
+      }
+    }
     
     return provider.chatCompletion(request);
   }

@@ -5,6 +5,7 @@ import { AnthropicAdapter } from '../../infrastructure/adapters/anthropic-adapte
 import { handleError } from '../../infrastructure/utils/error-handler.js';
 import { logger } from '../../infrastructure/utils/logger.js';
 import { HTTP_STATUS, CONTENT_TYPES } from '../../domain/types/provider.js';
+import { passthroughValidator } from '../../infrastructure/utils/passthrough-validator.js';
 
 type ClientType = 'openai' | 'anthropic';
 
@@ -19,7 +20,8 @@ export class ChatHandler {
 
   async handleChatRequest(req: Request, res: Response, clientType: ClientType): Promise<void> {
     try {
-      const canonicalRequest = this.adapters[clientType].toCanonical(req.body);
+      const originalRequest = req.body;
+      const canonicalRequest = this.adapters[clientType].toCanonical(originalRequest);
       
       logger.info('Processing chat request', {
         clientType,
@@ -27,10 +29,21 @@ export class ChatHandler {
         streaming: canonicalRequest.stream
       });
 
+      // Check if this is a passthrough scenario
+      const isPassthrough = passthroughValidator.shouldValidatePassthrough(clientType, canonicalRequest.model);
+      
+      if (isPassthrough) {
+        logger.info('🔍 PASSTHROUGH SCENARIO DETECTED', {
+          clientType,
+          model: canonicalRequest.model,
+          scenario: `${clientType} → ${this.getProviderForModel(canonicalRequest.model)}`
+        });
+      }
+
       if (canonicalRequest.stream) {
-        await this.handleStreaming(canonicalRequest, res, clientType);
+        await this.handleStreaming(canonicalRequest, res, clientType, originalRequest, isPassthrough);
       } else {
-        await this.handleNonStreaming(canonicalRequest, res, clientType);
+        await this.handleNonStreaming(canonicalRequest, res, clientType, originalRequest, isPassthrough);
       }
     } catch (error) {
       logger.error('Chat request failed', error instanceof Error ? error : new Error(String(error)));
@@ -38,15 +51,25 @@ export class ChatHandler {
     }
   }
 
-  private async handleNonStreaming(canonicalRequest: any, res: Response, clientType: ClientType): Promise<void> {
-    const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest);
+  private async handleNonStreaming(canonicalRequest: any, res: Response, clientType: ClientType, originalRequest?: any, isPassthrough?: boolean): Promise<void> {
+    const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, originalRequest, isPassthrough, clientType);
     const clientResponse = this.adapters[clientType].fromCanonical(canonicalResponse);
     
     res.status(HTTP_STATUS.OK).json(clientResponse);
   }
 
-  private async handleStreaming(canonicalRequest: any, res: Response, clientType: ClientType): Promise<void> {
+  private async handleStreaming(canonicalRequest: any, res: Response, clientType: ClientType, originalRequest?: any, isPassthrough?: boolean): Promise<void> {
     const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest);
+    
+    // For streaming, we'll just log that validation would happen here
+    // Full streaming validation would require intercepting the stream
+    if (isPassthrough && originalRequest) {
+      logger.info('⚠️  STREAMING PASSTHROUGH - Limited validation', {
+        clientType,
+        model: canonicalRequest.model,
+        note: 'Full request/response validation not available for streaming'
+      });
+    }
     
     res.writeHead(HTTP_STATUS.OK, {
       'Content-Type': CONTENT_TYPES.TEXT_PLAIN,
@@ -60,6 +83,12 @@ export class ChatHandler {
     } else {
       throw new Error('No stream body received from provider');
     }
+  }
+
+  private getProviderForModel(model: string): string {
+    if (model.startsWith('claude-')) return 'anthropic';
+    if (!model.includes('/')) return 'openai';
+    return 'openrouter';
   }
 }
 
