@@ -59,17 +59,7 @@ export class ChatHandler {
   }
 
   private async handleStreaming(canonicalRequest: any, res: Response, clientType: ClientType, originalRequest?: any, isPassthrough?: boolean): Promise<void> {
-    const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest);
-    
-    // For streaming, we'll just log that validation would happen here
-    // Full streaming validation would require intercepting the stream
-    if (isPassthrough && originalRequest) {
-      logger.info('⚠️  STREAMING PASSTHROUGH - Limited validation', {
-        clientType,
-        model: canonicalRequest.model,
-        note: 'Full request/response validation not available for streaming'
-      });
-    }
+    const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest, originalRequest, isPassthrough, clientType);
     
     res.writeHead(HTTP_STATUS.OK, {
       'Content-Type': CONTENT_TYPES.TEXT_PLAIN,

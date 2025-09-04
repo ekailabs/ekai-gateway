@@ -121,13 +121,34 @@ export class ProviderService {
     return provider.chatCompletion(request);
   }
 
-  async processStreamingRequest(request: CanonicalRequest): Promise<any> {
+  async processStreamingRequest(
+    request: CanonicalRequest,
+    originalRequest?: unknown,
+    isPassthrough?: boolean,
+    clientType?: 'openai' | 'anthropic'
+  ): Promise<any> {
     const provider = this.getConfiguredProvider(request);
     
     logger.info(`Processing streaming request`, {
       provider: provider.name,
       model: request.model
     });
+    
+    // Perform passthrough validation for streaming requests too
+    if (isPassthrough && originalRequest && clientType) {
+      try {
+        // Get the actual provider request that will be sent
+        const providerRequest = (provider as any).transformRequest(request);
+        
+        passthroughValidator.validatePassthrough(
+          originalRequest, 
+          providerRequest, 
+          clientType
+        );
+      } catch (validationError) {
+        logger.error('Passthrough validation failed', validationError instanceof Error ? validationError : new Error(String(validationError)));
+      }
+    }
     
     return provider.getStreamingResponse(request);
   }
