@@ -16,6 +16,10 @@ dist/
 *.d.ts
 *.d.ts.map
 
+# Generated types from JSON schemas
+gateway/src/types/*.types.ts
+gateway/src/types/index.ts
+
 # Database files
 *.db
 *.db-shm
