@@ -20,13 +20,20 @@ export class ChatHandler {
   async handleChatRequest(req: Request, res: Response, clientFormat: ClientFormat): Promise<void> {
     try {
       const originalRequest = req.body;
-      const canonicalRequest = this.adapters[clientFormat].toCanonical(originalRequest);
+      
+      const mostOptimalProvider = this.providerService.getMostOptimalProvider(req.body.model);
+      const providerFormat = this.providerService.getProviderFormat(req.body.model);
       
       logger.info('Processing chat request', {
         clientFormat,
-        model: canonicalRequest.model,
-        streaming: canonicalRequest.stream
+        model: req.body.model,
+        providerFormat,
+        mostOptimalProvider,
+        streaming: req.body.stream
       });
+
+      const canonicalRequest = this.adapters[clientFormat].toCanonical(req.body);
+      
 
       if (canonicalRequest.stream) {
         await this.handleStreaming(canonicalRequest, res, clientFormat, originalRequest);
@@ -38,6 +45,7 @@ export class ChatHandler {
       handleError(error, res, clientFormat === 'anthropic');
     }
   }
+
 
   private async handleNonStreaming(canonicalRequest: any, res: Response, clientFormat: ClientFormat, originalRequest?: any): Promise<void> {
     const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, originalRequest, clientFormat);

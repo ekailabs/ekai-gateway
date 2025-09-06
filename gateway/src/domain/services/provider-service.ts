@@ -4,6 +4,7 @@ import { AnthropicProvider } from '../providers/anthropic-provider.js';
 import { OpenAIProvider } from '../providers/openai-provider.js';
 import { OpenRouterProvider } from '../providers/openrouter-provider.js';
 import { logger } from '../../infrastructure/utils/logger.js';
+import { pricingLoader, ModelPricing } from '../../infrastructure/utils/pricing-loader.js';
 
 type ProviderName = 'anthropic' | 'openai' | 'openrouter';
 
@@ -62,29 +63,66 @@ export class ProviderService {
     return provider;
   }
 
-  private selectOptimalProvider(modelName: string): ProviderName | null {
-    const availableProviders = this.getAvailableProviders();
-    
-    if (availableProviders.length === 0) {
-      return null;
-    }
-
+  getProviderFormat(modelName: string): ProviderName {
     // Route Claude models to Anthropic
-    if (modelName.startsWith('claude-') && availableProviders.includes('anthropic')) {
+    if (modelName.startsWith('claude-')) {
       return 'anthropic';
     }
     
     // Route OpenAI models (no slash) to OpenAI
-    if (!modelName.includes('/') && availableProviders.includes('openai')) {
+    if (!modelName.includes('/')) {
       return 'openai';
     }
     
     // Route everything else to OpenRouter
-    if (availableProviders.includes('openrouter')) {
-      return 'openrouter';
+    return 'openrouter';
+  }
+
+  getMostOptimalProvider(modelName: string): ProviderName | null {
+    return this.selectOptimalProvider(modelName);
+  }
+
+  private selectOptimalProvider(modelName: string): ProviderName | null {
+    const availableProviders = this.getAvailableProviders();
+    
+    if (availableProviders.length === 0) {
+      logger.error(`No providers configured, please check your .env file`);
+      return null;
     }
 
-    return availableProviders[0];
+    // Find providers that support this model and get their pricing
+    const supportingProviders = this.getProvidersWithModelSupport(modelName, availableProviders);
+    
+    if (supportingProviders.length === 0) {
+      logger.error(`No providers found for model ${modelName} among available providers ${availableProviders.join(', ')}`);
+      return null;
+    }
+
+    // Sort by total cost (input + output) and return cheapest
+    supportingProviders.sort((a, b) => {
+      const costA = a.pricing.input + a.pricing.output;
+      const costB = b.pricing.input + b.pricing.output;
+      return costA - costB;
+    });
+
+    return supportingProviders[0].provider;
+  }
+
+  private getProvidersWithModelSupport(modelName: string, availableProviders: ProviderName[]): Array<{provider: ProviderName, pricing: ModelPricing}> {
+    const allPricing = pricingLoader.loadAllPricing();
+    const supportingProviders: Array<{provider: ProviderName, pricing: ModelPricing}> = [];
+
+    for (const providerName of availableProviders) {
+      const pricingConfig = allPricing.get(providerName);
+      if (pricingConfig && pricingConfig.models[modelName]) {
+        supportingProviders.push({
+          provider: providerName,
+          pricing: pricingConfig.models[modelName]
+        });
+      }
+    }
+
+    return supportingProviders;
   }
 
   async processChatCompletion(
