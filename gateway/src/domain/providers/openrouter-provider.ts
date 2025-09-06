@@ -1,5 +1,6 @@
 import { BaseProvider } from './base-provider.js';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
+import { pricingLoader } from '../../infrastructure/utils/pricing-loader.js';
 
 interface OpenRouterRequest {
   model: string;
@@ -50,14 +51,34 @@ export class OpenRouterProvider extends BaseProvider {
         .join('')
     }));
 
+    // Get the actual OpenRouter model ID from pricing data
+    const openRouterModel = this.getOpenRouterModelId(request.model);
+
     return {
-      model: request.model,
+      model: openRouterModel,
       messages,
       max_tokens: request.maxTokens,
       temperature: request.temperature,
       stream: request.stream || false,
       stop: request.stopSequences
     };
+  }
+
+  private getOpenRouterModelId(modelName: string): string {
+    // If model already has provider prefix, use as-is
+    if (modelName.includes('/')) {
+      return modelName;
+    }
+
+    // Look up the model in OpenRouter pricing to get the actual ID
+    const openRouterPricing = pricingLoader.getModelPricing('openrouter', modelName);
+    
+    if (openRouterPricing?.id) {
+      return openRouterPricing.id;
+    }
+
+    // Fallback to original model name if no ID found
+    return modelName;
   }
 
   protected transformResponse(response: OpenRouterResponse): CanonicalResponse {

@@ -14,6 +14,7 @@ export interface PricingConfig {
 export interface ModelPricing {
   input: number;
   output: number;
+  id?: string;
   original_provider?: string;
   region?: string;
   tier?: string;

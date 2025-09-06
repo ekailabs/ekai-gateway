@@ -1,21 +1,137 @@
 provider: "openrouter"
 currency: "USD"
-unit: "per_1m_tokens"
+unit: "MTok"
 models:
-  anthropic/claude-3-5-sonnet:
-    input: 3.00
-    output: 15.00
-    original_provider: "anthropic"
-  meta-llama/llama-3.1-8b-instruct:
-    input: 0.18
-    output: 0.18
-    original_provider: "meta"
-  anthropic/claude-3-haiku:
-    input: 0.25
+  # xAI Models
+  "Grok Code Fast 1":
+    id: "x-ai/grok-code-fast-1"
+    input: 0.21
+    cached_input: 0.02
+    output: 1.58
+  
+  "Grok 4":
+    id: "x-ai/grok-4"
+    input: 3.15
+    cached_input: 0.79
+    output: 15.75
+  
+  # Anthropic Models
+  "Claude Sonnet 4":
+    id: "anthropic/claude-sonnet-4"
+    input: 3.15
+    cached_input: 0.32
+    cached_write: 3.94
+    output: 15.75
+  
+  "Claude 3.7 Sonnet":
+    id: "anthropic/claude-3.7-sonnet"
+    input: 3.15
+    cached_input: 0.32
+    cached_write: 3.94
+    output: 15.75
+  
+  "Claude Opus 4.1":
+    id: "anthropic/claude-opus-4.1"
+    input: 15.75
+    cached_input: 1.58
+    cached_write: 19.69
+    output: 78.75
+  
+  # OpenAI Models
+  "GPT-4.1 Mini":
+    id: "openai/gpt-4.1-mini"
+    input: 0.42
+    cached_input: 0.11
+    output: 1.68
+  
+  "GPT-5":
+    id: "openai/gpt-5"
+    input: 1.31
+    cached_input: 0.13
+    output: 10.50
+  
+  "GPT-5 Mini":
+    id: "openai/gpt-5-mini"
+    input: 0.26
+    cached_input: 0.03
+    output: 2.10
+  
+  "GPT-OSS 120B":
+    id: "openai/gpt-oss-120b"
+    input: 0.08
+    output: 0.29
+  
+  # Google Models
+  "Gemini 2.5 Flash":
+    id: "google/gemini-2.5-flash"
+    input: 0.32
+    cached_input: 0.08
+    cached_write: 0.40
+    output: 2.63
+  
+  "Gemini 2.5 Pro":
+    id: "google/gemini-2.5-pro"
+    input: 1.31
+    cached_input: 0.33
+    cached_write: 1.71
+    output: 10.50
+  
+  "Gemini 2.0 Flash":
+    id: "google/gemini-2.0-flash-001"
+    input: 0.11
+    cached_input: 0.03
+    cached_write: 0.19
+    output: 0.42
+  
+  "Gemini 2.5 Flash Lite":
+    id: "google/gemini-2.5-flash-lite"
+    input: 0.11
+    cached_input: 0.03
+    cached_write: 0.19
+    output: 0.42
+  
+  "Gemma 3 12B":
+    id: "google/gemma-3-12b-it"
+    input: 0.05
+    output: 0.20
+  
+  # DeepSeek Models
+  "DeepSeek V3.1":
+    id: "deepseek/deepseek-chat-v3.1"
+    input: 0.21
+    output: 0.84
+  
+  # Qwen Models
+  "Qwen3 Coder":
+    id: "qwen/qwen3-coder"
+    input: 0.21
+    output: 0.84
+  
+  # Z.AI Models
+  "GLM 4.5":
+    id: "z-ai/glm-4.5"
+    input: 0.35
+    output: 1.39
+  
+  "GLM 4.5 Air":
+    id: "z-ai/glm-4.5-air"
+    input: 0.15
+    output: 0.90
+  
+  # MoonshotAI Models
+  "Kimi K2":
+    id: "moonshotai/kimi-k2"
+    input: 0.15
+    output: 2.61
+  
+  "Kimi K2 0905":
+    id: "moonshotai/kimi-k2-0905"
+    input: 0.32
     output: 1.25
-    original_provider: "anthropic"
+
 metadata:
-  last_updated: "2024-01-15"
-  source: "openrouter_pricing"
-  notes: "Prices in USD per 1M tokens, includes OpenRouter markup"
-  version: "1.0"
+  last_updated: "2025-10-06"
+  source: "https://openrouter.ai/api/v1/models?category=programming"
+  notes: "Prices in USD per 1M tokens, includes 5% OpenRouter minimum fee (BYOK/crypto pricing). Programming models only. Model names are user-friendly, IDs are actual OpenRouter model identifiers."
+  version: "0.1"
+  markup_applied: "5%"

@@ -3,7 +3,7 @@
 
 provider: "provider_name"
 currency: "USD"
-unit: "per_1m_tokens"
+unit: "1MTok"
 models:
   model-name:
     input: 0.00
@@ -11,22 +11,14 @@ models:
     # Optional fields:
     # original_provider: "if_via_aggregator"
     # region: "if_regional_pricing"
-    # tier: "if_tiered_pricing"
+    # tier: "if_tiered_pricing"  we only support standard tier pricing currently. 
+    # cached_input: 0.00
+    # 5m_cache_write: 0.00
+    # 1h_cache_write: 0.00
+    # cache_read: 0.00
 
 metadata:
   last_updated: "YYYY-MM-DD"
-  source: "pricing_source"
+  source: "pricing_source_url"
   notes: "Additional notes about pricing"
   version: "1.0"
-  contributor: "your_name_or_handle"
-
-# Pricing tiers example (uncomment if needed):
-# tiers:
-#   free:
-#     input: 0.00
-#     output: 0.00
-#     limits: "1000 tokens/month"
-#   pro:
-#     input: 0.01
-#     output: 0.02
-#     limits: "unlimited"
