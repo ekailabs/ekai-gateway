@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
+import { ModelUtils } from './model-utils.js';
 
 // Type definitions for pricing configuration
 export interface PricingConfig {
@@ -109,13 +110,14 @@ export class PricingLoader {
   }
 
   /**
-   * Get pricing for a specific model
+   * Get pricing for a specific model (with automatic model name normalization)
    */
   getModelPricing(provider: string, model: string): ModelPricing | null {
     const config = this.pricingCache.get(provider);
     if (!config) return null;
     
-    return config.models[model] || null;
+    const normalizedModel = ModelUtils.normalizeModelName(model);
+    return config.models[normalizedModel] || null;
   }
 
   /**

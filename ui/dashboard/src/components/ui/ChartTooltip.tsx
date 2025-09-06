@@ -1,8 +1,19 @@
 import { formatCurrency } from '@/lib/utils';
 
+interface TooltipPayload {
+  formattedDate?: string;
+  formattedTime?: string;
+  cost?: number;
+  value?: number;
+  tokens?: number;
+  requests?: number;
+  name?: string;
+  percentage?: number;
+}
+
 interface ChartTooltipProps {
   active?: boolean;
-  payload?: { value: number; name: string; color: string }[];
+  payload?: { value: number; name: string; color: string; payload: TooltipPayload }[];
   label?: string;
   type?: 'cost' | 'tokens' | 'provider' | 'model';
 }
@@ -21,7 +32,7 @@ export default function ChartTooltip({ active, payload, label, type = 'cost' }: 
           <p className="font-semibold">{data.formattedDate || label}</p>
           {data.formattedTime && <p className="text-sm text-gray-600">{data.formattedTime}</p>}
           <p className="text-blue-600">
-            <span className="font-semibold">Cost:</span> {formatCurrency(data.cost || data.value)}
+            <span className="font-semibold">Cost:</span> {formatCurrency(data.cost || data.value || 0)}
           </p>
           {data.tokens && (
             <p className="text-green-600">
@@ -49,7 +60,7 @@ export default function ChartTooltip({ active, payload, label, type = 'cost' }: 
         <>
           <p className="font-semibold">{data.name}</p>
           <p className="text-blue-600">
-            <span className="font-semibold">Cost:</span> {formatCurrency(data.value)}
+            <span className="font-semibold">Cost:</span> {formatCurrency(data.value || 0)}
           </p>
           <p className="text-gray-600">
             <span className="font-semibold">Percentage:</span> {data.percentage}%

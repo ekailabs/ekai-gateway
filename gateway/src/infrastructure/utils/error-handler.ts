@@ -29,8 +29,10 @@ export function createAnthropicErrorResponse(message: string, code?: string) {
   };
 }
 
-export function handleError(error: unknown, res: Response, isAnthropic = false) {
+export function handleError(error: unknown, res: Response, clientFormat: 'openai' | 'anthropic' = 'openai') {
   console.error('API Error:', error);
+  
+  const isAnthropic = clientFormat === 'anthropic';
   
   if (error instanceof APIError) {
     const errorResponse = isAnthropic 
