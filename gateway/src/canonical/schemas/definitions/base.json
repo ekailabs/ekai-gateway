@@ -1,0 +1,166 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ekailabs.xyz/schemas/definitions/base/v1.0.0",
+  "title": "Base Type Definitions",
+  "description": "Common type definitions used across canonical schemas",
+  
+  "definitions": {
+    "safetySettings": {
+      "type": "object",
+      "properties": {
+        "category": {
+          "enum": [
+            "HARM_CATEGORY_HARASSMENT",
+            "HARM_CATEGORY_HATE_SPEECH",
+            "HARM_CATEGORY_SEXUALLY_EXPLICIT", 
+            "HARM_CATEGORY_DANGEROUS_CONTENT",
+            "HARM_CATEGORY_UNSPECIFIED"
+          ]
+        },
+        "threshold": {
+          "enum": [
+            "BLOCK_NONE",
+            "BLOCK_ONLY_HIGH",
+            "BLOCK_MEDIUM_AND_ABOVE", 
+            "BLOCK_LOW_AND_ABOVE"
+          ]
+        }
+      },
+      "required": ["category", "threshold"],
+      "additionalProperties": false
+    },
+
+    "responseFormat": {
+      "oneOf": [
+        { "enum": ["text", "json", "json_object"] },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "json_schema" },
+            "json_schema": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "description": { "type": "string" },
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "strict": { "type": "boolean" }
+              },
+              "required": ["name", "schema"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["type", "json_schema"],
+          "additionalProperties": false
+        }
+      ]
+    },
+
+    "streamOptions": {
+      "type": "object",
+      "properties": {
+        "include_usage": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+
+    "audioSettings": {
+      "type": "object",
+      "properties": {
+        "voice": {
+          "enum": ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+        },
+        "format": {
+          "enum": ["wav", "mp3", "flac", "aac", "opus", "pcm16"]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "prediction": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": ["content"]
+        },
+        "content": {
+          "oneOf": [
+            { "type": "string" },
+            {
+              "type": "array",
+              "items": { "$ref": "../content-types.json#/definitions/inputContent" }
+            }
+          ]
+        }
+      },
+      "required": ["type", "content"],
+      "additionalProperties": false
+    },
+
+    "thinking": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "budget": {
+          "type": "integer",
+          "minimum": 1024
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "context": {
+      "type": "object",
+      "properties": {
+        "previous_response_id": { "type": "string" },
+        "cache_ref": { "type": "string" },
+        "provider_state": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "content_type": { "type": "string" },
+          "size": { "type": "integer", "minimum": 0 },
+          "url": { "type": "string", "format": "uri" }
+        },
+        "required": ["id", "name"],
+        "additionalProperties": false
+      }
+    },
+
+    "providerParams": {
+      "type": "object",
+      "properties": {
+        "openai": { "type": "object", "additionalProperties": true },
+        "anthropic": { "type": "object", "additionalProperties": true },
+        "gemini": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": false
+    },
+
+    "meta": {
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "session_id": { "type": "string" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

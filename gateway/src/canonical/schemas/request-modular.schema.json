@@ -1,0 +1,179 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ekailabs.xyz/schemas/canonical-request-modular/v1.0.0",
+  "title": "Canonical AI Request Schema (Modular)",
+  "description": "Universal schema for AI provider requests - modular version",
+  
+  "type": "object",
+  "properties": {
+    "schema_version": { 
+      "const": "1.0.1",
+      "description": "Schema version for compatibility tracking"
+    },
+    
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "description": "AI model identifier (e.g., 'gpt-4', 'claude-3-5-sonnet')"
+    },
+    
+    "messages": {
+      "type": "array",
+      "items": { "$ref": "definitions/content-types.json#/definitions/message" },
+      "minItems": 1,
+      "description": "Conversation messages"
+    },
+    
+    "system": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "array",
+          "items": { "$ref": "definitions/content-types.json#/definitions/inputContent" }
+        }
+      ],
+      "description": "System message or instructions"
+    },
+    
+    "generation": { 
+      "$ref": "definitions/generation.json#/definitions/generation",
+      "description": "Generation control parameters"
+    },
+    
+    "tools": {
+      "type": "array",
+      "items": { "$ref": "definitions/tools.json#/definitions/tool" },
+      "description": "Available tools/functions for the model to call"
+    },
+    
+    "tool_choice": { 
+      "$ref": "definitions/tools.json#/definitions/toolChoice",
+      "description": "Control how tools are selected"
+    },
+    
+    "parallel_tool_calls": { 
+      "type": "boolean",
+      "description": "Allow multiple tool calls in parallel"
+    },
+    
+    "functions": {
+      "type": "array",
+      "items": { "$ref": "definitions/tools.json#/definitions/legacyFunction" },
+      "description": "Legacy function calling format (deprecated)"
+    },
+    
+    "function_call": { 
+      "$ref": "definitions/tools.json#/definitions/functionCall",
+      "description": "Legacy function call control (deprecated)"
+    },
+    
+    "response_format": { 
+      "$ref": "definitions/base.json#/definitions/responseFormat",
+      "description": "Desired response format (text, json, json_schema)"
+    },
+    
+    "safety_settings": {
+      "type": "array",
+      "items": { "$ref": "definitions/base.json#/definitions/safetySettings" },
+      "description": "Content safety and filtering settings"
+    },
+    
+    "candidate_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8,
+      "description": "Number of response candidates to generate"
+    },
+    
+    "stream": { 
+      "type": "boolean",
+      "description": "Enable streaming response"
+    },
+    
+    "stream_options": { 
+      "$ref": "definitions/base.json#/definitions/streamOptions",
+      "description": "Streaming configuration options"
+    },
+    
+    "service_tier": { 
+      "$ref": "definitions/generation.json#/definitions/serviceTier",
+      "description": "Service tier for request prioritization"
+    },
+    
+    "reasoning_effort": { 
+      "$ref": "definitions/generation.json#/definitions/reasoningEffort",
+      "description": "Reasoning effort level"
+    },
+    
+    "modalities": { 
+      "$ref": "definitions/generation.json#/definitions/modalities",
+      "description": "Output modalities (text, audio)"
+    },
+    
+    "audio": { 
+      "$ref": "definitions/base.json#/definitions/audioSettings",
+      "description": "Audio output configuration"
+    },
+    
+    "prediction": { 
+      "$ref": "definitions/base.json#/definitions/prediction",
+      "description": "Content prediction settings"
+    },
+    
+    "tier": { 
+      "$ref": "definitions/generation.json#/definitions/tier",
+      "description": "Processing tier"
+    },
+    
+    "thinking": { 
+      "$ref": "definitions/base.json#/definitions/thinking",
+      "description": "Thinking/reasoning configuration"
+    },
+    
+    "betas": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Beta features to enable"
+    },
+    
+    "extra_headers": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Additional HTTP headers"
+    },
+    
+    "timeout": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Request timeout in seconds"
+    },
+    
+    "user": { 
+      "type": "string",
+      "description": "User identifier for tracking"
+    },
+    
+    "context": { 
+      "$ref": "definitions/base.json#/definitions/context",
+      "description": "Context and caching information"
+    },
+    
+    "attachments": { 
+      "$ref": "definitions/base.json#/definitions/attachments",
+      "description": "File attachments"
+    },
+    
+    "provider_params": { 
+      "$ref": "definitions/base.json#/definitions/providerParams",
+      "description": "Provider-specific parameters"
+    },
+    
+    "meta": { 
+      "$ref": "definitions/base.json#/definitions/meta",
+      "description": "Metadata and tracking information"
+    }
+  },
+  
+  "required": ["schema_version", "model", "messages"],
+  "additionalProperties": false
+}

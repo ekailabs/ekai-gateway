@@ -2,7 +2,7 @@ import { formatCurrency } from '@/lib/utils';
 
 interface ChartTooltipProps {
   active?: boolean;
-  payload?: any[];
+  payload?: Array<{ payload: Record<string, unknown> }>;
   label?: string;
   type?: 'cost' | 'tokens' | 'provider' | 'model';
 }
@@ -12,7 +12,7 @@ export default function ChartTooltip({ active, payload, label, type = 'cost' }: 
     return null;
   }
 
-  const data = payload[0].payload;
+  const data = payload[0].payload as Record<string, any>;
 
   return (
     <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">

@@ -1,8 +1,8 @@
 import Ajv, { JSONSchemaType, ValidateFunction } from 'ajv';
 import addFormats from 'ajv-formats';
-import fs from 'fs';
-import path from 'path';
-import { Request, Response, StreamingResponse } from '../../types';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { Request, Response, StreamingResponse } from '../types/index.js';
 
 class CanonicalValidator {
   private ajv: Ajv;
@@ -25,25 +25,26 @@ class CanonicalValidator {
     this.loadSchemas();
   }
 
+
   private loadSchemas() {
-    const schemasDir = path.join(__dirname, '../../schemas');
+    const schemasDir = join(__dirname, '../schemas');
     
     try {
       // Load request schema
       const requestSchema = JSON.parse(
-        fs.readFileSync(path.join(schemasDir, 'request.schema.json'), 'utf8')
+        readFileSync(join(schemasDir, 'request.schema.json'), 'utf8')
       );
       this.requestValidator = this.ajv.compile<Request>(requestSchema);
 
       // Load response schema
       const responseSchema = JSON.parse(
-        fs.readFileSync(path.join(schemasDir, 'response.schema.json'), 'utf8')
+        readFileSync(join(schemasDir, 'response.schema.json'), 'utf8')
       );
       this.responseValidator = this.ajv.compile<Response>(responseSchema);
 
       // Load streaming response schema
       const streamingResponseSchema = JSON.parse(
-        fs.readFileSync(path.join(schemasDir, 'streaming-response.schema.json'), 'utf8')
+        readFileSync(join(schemasDir, 'streaming-response.schema.json'), 'utf8')
       );
       this.streamingResponseValidator = this.ajv.compile<StreamingResponse>(streamingResponseSchema);
 
@@ -56,6 +57,10 @@ class CanonicalValidator {
   validateRequest(data: unknown): { valid: boolean; data?: Request; errors?: string[] } {
     if (!this.requestValidator) {
       return { valid: false, errors: ['Request validator not initialized'] };
+    }
+
+    if (data === null || data === undefined) {
+      return { valid: false, errors: ['Request data is null or undefined'] };
     }
 
     const valid = this.requestValidator(data);
@@ -75,6 +80,10 @@ class CanonicalValidator {
       return { valid: false, errors: ['Response validator not initialized'] };
     }
 
+    if (data === null || data === undefined) {
+      return { valid: false, errors: ['Response data is null or undefined'] };
+    }
+
     const valid = this.responseValidator(data);
     
     if (valid) {
@@ -90,6 +99,10 @@ class CanonicalValidator {
   validateStreamingResponse(data: unknown): { valid: boolean; data?: StreamingResponse; errors?: string[] } {
     if (!this.streamingResponseValidator) {
       return { valid: false, errors: ['Streaming response validator not initialized'] };
+    }
+
+    if (data === null || data === undefined) {
+      return { valid: false, errors: ['Streaming response data is null or undefined'] };
     }
 
     const valid = this.streamingResponseValidator(data);

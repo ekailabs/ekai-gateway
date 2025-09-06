@@ -45,7 +45,6 @@ Access the gateway at `http://localhost:3001` and dashboard at `http://localhost
 ```bash
 POST /v1/chat/completions  # OpenAI-compatible chat endpoint
 POST /v1/messages          # Anthropic-compatible messages endpoint
-GET  /v1/models           # List available models
 GET  /usage               # View token usage and costs
 GET  /health              # Health check endpoint
 ```

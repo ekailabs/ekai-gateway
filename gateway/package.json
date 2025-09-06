@@ -9,7 +9,11 @@
     "start": "node dist/index.js",
     "clean": "rm -rf dist",
     "generate-types": "node scripts/generate-types.js",
-    "prebuild": "npm run generate-types"
+    "prebuild": "npm run generate-types",
+    "test": "vitest",
+    "test:canonical": "vitest src/canonical/tests",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage"
   },
   "dependencies": {
     "@types/js-yaml": "^4.0.9",
@@ -28,8 +32,10 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^20.10.0",
+    "@vitest/coverage-v8": "^2.1.9",
     "tsx": "^4.6.0",
-    "typescript": "^5.3.2"
+    "typescript": "^5.3.2",
+    "vitest": "^2.1.9"
   },
   "keywords": [
     "ai",

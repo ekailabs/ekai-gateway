@@ -1,191 +1,66 @@
 import { logger } from './logger.js';
 
-type ClientType = 'openai' | 'anthropic';
-
-export class PassthroughValidator {
-  
+/**
+ * Passthrough validation utilities
+ */
+class PassthroughValidator {
   /**
-   * Validates passthrough scenarios by comparing client request to provider request
+   * Determine if we should validate passthrough scenario
    */
-  validatePassthrough(
-    clientRequest: unknown,
-    providerRequest: unknown,
-    clientType: ClientType
-  ): void {
-    if (!clientRequest || !providerRequest) {
-      logger.warn('❌ PASSTHROUGH VALIDATION FAILED', {
-        clientType,
-        model: 'unknown',
-        totalIssues: 1,
-        missingFields: ['Missing request data']
-      });
-      return;
-    }
-
-    const differences: string[] = [];
-    this.deepCompare(clientRequest, providerRequest, '', differences);
+  shouldValidatePassthrough(clientType: 'openai' | 'anthropic', model: string): boolean {
+    const provider = this.getProviderForModel(model);
     
-    const model = this.getModelName(clientRequest);
-    
-    if (differences.length > 0) {
-      logger.warn('❌ PASSTHROUGH VALIDATION FAILED', {
-        clientType,
-        model,
-        totalIssues: differences.length,
-        missingFields: differences
-      });
-    } else {
-      logger.info('✅ PASSTHROUGH VALIDATION PASSED', {
-        clientType,
-        model,
-        messageCount: this.getMessageCount(clientRequest)
-      });
+    // OpenAI client → OpenAI provider = passthrough
+    if (clientType === 'openai' && provider === 'openai') {
+      return true;
     }
+    
+    // Anthropic client → Anthropic provider = passthrough  
+    if (clientType === 'anthropic' && provider === 'anthropic') {
+      return true;
+    }
+    
+    return false;
   }
 
   /**
-   * Recursively compare all fields from client to provider
-   */
-  private deepCompare(clientObj: unknown, providerObj: unknown, path: string, differences: string[]): void {
-    if (clientObj == null) return;
-
-    const currentPath = path || 'root';
-
-    // Arrays
-    if (Array.isArray(clientObj)) {
-      if (!Array.isArray(providerObj)) {
-        differences.push(`${currentPath}: type mismatch (client: array, provider: ${this.getType(providerObj)})`);
-        return;
-      }
-      
-      this.compareArrays(clientObj, providerObj, currentPath, differences);
-      return;
-    }
-
-    // Objects  
-    if (this.isObject(clientObj)) {
-      if (!this.isObject(providerObj)) {
-        differences.push(`${currentPath}: type mismatch (client: object, provider: ${this.getType(providerObj)})`);
-        return;
-      }
-      
-      this.compareObjects(clientObj, providerObj, currentPath, differences);
-      return;
-    }
-
-    // Primitives
-    if (clientObj !== providerObj) {
-      differences.push(`${currentPath}: value differs (client: ${clientObj}, provider: ${providerObj})`);
-    }
-  }
-
-  private compareArrays(clientArr: unknown[], providerArr: unknown[], path: string, differences: string[]): void {
-    if (clientArr.length !== providerArr.length) {
-      differences.push(`${path}: length differs (${clientArr.length} vs ${providerArr.length})`);
-    }
-
-    clientArr.forEach((item, index) => {
-      const itemPath = `${path}[${index}]`;
-      if (index >= providerArr.length) {
-        differences.push(`${itemPath}: missing in provider`);
-      } else {
-        this.deepCompare(item, providerArr[index], itemPath, differences);
-      }
-    });
-  }
-
-  private compareObjects(clientObj: Record<string, unknown>, providerObj: Record<string, unknown>, path: string, differences: string[]): void {
-    Object.entries(clientObj).forEach(([key, value]) => {
-      const keyPath = path === 'root' ? key : `${path}.${key}`;
-      
-      if (!(key in providerObj)) {
-        differences.push(`${keyPath}: missing in provider`);
-      } else {
-        this.deepCompare(value, providerObj[key], keyPath, differences);
-      }
-    });
-  }
-
-  private isObject(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
-  }
-
-  private getType(value: unknown): string {
-    if (value === null) return 'null';
-    if (Array.isArray(value)) return 'array';
-    return typeof value;
-  }
-
-  private getModelName(request: unknown): string {
-    return this.isObject(request) && typeof request.model === 'string' 
-      ? request.model 
-      : 'unknown';
-  }
-
-  private getMessageCount(request: unknown): number {
-    return this.isObject(request) && Array.isArray(request.messages) 
-      ? request.messages.length 
-      : 0;
-  }
-
-  /**
-   * Validates passthrough response scenarios by comparing provider response to client response
+   * Validate response passthrough integrity
    */
   validateResponsePassthrough(
-    providerResponse: unknown,
-    clientResponse: unknown,
-    clientType: ClientType
+    canonicalResponse: any,
+    clientResponse: any,
+    clientType: 'openai' | 'anthropic'
   ): void {
-    if (!providerResponse || !clientResponse) {
-      logger.warn('❌ RESPONSE PASSTHROUGH VALIDATION FAILED', {
-        clientType,
-        model: 'unknown',
-        totalIssues: 1,
-        missingFields: ['Missing response data']
-      });
+    if (!canonicalResponse._isPassthrough) {
       return;
     }
 
-    const differences: string[] = [];
-    // Reuse existing deepCompare logic
-    this.deepCompare(providerResponse, clientResponse, '', differences);
-    
-    const model = this.getModelName(providerResponse);
-    
-    if (differences.length > 0) {
-      logger.warn('❌ RESPONSE PASSTHROUGH VALIDATION FAILED', {
-        clientType,
-        model,
-        totalIssues: differences.length,
-        missingFields: differences
+    logger.debug('🔍 Validating passthrough response', {
+      clientType,
+      hasCanonicalId: !!canonicalResponse.id,
+      hasClientId: !!clientResponse.id
+    });
+
+    // Basic validation that key fields are preserved
+    if (canonicalResponse.id && clientResponse.id && canonicalResponse.id !== clientResponse.id) {
+      logger.warn('Passthrough validation: ID mismatch', {
+        canonical: canonicalResponse.id,
+        client: clientResponse.id
       });
-    } else {
-      logger.info('✅ RESPONSE PASSTHROUGH VALIDATION PASSED', {
-        clientType,
-        model,
-        responseType: this.getResponseType(providerResponse)
+    }
+
+    if (canonicalResponse.model && clientResponse.model && canonicalResponse.model !== clientResponse.model) {
+      logger.warn('Passthrough validation: Model mismatch', {
+        canonical: canonicalResponse.model,
+        client: clientResponse.model
       });
     }
   }
 
-  private getResponseType(response: unknown): string {
-    if (this.isObject(response)) {
-      if ('choices' in response) return 'chat_completion';
-      if ('content' in response) return 'message';
-      if ('type' in response) return String(response.type);
-    }
-    return 'unknown';
-  }
-
-  /**
-   * Determines if this request should be validated as a passthrough
-   */
-  shouldValidatePassthrough(clientType: ClientType, model: string): boolean {
-    const lowerModel = model.toLowerCase();
-    
-    return clientType === 'anthropic' 
-      ? lowerModel.includes('claude')
-      : lowerModel.includes('gpt') || lowerModel.includes('o1') || !model.includes('/');
+  private getProviderForModel(model: string): string {
+    if (model.startsWith('claude-')) return 'anthropic';
+    if (!model.includes('/')) return 'openai';
+    return 'openrouter';
   }
 }
 

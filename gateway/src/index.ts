@@ -1,3 +1,4 @@
+// Load environment variables FIRST, before any other imports
 import dotenv from 'dotenv';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -5,14 +6,15 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables
 dotenv.config({ path: join(__dirname, '../../.env') });
 
+// Now import other modules after environment is loaded
 import express from 'express';
 import cors from 'cors';
 import { handleOpenAIChat, handleAnthropicChat } from './app/handlers/chat-handler.js';
 import { handleUsageRequest } from './app/handlers/usage-handler.js';
 import { logger } from './infrastructure/utils/logger.js';
+// import { anthropicAdapter } from './canonical/adapters/anthropic/index.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;

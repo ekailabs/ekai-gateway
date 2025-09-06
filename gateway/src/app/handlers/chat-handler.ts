@@ -6,6 +6,7 @@ import { handleError } from '../../infrastructure/utils/error-handler.js';
 import { logger } from '../../infrastructure/utils/logger.js';
 import { HTTP_STATUS, CONTENT_TYPES } from '../../domain/types/provider.js';
 import { passthroughValidator } from '../../infrastructure/utils/passthrough-validator.js';
+import { canonicalValidator } from '../../canonical/index.js';
 
 type ClientType = 'openai' | 'anthropic';
 
@@ -20,8 +21,21 @@ export class ChatHandler {
 
   async handleChatRequest(req: Request, res: Response, clientType: ClientType): Promise<void> {
     try {
+
+      logger.info('here we go', req.headers);
+      // logger.info('here we go', req.body);
+
       const originalRequest = req.body;
       const canonicalRequest = this.adapters[clientType].toCanonical(originalRequest);
+      
+      // Validate canonical request format
+      const validation = canonicalValidator.validateRequest(canonicalRequest);
+      if (!validation.valid) {
+        logger.error('Canonical request validation failed', new Error(`Validation failed for ${clientType}: ${validation.errors.join(', ')}`));
+        // Continue with warning but don't fail request for backward compatibility
+      } else {
+        logger.debug('Canonical request validation passed', { clientType });
+      }
       
       logger.info('Processing chat request', {
         clientType,
@@ -53,6 +67,16 @@ export class ChatHandler {
 
   private async handleNonStreaming(canonicalRequest: any, res: Response, clientType: ClientType, originalRequest?: any, isPassthrough?: boolean): Promise<void> {
     const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, originalRequest, isPassthrough, clientType);
+    
+    // Validate canonical response format
+    const responseValidation = canonicalValidator.validateResponse(canonicalResponse);
+    if (!responseValidation.valid) {
+      logger.error('Canonical response validation failed', new Error(`Response validation failed for ${clientType}: ${responseValidation.errors.join(', ')}`));
+      // Continue with warning but don't fail response for backward compatibility
+    } else {
+      logger.debug('Canonical response validation passed', { clientType });
+    }
+    
     const clientResponse = this.adapters[clientType].fromCanonical(canonicalResponse);
     
     // Perform response passthrough validation if applicable
