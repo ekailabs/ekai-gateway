@@ -121,12 +121,6 @@ export class DatabaseQueries {
     return costByModel;
   }
 
-  // Clear all usage records
-  clearAllRecords(): void {
-    const stmt = this.db.prepare('DELETE FROM usage_records');
-    stmt.run();
-    console.log('🗑️ All usage records cleared');
-  }
 }
 
 // Export singleton instance

@@ -2,7 +2,7 @@ import { formatCurrency } from '@/lib/utils';
 
 interface ChartTooltipProps {
   active?: boolean;
-  payload?: any[];
+  payload?: { value: number; name: string; color: string }[];
   label?: string;
   type?: 'cost' | 'tokens' | 'provider' | 'model';
 }

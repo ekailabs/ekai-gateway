@@ -47,12 +47,3 @@ export function handleError(error: unknown, res: Response, isAnthropic = false) 
   res.status(500).json(errorResponse);
 }
 
-export function createValidationMiddleware(isAnthropic = false) {
-  return (req: any, res: Response, next: any) => {
-    try {
-      next();
-    } catch (error) {
-      handleError(error, res, isAnthropic);
-    }
-  };
-}

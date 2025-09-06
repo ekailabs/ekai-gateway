@@ -30,28 +30,6 @@ export interface ChatCompletionResponse {
   };
 }
 
-export interface Model {
-  id: string;
-  object: string;
-  created: number;
-  owned_by: string;
-  pricing?: {
-    prompt: string;
-    completion: string;
-  };
-}
-
-export interface ModelsResponse {
-  object: string;
-  data: Model[];
-}
-
-export interface AIProvider {
-  name: string;
-  isConfigured(): boolean;
-  chatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResponse>;
-  getModels(): Promise<ModelsResponse>;
-}
 
 export type ProviderName = 'openai' | 'openrouter' | 'anthropic';
 

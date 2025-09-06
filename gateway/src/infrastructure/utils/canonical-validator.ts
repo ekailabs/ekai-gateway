@@ -2,7 +2,7 @@ import Ajv, { JSONSchemaType, ValidateFunction } from 'ajv';
 import addFormats from 'ajv-formats';
 import fs from 'fs';
 import path from 'path';
-import { Request, Response, StreamingResponse } from '../../types';
+import { Request, Response, StreamingResponse } from '../../canonical/types/index.js';
 
 class CanonicalValidator {
   private ajv: Ajv;
@@ -104,21 +104,6 @@ class CanonicalValidator {
     }
   }
 
-  // Helper method to create canonical request with schema version
-  createCanonicalRequest(data: Partial<Request>): Request {
-    return {
-      schema_version: '1.0.1',
-      ...data
-    } as Request;
-  }
-
-  // Helper method to create canonical response with schema version  
-  createCanonicalResponse(data: Partial<Response>): Response {
-    return {
-      schema_version: '1.0.1',
-      ...data
-    } as Response;
-  }
 }
 
 // Singleton instance

@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { logger } from '../utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,9 +26,9 @@ class DatabaseConnection {
       // Create tables from schema
       this.createTables();
       
-      console.log('✅ Database initialized successfully');
+      logger.info('Database initialized successfully');
     } catch (error) {
-      console.error('❌ Database initialization failed:', error);
+      logger.error('Database initialization failed:', error);
       throw error;
     }
   }
@@ -48,9 +49,9 @@ class DatabaseConnection {
         }
       });
       
-      console.log('✅ Database tables created successfully');
+      logger.info('Database tables created successfully');
     } catch (error) {
-      console.error('❌ Failed to create tables:', error);
+      logger.error('Failed to create tables:', error);
       throw error;
     }
   }
@@ -66,7 +67,7 @@ class DatabaseConnection {
     if (this.db) {
       this.db.close();
       this.db = null;
-      console.log('✅ Database connection closed');
+      logger.info('Database connection closed');
     }
   }
 }

@@ -37,7 +37,7 @@ export class AnthropicProvider extends BaseProvider {
     return this.parseStreamToCanonical(text, request);
   }
 
-  // NEW: Get raw streaming response for passthrough
+  // Get raw streaming response
   async getStreamingResponse(request: CanonicalRequest): Promise<Response> {
     const transformedRequest = this.transformRequest(request);
     transformedRequest.stream = true;
