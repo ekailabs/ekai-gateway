@@ -21,6 +21,8 @@ interface AnthropicResponse {
   stop_reason: 'end_turn' | 'max_tokens' | 'stop_sequence';
   usage: {
     input_tokens: number;
+    cache_creation_input_tokens?: number;
+    cache_read_input_tokens?: number;
     output_tokens: number;
   };
 }
@@ -107,12 +109,7 @@ export class AnthropicProvider extends BaseProvider {
       }
     }
 
-    // Track usage
-    if (usage.input_tokens || usage.output_tokens) {
-      import('../../infrastructure/utils/usage-tracker.js').then(({ usageTracker }) => {
-        usageTracker.trackUsage(originalRequest.model, this.name, usage.input_tokens, usage.output_tokens);
-      });
-    }
+    // Note: Usage tracking is now handled by BaseProvider
 
     // Return canonical response
     return {
@@ -129,8 +126,10 @@ export class AnthropicProvider extends BaseProvider {
       finishReason: 'stop',
       usage: {
         inputTokens: usage.input_tokens,
+        cacheWriteInputTokens: usage.cache_creation_input_tokens,
+        cacheReadInputTokens: usage.cache_read_input_tokens,
         outputTokens: usage.output_tokens,
-        totalTokens: usage.input_tokens + usage.output_tokens
+        totalTokens: usage.input_tokens + (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0) + usage.output_tokens
       }
     };
   }
@@ -209,8 +208,10 @@ export class AnthropicProvider extends BaseProvider {
       finishReason: this.mapFinishReason(response.stop_reason),
       usage: {
         inputTokens: response.usage.input_tokens,
+        cacheWriteInputTokens: response.usage.cache_creation_input_tokens,
+        cacheReadInputTokens: response.usage.cache_read_input_tokens,
         outputTokens: response.usage.output_tokens,
-        totalTokens: response.usage.input_tokens + response.usage.output_tokens
+        totalTokens: response.usage.input_tokens + (response.usage.cache_creation_input_tokens || 0) + (response.usage.cache_read_input_tokens || 0) + response.usage.output_tokens
       }
     };
   }

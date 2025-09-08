@@ -32,27 +32,33 @@ export class UsageTracker {
    * @param provider - The provider (openai, anthropic, openrouter)
    * @param inputTokens - Number of input tokens
    * @param outputTokens - Number of output tokens
+   * @param cacheWriteTokens - Number of cache write tokens
+   * @param cacheReadTokens - Number of cache read tokens
    * @returns Cost calculation or null if pricing not found
    */
   trackUsage(
-    model: string, 
-    provider: string, 
-    inputTokens: number, 
-    outputTokens: number
+    model: string,
+    provider: string,
+    inputTokens: number,
+    outputTokens: number,
+    cacheWriteTokens: number = 0,
+    cacheReadTokens: number = 0
   ): CostCalculation | null {
     // Input validation
     if (!model?.trim() || !provider?.trim()) {
       throw new Error('Model and provider are required');
     }
-    
-    if (inputTokens < 0 || outputTokens < 0 || !Number.isInteger(inputTokens) || !Number.isInteger(outputTokens)) {
+
+    if (inputTokens < 0 || outputTokens < 0 || cacheWriteTokens < 0 || cacheReadTokens < 0 ||
+        !Number.isInteger(inputTokens) || !Number.isInteger(outputTokens) ||
+        !Number.isInteger(cacheWriteTokens) || !Number.isInteger(cacheReadTokens)) {
       throw new Error('Token counts must be non-negative integers');
     }
 
     const now = new Date();
     
     // Calculate cost using the pricing system
-    const costCalculation = pricingLoader.calculateCost(provider, model, inputTokens, outputTokens);
+    const costCalculation = pricingLoader.calculateCost(provider, model, inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens);
     
     if (costCalculation) {
       // Generate unique request ID
@@ -66,15 +72,19 @@ export class UsageTracker {
           model,
           timestamp: now.toISOString(),
           input_tokens: inputTokens,
+          cache_write_input_tokens: cacheWriteTokens,
+          cache_read_input_tokens: cacheReadTokens,
           output_tokens: outputTokens,
-          total_tokens: inputTokens + outputTokens,
+          total_tokens: inputTokens + cacheWriteTokens + cacheReadTokens + outputTokens,
           input_cost: costCalculation.inputCost,
+          cache_write_cost: costCalculation.cacheWriteCost,
+          cache_read_cost: costCalculation.cacheReadCost,
           output_cost: costCalculation.outputCost,
           total_cost: costCalculation.totalCost,
           currency: costCalculation.currency
         });
 
-        console.log(`💰 Cost for ${model} (${provider}): $${costCalculation.totalCost.toFixed(6)} (${inputTokens} input + ${outputTokens} output tokens)`);
+        console.log(`💰 Cost for ${model} (${provider}): $${costCalculation.totalCost.toFixed(6)} (${inputTokens} input + ${cacheWriteTokens} cache_write + ${cacheReadTokens} cache_read + ${outputTokens} output tokens)`);
       } catch (error) {
         console.error('❌ Failed to save usage record to database:', error);
         throw new Error(`Failed to track usage: ${error instanceof Error ? error.message : 'Unknown error'}`);

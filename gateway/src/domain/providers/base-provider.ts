@@ -71,10 +71,12 @@ export abstract class BaseProvider implements AIProvider {
     // Track usage
     if (transformedResponse.usage) {
       usageTracker.trackUsage(
-        request.model, 
-        this.name, 
+        request.model,
+        this.name,
         transformedResponse.usage.inputTokens,
-        transformedResponse.usage.outputTokens
+        transformedResponse.usage.outputTokens,
+        transformedResponse.usage.cacheWriteInputTokens || 0,
+        transformedResponse.usage.cacheReadInputTokens || 0
       );
     }
     

@@ -1,4 +1,4 @@
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatNumber } from '@/lib/utils';
 
 interface TooltipPayload {
   formattedDate?: string;
@@ -9,6 +9,10 @@ interface TooltipPayload {
   requests?: number;
   name?: string;
   percentage?: number;
+  inputTokens?: number;
+  cacheWriteTokens?: number;
+  cacheReadTokens?: number;
+  outputTokens?: number;
 }
 
 interface ChartTooltipProps {
@@ -36,7 +40,7 @@ export default function ChartTooltip({ active, payload, label, type = 'cost' }: 
           </p>
           {data.tokens && (
             <p className="text-green-600">
-              <span className="font-semibold">Tokens:</span> {data.tokens.toLocaleString()}
+              <span className="font-semibold">Tokens:</span> {formatNumber(data.tokens)}
             </p>
           )}
           {data.requests && (
@@ -50,9 +54,35 @@ export default function ChartTooltip({ active, payload, label, type = 'cost' }: 
       {type === 'tokens' && (
         <>
           <p className="font-semibold">{data.formattedDate || label}</p>
-          <p className="text-green-600">
-            <span className="font-semibold">Tokens:</span> {data.tokens?.toLocaleString() || data.value?.toLocaleString()}
-          </p>
+          {data.inputTokens !== undefined && data.cacheWriteTokens !== undefined &&
+           data.cacheReadTokens !== undefined && data.outputTokens !== undefined ? (
+            <>
+              <div className="space-y-1 mt-2">
+                <p className="text-blue-600 text-sm">
+                  <span className="font-semibold">Input:</span> {formatNumber(data.inputTokens)}
+                </p>
+                <p className="text-purple-600 text-sm">
+                  <span className="font-semibold">Cache Write:</span> {formatNumber(data.cacheWriteTokens)}
+                </p>
+                <p className="text-green-600 text-sm">
+                  <span className="font-semibold">Cache Read:</span> {formatNumber(data.cacheReadTokens)}
+                </p>
+                <p className="text-amber-600 text-sm">
+                  <span className="font-semibold">Output:</span> {formatNumber(data.outputTokens)}
+                </p>
+                <hr className="border-gray-300 my-1" />
+                <p className="text-gray-900 text-sm font-semibold">
+                  <span className="font-semibold">Total:</span> {formatNumber(
+                    data.inputTokens + data.cacheWriteTokens + data.cacheReadTokens + data.outputTokens
+                  )}
+                </p>
+              </div>
+            </>
+          ) : (
+            <p className="text-green-600">
+              <span className="font-semibold">Tokens:</span> {formatNumber(data.tokens || data.value || 0)}
+            </p>
+          )}
         </>
       )}
 

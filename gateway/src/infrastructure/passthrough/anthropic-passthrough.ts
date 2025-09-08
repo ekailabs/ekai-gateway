@@ -34,20 +34,27 @@ export class AnthropicPassthrough {
 
   private trackUsage(text: string, model: string): void {
     if (!text.includes('message_delta')) return;
-    
+
     try {
       const match = text.match(/data: ({.*"type":"message_delta".*})/);
       if (match) {
         const data = JSON.parse(match[1]);
         if (data.usage) {
+          const inputTokens = data.usage.input_tokens || 0;
+          const cacheCreationTokens = data.usage.cache_creation_input_tokens || 0;
+          const cacheReadTokens = data.usage.cache_read_input_tokens || 0;
+          const outputTokens = data.usage.output_tokens || 0;
+
           logger.info('ANTHROPIC_PASSTHROUGH: Tracking usage', {
             model,
-            inputTokens: data.usage.input_tokens,
-            outputTokens: data.usage.output_tokens
+            inputTokens,
+            cacheCreationTokens,
+            cacheReadTokens,
+            outputTokens
           });
-          
+
           import('../utils/usage-tracker.js').then(({ usageTracker }) => {
-            usageTracker.trackUsage(model, 'anthropic', data.usage.input_tokens || 0, data.usage.output_tokens || 0);
+            usageTracker.trackUsage(model, 'anthropic', inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens);
           }).catch(() => {});
         }
       }

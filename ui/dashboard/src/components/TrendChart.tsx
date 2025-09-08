@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { groupByDate, formatForChart, calculateBurnRate, detectAnomalies, formatCurrency } from '@/lib/utils';
+import { groupByDate, formatForChart, calculateBurnRate, detectAnomalies, formatCurrency, formatNumber } from '@/lib/utils';
 import { useUsageData } from '@/hooks/useUsageData';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ErrorState from '@/components/ui/ErrorState';
@@ -143,48 +143,95 @@ export default function TrendChart({ className = '' }: TrendChartProps) {
 
         {/* Tokens Over Time Chart */}
         <div>
-          <h4 className="text-lg font-semibold mb-4 text-gray-900">Tokens Over Time</h4>
+          <h4 className="text-lg font-semibold mb-4 text-gray-900">Token Usage Breakdown</h4>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               {chartType === 'line' ? (
                 <LineChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="date" 
+                  <XAxis
+                    dataKey="date"
                     tickFormatter={(value) => new Date(value).toLocaleDateString()}
                     tick={{ fontSize: 10 }}
                   />
-                  <YAxis 
-                    tickFormatter={(value) => value.toLocaleString()}
+                  <YAxis
+                    tickFormatter={(value) => formatNumber(value)}
                     tick={{ fontSize: 10 }}
                   />
-                  <Tooltip content={<ChartTooltip type="cost" />} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="tokens" 
-                    stroke="#10b981" 
+                  <Tooltip content={<ChartTooltip type="tokens" />} />
+                  <Line
+                    type="monotone"
+                    dataKey="inputTokens"
+                    stroke="#3b82f6"
                     strokeWidth={2}
+                    name="Input"
+                    dot={{ fill: '#3b82f6', strokeWidth: 2, r: 3 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="cacheWriteTokens"
+                    stroke="#8b5cf6"
+                    strokeWidth={2}
+                    name="Cache Write"
+                    dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 3 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="cacheReadTokens"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    name="Cache Read"
                     dot={{ fill: '#10b981', strokeWidth: 2, r: 3 }}
-                    activeDot={{ r: 5, stroke: '#10b981', strokeWidth: 2 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="outputTokens"
+                    stroke="#f59e0b"
+                    strokeWidth={2}
+                    name="Output"
+                    dot={{ fill: '#f59e0b', strokeWidth: 2, r: 3 }}
                   />
                 </LineChart>
               ) : (
                 <BarChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="date" 
+                  <XAxis
+                    dataKey="date"
                     tickFormatter={(value) => new Date(value).toLocaleDateString()}
                     tick={{ fontSize: 10 }}
                   />
-                  <YAxis 
-                    tickFormatter={(value) => value.toLocaleString()}
+                  <YAxis
+                    tickFormatter={(value) => formatNumber(value)}
                     tick={{ fontSize: 10 }}
                   />
-                  <Tooltip content={<ChartTooltip type="cost" />} />
-                  <Bar dataKey="tokens" fill="#10b981" />
+                  <Tooltip content={<ChartTooltip type="tokens" />} />
+                  <Bar dataKey="inputTokens" stackId="tokens" fill="#3b82f6" name="Input" />
+                  <Bar dataKey="cacheWriteTokens" stackId="tokens" fill="#8b5cf6" name="Cache Write" />
+                  <Bar dataKey="cacheReadTokens" stackId="tokens" fill="#10b981" name="Cache Read" />
+                  <Bar dataKey="outputTokens" stackId="tokens" fill="#f59e0b" name="Output" />
                 </BarChart>
               )}
             </ResponsiveContainer>
+          </div>
+
+          {/* Token Type Legend */}
+          <div className="flex flex-wrap gap-4 mt-4 justify-center">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-blue-500 rounded"></div>
+              <span className="text-sm text-gray-600">Input</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-purple-500 rounded"></div>
+              <span className="text-sm text-gray-600">Cache Write</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-green-500 rounded"></div>
+              <span className="text-sm text-gray-600">Cache Read</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-amber-500 rounded"></div>
+              <span className="text-sm text-gray-600">Output</span>
+            </div>
           </div>
         </div>
       </div>
@@ -199,7 +246,7 @@ export default function TrendChart({ className = '' }: TrendChartProps) {
         </div>
         <div className="p-6 rounded-lg" style={{ backgroundColor: '#f8fafc' }}>
           <p className="text-2xl font-semibold text-gray-900 mb-2">
-            {totalStats.totalTokens.toLocaleString()}
+            {formatNumber(totalStats.totalTokens)}
           </p>
           <p className="text-gray-600">Total Tokens</p>
         </div>

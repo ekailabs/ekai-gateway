@@ -15,6 +15,8 @@ export interface PricingConfig {
 export interface ModelPricing {
   input: number;
   output: number;
+  cache_write?: number; // Cost for writing to cache
+  cache_read?: number;  // Cost for reading from cache
   id?: string;
   original_provider?: string;
   region?: string;
@@ -31,6 +33,8 @@ export interface PricingMetadata {
 
 export interface CostCalculation {
   inputCost: number;
+  cacheWriteCost: number;
+  cacheReadCost: number;
   outputCost: number;
   totalCost: number;
   currency: string;
@@ -93,20 +97,52 @@ export class PricingLoader {
    */
   loadProviderPricing(provider: string): PricingConfig {
     const filePath = path.join(this.costsDir, `${provider}.yaml`);
-    
+
     if (!fs.existsSync(filePath)) {
       throw new Error(`Pricing file not found for provider: ${provider}`);
     }
 
     const content = fs.readFileSync(filePath, 'utf8');
     const config = yaml.load(content) as PricingConfig;
-    
+
     // Validate required fields
     if (!config.provider || !config.models || !config.currency) {
       throw new Error(`Invalid pricing configuration for provider: ${provider}`);
     }
 
+    // Normalize cache field names for Anthropic
+    if (provider === 'anthropic') {
+      config.models = this.normalizeAnthropicCacheFields(config.models);
+    }
+
     return config;
+  }
+
+  /**
+   * Normalize Anthropic cache field names to generic format
+   */
+  private normalizeAnthropicCacheFields(models: Record<string, any>): Record<string, ModelPricing> {
+    const normalizedModels: Record<string, ModelPricing> = {};
+
+    Object.entries(models).forEach(([modelName, modelPricing]: [string, any]) => {
+      const normalizedPricing: ModelPricing = { ...modelPricing };
+
+      // Map Anthropic-specific cache field names to generic ones
+      if (modelPricing['5m_cache_write'] !== undefined) {
+        normalizedPricing.cache_write = modelPricing['5m_cache_write'];
+      }
+      if (modelPricing['1h_cache_write'] !== undefined) {
+        // Use 5min cache write as default, 1h as fallback
+        normalizedPricing.cache_write = normalizedPricing.cache_write || modelPricing['1h_cache_write'];
+      }
+      if (modelPricing['cache_read'] !== undefined) {
+        normalizedPricing.cache_read = modelPricing['cache_read'];
+      }
+
+      normalizedModels[modelName] = normalizedPricing;
+    });
+
+    return normalizedModels;
   }
 
   /**
@@ -157,18 +193,22 @@ export class PricingLoader {
   /**
    * Calculate cost for a specific model usage
    */
-  calculateCost(provider: string, model: string, inputTokens: number, outputTokens: number): CostCalculation | null {
+  calculateCost(provider: string, model: string, inputTokens: number, outputTokens: number, cacheWriteTokens: number = 0, cacheReadTokens: number = 0): CostCalculation | null {
     const pricing = this.getModelPricing(provider, model);
     if (!pricing) return null;
 
     const inputCost = (inputTokens / 1_000_000) * pricing.input;
+    const cacheWriteCost = pricing.cache_write ? (cacheWriteTokens / 1_000_000) * pricing.cache_write : 0;
+    const cacheReadCost = pricing.cache_read ? (cacheReadTokens / 1_000_000) * pricing.cache_read : 0;
     const outputCost = (outputTokens / 1_000_000) * pricing.output;
-    const totalCost = inputCost + outputCost;
+    const totalCost = inputCost + cacheWriteCost + cacheReadCost + outputCost;
 
     const config = this.pricingCache.get(provider);
-    
+
     return {
       inputCost: Math.round(inputCost * 1000000) / 1000000, // Round to 6 decimal places
+      cacheWriteCost: Math.round(cacheWriteCost * 1000000) / 1000000,
+      cacheReadCost: Math.round(cacheReadCost * 1000000) / 1000000,
       outputCost: Math.round(outputCost * 1000000) / 1000000,
       totalCost: Math.round(totalCost * 1000000) / 1000000,
       currency: config?.currency || 'USD',

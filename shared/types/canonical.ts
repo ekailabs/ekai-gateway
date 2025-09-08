@@ -13,6 +13,8 @@ export interface CanonicalMessage {
 
 export interface CanonicalUsage {
   inputTokens: number;
+  cacheWriteInputTokens?: number;
+  cacheReadInputTokens?: number;
   outputTokens: number;
   totalTokens: number;
 }

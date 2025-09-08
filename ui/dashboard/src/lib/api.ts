@@ -9,9 +9,13 @@ export interface UsageRecord {
   model: string;
   timestamp: string;
   input_tokens: number;
+  cache_write_input_tokens: number;
+  cache_read_input_tokens: number;
   output_tokens: number;
   total_tokens: number;
   input_cost: number;
+  cache_write_cost: number;
+  cache_read_cost: number;
   output_cost: number;
   total_cost: number;
   currency: string;
