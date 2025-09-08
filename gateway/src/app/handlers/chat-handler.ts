@@ -6,8 +6,22 @@ import { handleError, APIError } from '../../infrastructure/utils/error-handler.
 import { logger } from '../../infrastructure/utils/logger.js';
 import { HTTP_STATUS, CONTENT_TYPES } from '../../domain/types/provider.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
+import { CanonicalRequest } from 'shared/types/index.js';
+import { anthropicPassthrough } from '../../infrastructure/passthrough/anthropic-passthrough.js';
 
 type ClientFormat = 'openai' | 'anthropic';
+type ProviderName = string;
+
+interface StreamingHeaders {
+  'Content-Type': string;
+  'Cache-Control': string;
+  'Connection': string;
+  'Access-Control-Allow-Origin': string;
+}
+
+const PROVIDERS = {
+  ANTHROPIC: 'anthropic'
+} as const;
 
 export class ChatHandler {
   constructor(
@@ -22,7 +36,7 @@ export class ChatHandler {
     try {
       const originalRequest = req.body;
       const result = this.providerService.getMostOptimalProvider(req.body.model);
-      
+      logger.info('Processing chat request HEADERS', req.headers);
       if (result.error) {
         const statusCode = result.error.code === 'NO_PROVIDERS_CONFIGURED' ? 503 : 400;
         throw new APIError(statusCode, result.error.message, result.error.code);
@@ -33,11 +47,34 @@ export class ChatHandler {
       if (req.body.model.includes(providerName)) {
         req.body.model = ModelUtils.removeProviderPrefix(req.body.model);
       }
-      
+
+      // Pass-through scenarios: where clientFormat and providerFormat are the same, we want to take a quick route
+      // Currently supporting claude code proxy through pass-through, i.e., we skip the canonicalization step
+      const passThrough = this.shouldUsePassThrough(clientFormat, providerName);
+
       logger.info('Processing chat request', {
         clientFormat,
         model: req.body.model,
         provider: providerName,
+        streaming: req.body.stream, 
+        passThrough
+      });
+
+      if (passThrough) {
+        logger.info('CHAT_HANDLER: Using passThrough flow - bypassing canonical conversion', {
+          clientFormat,
+          provider: providerName,
+          model: req.body.model,
+          streaming: originalRequest.stream
+        });
+        await this.handlePassThrough(originalRequest, res, clientFormat, providerName);
+        return;
+      }
+
+      logger.info('CHAT_HANDLER: Using canonical conversion flow', {
+        clientFormat,
+        provider: providerName,
+        model: req.body.model,
         streaming: req.body.stream
       });
 
@@ -55,28 +92,50 @@ export class ChatHandler {
   }
 
 
-  private async handleNonStreaming(canonicalRequest: any, res: Response, clientFormat: ClientFormat, providerName: any, originalRequest?: any): Promise<void> {
-    const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, providerName, clientFormat, originalRequest);
+  private async handleNonStreaming(canonicalRequest: CanonicalRequest, res: Response, clientFormat: ClientFormat, providerName: ProviderName, originalRequest?: any): Promise<void> {
+    const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, providerName as any, clientFormat, originalRequest);
     const clientResponse = this.adapters[clientFormat].fromCanonical(canonicalResponse);
     
     res.status(HTTP_STATUS.OK).json(clientResponse);
   }
 
-  private async handleStreaming(canonicalRequest: any, res: Response, clientFormat: ClientFormat, providerName: any, originalRequest?: any): Promise<void> {
-    const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest, providerName, clientFormat, originalRequest);
+  private async handleStreaming(canonicalRequest: CanonicalRequest, res: Response, clientFormat: ClientFormat, providerName: ProviderName, originalRequest?: any): Promise<void> {
+    const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest, providerName as any, clientFormat, originalRequest);
     
-    res.writeHead(HTTP_STATUS.OK, {
-      'Content-Type': CONTENT_TYPES.TEXT_PLAIN,
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
-    });
+    this.setStreamingHeaders(res);
 
     if (streamResponse?.body) {
       streamResponse.body.pipe(res);
     } else {
       throw new Error('No stream body received from provider');
     }
+  }
+
+  private shouldUsePassThrough(clientFormat: ClientFormat, providerName: ProviderName): boolean {
+    return clientFormat === 'anthropic' && providerName === PROVIDERS.ANTHROPIC;
+  }
+
+  private setStreamingHeaders(res: Response): void {
+    const headers = {
+      'Content-Type': CONTENT_TYPES.TEXT_PLAIN,
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+    };
+    res.writeHead(HTTP_STATUS.OK, headers);
+  }
+
+  private async handlePassThrough(originalRequest: any, res: Response, clientFormat: ClientFormat, providerName: ProviderName): Promise<void> {
+    if (providerName !== PROVIDERS.ANTHROPIC) {
+      throw new Error(`PassThrough mode only supported for Anthropic, got: ${providerName}`);
+    }
+
+    // Process model name and use dedicated passthrough module
+    if (originalRequest.model.includes(providerName)) {
+      originalRequest.model = ModelUtils.removeProviderPrefix(originalRequest.model);
+    }
+    
+    await anthropicPassthrough.handleDirectRequest(originalRequest, res);
   }
 
 }

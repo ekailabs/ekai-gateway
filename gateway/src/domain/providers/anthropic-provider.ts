@@ -1,7 +1,7 @@
 import { BaseProvider } from './base-provider.js';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
 import { APIError } from '../../infrastructure/utils/error-handler.js';
-import fetch, { Response } from 'node-fetch';
+import { UsageTracker } from '../../infrastructure/utils/usage-tracker.js';
 
 interface AnthropicRequest {
   model: string;
@@ -25,10 +25,50 @@ interface AnthropicResponse {
   };
 }
 
+// Constants
+const DEFAULT_MAX_TOKENS = 1000;
+const ANTHROPIC_VERSION = '2023-06-01';
+const REQUEST_TIMEOUT = 30000;
+
 export class AnthropicProvider extends BaseProvider {
   readonly name = 'anthropic';
   protected readonly baseUrl = 'https://api.anthropic.com/v1';
   protected readonly apiKey = process.env.ANTHROPIC_API_KEY;
+  
+  constructor(private usageTracker: UsageTracker) {
+    super();
+  }
+
+  private validateApiKey(): void {
+    if (!this.apiKey) {
+      throw new APIError(401, `${this.name} API key not configured`);
+    }
+  }
+
+  private async makeRequest(url: string, body: any, stream: boolean = false): Promise<Response> {
+    this.validateApiKey();
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+    
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ ...body, stream }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new APIError(response.status, `${this.name} API error: ${response.status} - ${errorText}`);
+      }
+
+      return response;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
 
   async chatCompletion(request: CanonicalRequest): Promise<CanonicalResponse> {
     // For non-streaming, collect the stream and parse it
@@ -40,27 +80,9 @@ export class AnthropicProvider extends BaseProvider {
   // Get raw streaming response
   async getStreamingResponse(request: CanonicalRequest): Promise<Response> {
     const transformedRequest = this.transformRequest(request);
-    transformedRequest.stream = true;
-
-    if (!this.apiKey) {
-      throw new APIError(401, `${this.name} API key not configured`);
-    }
-
     const url = `${this.baseUrl}${this.getChatCompletionEndpoint()}`;
-    const headers = this.getHeaders();
     
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(transformedRequest)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new APIError(response.status, `${this.name} API error: ${response.status} - ${errorText}`);
-    }
-
-    return response;
+    return await this.makeRequest(url, transformedRequest, true);
   }
 
   private parseStreamToCanonical(streamText: string, originalRequest: CanonicalRequest): CanonicalResponse {
@@ -91,9 +113,11 @@ export class AnthropicProvider extends BaseProvider {
 
     // Track usage
     if (usage.input_tokens || usage.output_tokens) {
-      import('../../infrastructure/utils/usage-tracker.js').then(({ usageTracker }) => {
-        usageTracker.trackUsage(originalRequest.model, this.name, usage.input_tokens, usage.output_tokens);
-      });
+      try {
+        this.usageTracker.trackUsage(originalRequest.model, this.name, usage.input_tokens, usage.output_tokens);
+      } catch (error) {
+        console.error('Failed to track usage:', error);
+      }
     }
 
     // Return canonical response
@@ -118,13 +142,11 @@ export class AnthropicProvider extends BaseProvider {
   }
 
   protected getHeaders(): Record<string, string> {
-    if (!this.apiKey) {
-      throw new APIError(401, `${this.name} API key not configured`);
-    }
+    this.validateApiKey();
     return {
-      'x-api-key': this.apiKey,
+      'x-api-key': this.apiKey!,
       'Content-Type': 'application/json',
-      'anthropic-version': '2023-06-01'
+      'anthropic-version': ANTHROPIC_VERSION
     };
   }
 
@@ -160,7 +182,7 @@ export class AnthropicProvider extends BaseProvider {
 
     const anthropicRequest: AnthropicRequest = {
       model: request.model,
-      max_tokens: request.maxTokens || 1000,
+      max_tokens: request.maxTokens || DEFAULT_MAX_TOKENS,
       messages,
       temperature: request.temperature,
       stream: request.stream || false
@@ -211,4 +233,6 @@ export class AnthropicProvider extends BaseProvider {
         return 'stop';
     }
   }
+
+
 }
