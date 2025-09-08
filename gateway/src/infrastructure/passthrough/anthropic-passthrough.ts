@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { Response as ExpressResponse } from 'express';
 import { logger } from '../utils/logger.js';
 import { APIError } from '../utils/error-handler.js';
 import { CONTENT_TYPES } from '../../domain/types/provider.js';
@@ -13,7 +13,7 @@ export class AnthropicPassthrough {
     return key;
   }
 
-  private async makeRequest(body: any, stream: boolean): Promise<Response> {
+  private async makeRequest(body: any, stream: boolean): Promise<globalThis.Response> {
     const response = await fetch(this.baseUrl, {
       method: 'POST',
       headers: {
@@ -54,7 +54,7 @@ export class AnthropicPassthrough {
     } catch {}
   }
 
-  async handleDirectRequest(request: any, res: Response): Promise<void> {
+  async handleDirectRequest(request: any, res: ExpressResponse): Promise<void> {
     // Ensure Anthropic models have required suffixes for pricing lookup
     request.model = ModelUtils.ensureAnthropicSuffix(request.model);
     

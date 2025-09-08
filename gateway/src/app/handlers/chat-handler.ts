@@ -34,16 +34,18 @@ export class ChatHandler {
 
   async handleChatRequest(req: Request, res: Response, clientFormat: ClientFormat): Promise<void> {
     try {
+      logger.info('Processing chat request HEADERS', req.headers);
       const originalRequest = req.body;
       const result = this.providerService.getMostOptimalProvider(req.body.model);
-      logger.info('Processing chat request HEADERS', req.headers);
       if (result.error) {
         const statusCode = result.error.code === 'NO_PROVIDERS_CONFIGURED' ? 503 : 400;
         throw new APIError(statusCode, result.error.message, result.error.code);
       }
-      
+
       const providerName = result.provider;
 
+      // Normalize model name, example: anthropic/claude-3-5-sonnet → claude-3-5-sonnet. 
+      // will need to move it to normalization canonical step in future
       if (req.body.model.includes(providerName)) {
         req.body.model = ModelUtils.removeProviderPrefix(req.body.model);
       }
@@ -52,7 +54,7 @@ export class ChatHandler {
       // Currently supporting claude code proxy through pass-through, i.e., we skip the canonicalization step
       const passThrough = this.shouldUsePassThrough(clientFormat, providerName);
 
-      logger.info('Processing chat request', {
+      logger.info('CHAT_HANDLER: Processing chat request', {
         clientFormat,
         model: req.body.model,
         provider: providerName,
@@ -61,22 +63,9 @@ export class ChatHandler {
       });
 
       if (passThrough) {
-        logger.info('CHAT_HANDLER: Using passThrough flow - bypassing canonical conversion', {
-          clientFormat,
-          provider: providerName,
-          model: req.body.model,
-          streaming: originalRequest.stream
-        });
         await this.handlePassThrough(originalRequest, res, clientFormat, providerName);
         return;
       }
-
-      logger.info('CHAT_HANDLER: Using canonical conversion flow', {
-        clientFormat,
-        provider: providerName,
-        model: req.body.model,
-        streaming: req.body.stream
-      });
 
       const canonicalRequest = this.adapters[clientFormat].toCanonical(req.body);
 
@@ -111,6 +100,8 @@ export class ChatHandler {
     }
   }
 
+  // Pass-through scenarios: where clientFormat and providerFormat are the same, we want to take a quick route
+  // Currently supporting claude code proxy through pass-through, i.e., we skip the canonicalization step
   private shouldUsePassThrough(clientFormat: ClientFormat, providerName: ProviderName): boolean {
     return clientFormat === 'anthropic' && providerName === PROVIDERS.ANTHROPIC;
   }
@@ -126,15 +117,6 @@ export class ChatHandler {
   }
 
   private async handlePassThrough(originalRequest: any, res: Response, clientFormat: ClientFormat, providerName: ProviderName): Promise<void> {
-    if (providerName !== PROVIDERS.ANTHROPIC) {
-      throw new Error(`PassThrough mode only supported for Anthropic, got: ${providerName}`);
-    }
-
-    // Process model name and use dedicated passthrough module
-    if (originalRequest.model.includes(providerName)) {
-      originalRequest.model = ModelUtils.removeProviderPrefix(originalRequest.model);
-    }
-    
     await anthropicPassthrough.handleDirectRequest(originalRequest, res);
   }
 

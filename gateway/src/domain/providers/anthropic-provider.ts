@@ -1,7 +1,7 @@
 import { BaseProvider } from './base-provider.js';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
 import { APIError } from '../../infrastructure/utils/error-handler.js';
-import { UsageTracker } from '../../infrastructure/utils/usage-tracker.js';
+import fetch, { Response } from 'node-fetch';
 
 interface AnthropicRequest {
   model: string;
@@ -34,10 +34,6 @@ export class AnthropicProvider extends BaseProvider {
   readonly name = 'anthropic';
   protected readonly baseUrl = 'https://api.anthropic.com/v1';
   protected readonly apiKey = process.env.ANTHROPIC_API_KEY;
-  
-  constructor(private usageTracker: UsageTracker) {
-    super();
-  }
 
   private validateApiKey(): void {
     if (!this.apiKey) {
@@ -77,7 +73,7 @@ export class AnthropicProvider extends BaseProvider {
     return this.parseStreamToCanonical(text, request);
   }
 
-  // Get raw streaming response
+  // Get raw streaming response  
   async getStreamingResponse(request: CanonicalRequest): Promise<Response> {
     const transformedRequest = this.transformRequest(request);
     const url = `${this.baseUrl}${this.getChatCompletionEndpoint()}`;
@@ -113,11 +109,9 @@ export class AnthropicProvider extends BaseProvider {
 
     // Track usage
     if (usage.input_tokens || usage.output_tokens) {
-      try {
-        this.usageTracker.trackUsage(originalRequest.model, this.name, usage.input_tokens, usage.output_tokens);
-      } catch (error) {
-        console.error('Failed to track usage:', error);
-      }
+      import('../../infrastructure/utils/usage-tracker.js').then(({ usageTracker }) => {
+        usageTracker.trackUsage(originalRequest.model, this.name, usage.input_tokens, usage.output_tokens);
+      });
     }
 
     // Return canonical response
