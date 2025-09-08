@@ -50,6 +50,7 @@ Access the gateway at `http://localhost:3001` and dashboard at `http://localhost
 ```bash
 POST /v1/chat/completions  # OpenAI-compatible chat endpoint
 POST /v1/messages          # Anthropic-compatible messages endpoint
+POST /v1/responses         # OpenAI Responses endpoint
 GET  /usage               # View token usage and costs
 GET  /health              # Health check endpoint
 ```
@@ -75,6 +76,11 @@ curl -X POST http://localhost:3001/v1/messages \
   -H "Content-Type: application/json" \
   -d '{"model": "claude-3-5-sonnet-20241022", "max_tokens": 100, "messages": [{"role": "user", "content": "Hello"}]}'
 
+# OpenAI Responses endpoint
+curl -X POST http://localhost:3001/v1/responses \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-4o-mini", "input": "Say hi in one short sentence.", "temperature": 0.7, "max_output_tokens": 128}'
+
 # Both endpoints support all models and share conversation context
 # Client A uses OpenAI format, Client B uses Anthropic format - same conversation!
 
@@ -92,7 +98,7 @@ The proxy uses **cost-based optimization** to automatically select the cheapest 
 
 **Supported providers**:
 - **Anthropic**: Claude models (direct API access)
-- **OpenAI**: GPT models (direct API access)  
+- **OpenAI**: GPT models (direct API access)
 - **xAI**: Grok models (direct API access)
 - **OpenRouter**: Multi-provider access with `provider/model` format
 

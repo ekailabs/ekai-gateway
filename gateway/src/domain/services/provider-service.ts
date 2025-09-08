@@ -38,12 +38,12 @@ export class ProviderService {
     if (!this.providers.has(name)) {
       this.providers.set(name, this.createAdapter(name));
     }
-    
+
     const provider = this.providers.get(name);
     if (!provider) {
       throw new Error(`Failed to create provider: ${name}`);
     }
-    
+
     return provider;
   }
 
@@ -57,17 +57,17 @@ export class ProviderService {
   getMostOptimalProvider(modelName: string): { provider: Provider; error?: never } | { provider?: never; error: { code: string; message: string } } {
     const normalizedModel = ModelUtils.normalizeModelName(modelName);
     const availableProviders = this.getAvailableProviders();
-    
+
     if (availableProviders.length === 0) {
       logger.error(`PROVIDER_SERVICE: No providers configured, please check your .env file`);
-      return { 
-        error: { 
-          code: 'NO_PROVIDERS_CONFIGURED', 
-          message: 'No inference providers are configured. Please add your API keys to the .env file.' 
+      return {
+        error: {
+          code: 'NO_PROVIDERS_CONFIGURED',
+          message: 'No inference providers are configured. Please add your API keys to the .env file.'
         }
       };
     }
-    
+
     // Check for explicit provider matches first
     if (modelName.includes('grok-') || modelName.includes('grok_beta')) {
       if (availableProviders.includes(Provider.XAI)) {
@@ -78,13 +78,13 @@ export class ProviderService {
     // Find cheapest available provider that supports this model
     let cheapestProvider: Provider | null = null;
     let lowestCost = Infinity;
-    
+
     const allPricing = pricingLoader.loadAllPricing();
-    
+
     for (const providerName of availableProviders) {
       const pricingConfig = allPricing.get(providerName);
       const modelPricing = pricingConfig?.models[normalizedModel];
-      
+
       if (modelPricing) {
         const totalCost = modelPricing.input + modelPricing.output;
         if (totalCost < lowestCost) {
@@ -96,10 +96,10 @@ export class ProviderService {
 
     if (!cheapestProvider) {
       logger.error(`PROVIDER_SERVICE: No providers found for model ${normalizedModel} among available providers ${availableProviders.join(', ')}`);
-      return { 
-        error: { 
-          code: 'MODEL_NOT_SUPPORTED', 
-          message: `Model '${modelName}' is not supported by any available providers. Either try a different model or add more providers to your .env file.` 
+      return {
+        error: {
+          code: 'MODEL_NOT_SUPPORTED',
+          message: `Model '${modelName}' is not supported by any available providers. Either try a different model or add more providers to your .env file.`
         }
       };
     }
@@ -115,18 +115,18 @@ export class ProviderService {
     originalRequest?: unknown
   ): Promise<CanonicalResponse> {
     const provider = this.providers.get(providerName)!;
-    
+
     // Ensure Anthropic models have required suffixes
     if (providerName === Provider.ANTHROPIC) {
       request.model = ModelUtils.ensureAnthropicSuffix(request.model);
     }
-    
+
     logger.info(`Processing chat completion`, {
       provider: providerName,
       model: request.model,
       streaming: request.stream
     });
-    
+
     return await provider.chatCompletion(request);
   }
 
@@ -137,19 +137,17 @@ export class ProviderService {
     originalRequest?: unknown
   ): Promise<any> {
     const provider = this.providers.get(providerName)!;
-    
+
     // Ensure Anthropic models have required suffixes
     if (providerName === Provider.ANTHROPIC) {
       request.model = ModelUtils.ensureAnthropicSuffix(request.model);
     }
-    
+
     logger.info(`Processing streaming request`, {
       provider: providerName,
       model: request.model
     });
-    
+
     return provider.getStreamingResponse(request);
   }
-
-
 }

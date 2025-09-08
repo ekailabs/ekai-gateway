@@ -30,36 +30,29 @@ interface OpenAIResponse {
     total_tokens: number;
   };
 }
-
 export class OpenAIProvider extends BaseProvider {
   readonly name = 'openai';
   protected readonly baseUrl = 'https://api.openai.com/v1';
   protected readonly apiKey = process.env.OPENAI_API_KEY;
 
-  // Add streaming support
-  async getStreamingResponse(request: CanonicalRequest): Promise<Response> {
-    const transformedRequest = this.transformRequest(request);
-    transformedRequest.stream = true;
+  private isResponsesAPI(request: CanonicalRequest): boolean {
+    return Boolean((request as any).metadata?.useResponsesAPI);
+  }
 
-    if (!this.apiKey) {
-      throw new APIError(401, `${this.name} API key not configured`);
-    }
-
-    const url = `${this.baseUrl}${this.getChatCompletionEndpoint()}`;
-    const headers = this.getHeaders();
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(transformedRequest)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new APIError(response.status, `${this.name} API error: ${response.status} - ${errorText}`);
-    }
-
-    return response;
+  private transformRequestForResponses(request: CanonicalRequest): any {
+    // Flatten canonical messages to a simple string input when possible
+    const lastUser = [...request.messages].reverse().find(m => m.role === 'user');
+    const text = lastUser
+      ? lastUser.content.filter(c => c.type === 'text').map(c => c.text).join('')
+      : request.messages.map(m => m.content.filter(c => c.type === 'text').map(c => c.text).join('')).join('\n');
+    const body: any = {
+      model: request.model,
+      input: text,
+      temperature: request.temperature,
+    };
+    if (request.maxTokens) body.max_output_tokens = request.maxTokens;
+    if (request.stream) body.stream = true;
+    return body;
   }
 
   protected transformRequest(request: CanonicalRequest): OpenAIRequest {
@@ -75,8 +68,6 @@ export class OpenAIProvider extends BaseProvider {
       model: request.model,
       messages,
       temperature: request.temperature,
-      stream: request.stream || false,
-      stop: request.stopSequences
     };
 
     // Use max_completion_tokens for o1/o3/o4 series models, max_tokens for others
@@ -89,6 +80,83 @@ export class OpenAIProvider extends BaseProvider {
     }
 
     return requestData;
+  }
+
+  private transformResponsesToCanonical(response: any): CanonicalResponse {
+    const text = response.output_text
+      || (Array.isArray(response.output)
+          ? response.output.flatMap((o: any) => (o.content || [])).filter((c: any) => c.type?.includes('text')).map((c: any) => c.text || '').join('')
+          : '');
+
+    const inputTokens = response.usage?.input_tokens ?? response.usage?.prompt_tokens ?? 0;
+    const outputTokens = response.usage?.output_tokens ?? response.usage?.completion_tokens ?? 0;
+    const created = response.created ?? Math.floor(Date.now() / 1000);
+
+    return {
+      id: response.id,
+      model: response.model,
+      created,
+      message: {
+        role: 'assistant',
+        content: [{ type: 'text', text }]
+      },
+      finishReason: 'stop',
+      usage: {
+        inputTokens,
+        outputTokens,
+        totalTokens: inputTokens + outputTokens
+      }
+    };
+  }
+
+  // Add streaming support
+  async getStreamingResponse(request: CanonicalRequest): Promise<Response> {
+    if (this.isResponsesAPI(request)) {
+      const transformed = this.transformRequestForResponses(request);
+      return this.fetchStreaming('/responses', transformed);
+    }
+
+    const transformedRequest = this.transformRequest(request);
+    transformedRequest.stream = true;
+
+    if (!this.apiKey) {
+      throw new APIError(401, `${this.name} API key not configured`);
+    }
+
+    return this.fetchStreaming(this.getChatCompletionEndpoint(), transformedRequest);
+  }
+
+  private async fetchStreaming(endpoint: string, body: any): Promise<Response> {
+    if (!this.apiKey) {
+      throw new APIError(401, `${this.name} API key not configured`);
+    }
+    const url = `${this.baseUrl}${endpoint}`;
+    const headers = this.getHeaders();
+    const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new APIError(response.status, `${this.name} API error: ${response.status} - ${errorText}`);
+    }
+    return response;
+  }
+
+  protected transformRequest(request: CanonicalRequest): OpenAIRequest {
+    const messages = request.messages.map(msg => ({
+      role: msg.role,
+      content: msg.content
+        .filter(c => c.type === 'text')
+        .map(c => c.text)
+        .join('')
+    }));
+
+    return {
+      model: request.model,
+      messages,
+      max_tokens: request.maxTokens,
+      temperature: request.temperature,
+      stream: request.stream || false,
+      stop: request.stopSequences
+    };
   }
 
   protected transformResponse(response: OpenAIResponse): CanonicalResponse {
@@ -122,5 +190,17 @@ export class OpenAIProvider extends BaseProvider {
       case 'tool_calls': return 'tool_calls';
       default: return 'stop';
     }
+  }
+
+  async chatCompletion(request: CanonicalRequest): Promise<CanonicalResponse> {
+    if (this.isResponsesAPI(request)) {
+      const body = this.transformRequestForResponses(request);
+      const resp = await this.makeAPIRequest<any>('/responses', {
+        method: 'POST',
+        body: JSON.stringify(body)
+      });
+      return this.transformResponsesToCanonical(resp);
+    }
+    return super.chatCompletion(request);
   }
 }
