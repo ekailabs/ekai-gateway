@@ -1,5 +1,7 @@
 # Ekai Gateway
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 Multi-provider AI proxy with usage dashboard supporting OpenAI, OpenRouter, and Anthropic models through OpenAI-compatible and Anthropic-compatible APIs.
 
 **Designed for self-hosted personal use** - run your own instance to securely proxy AI requests using your API keys.
@@ -96,3 +98,6 @@ npm start      # Production server
 cd gateway && npm run dev    # Gateway only (port 3001)
 cd ui/dashboard && npm run dev    # Dashboard only (port 3000)
 ```
+
+## License
+Licensed under the [Apache License 2.0](./LICENSE).
