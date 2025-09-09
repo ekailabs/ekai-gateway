@@ -16,10 +16,27 @@ interface ModelChartProps {
 export default function ModelChart({ className = '' }: ModelChartProps) {
   const { costByModel, totalCost, loading, error, refetch } = useUsageData();
 
+  // Helper function to clean model names for display
+  const cleanModelName = (modelName: string) => {
+    // First, apply the prefix formatting
+    let cleaned = modelName.replace('gpt-', 'GPT-').replace('claude-', 'Claude-');
+
+    // Remove everything after the last dash (typically version suffixes)
+    const lastDashIndex = cleaned.lastIndexOf('-');
+    if (lastDashIndex > 0) {
+      // Keep the part before the last dash, but preserve the prefix
+      const prefix = cleaned.startsWith('GPT-') ? 'GPT-' : cleaned.startsWith('Claude-') ? 'Claude-' : '';
+      const baseName = cleaned.substring(prefix.length, lastDashIndex);
+      cleaned = prefix + baseName;
+    }
+
+    return cleaned;
+  };
+
   // Convert to chart data format
   const data = Object.entries(costByModel)
     .map(([model, cost]) => ({
-      name: model.replace('gpt-', 'GPT-').replace('claude-', 'Claude-'),
+      name: cleanModelName(model),
       value: Number(cost.toFixed(6)),
       percentage: totalCost > 0 ? ((cost / totalCost) * 100).toFixed(1) : '0'
     }))
@@ -57,7 +74,11 @@ export default function ModelChart({ className = '' }: ModelChartProps) {
               cx="50%"
               cy="50%"
               labelLine={false}
-              label={({ name, percentage }) => `${name} (${percentage}%)`}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              label={(props: any) => {
+                const percent = props.percent || 0;
+                return percent >= 5 ? props.name || '' : '';
+              }}
               outerRadius={80}
               fill="#8884d8"
               dataKey="value"

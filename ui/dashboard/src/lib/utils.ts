@@ -2,7 +2,15 @@ import { UsageRecord } from './api';
 
 // Date grouping utilities
 export const groupByDate = (records: UsageRecord[], groupBy: 'hour' | 'day' = 'day') => {
-  const grouped: Record<string, { cost: number; tokens: number; requests: number }> = {};
+  const grouped: Record<string, {
+    cost: number;
+    tokens: number;
+    requests: number;
+    inputTokens: number;
+    cacheWriteTokens: number;
+    cacheReadTokens: number;
+    outputTokens: number;
+  }> = {};
 
   records.forEach(record => {
     const date = new Date(record.timestamp);
@@ -17,25 +25,49 @@ export const groupByDate = (records: UsageRecord[], groupBy: 'hour' | 'day' = 'd
     }
 
     if (!grouped[key]) {
-      grouped[key] = { cost: 0, tokens: 0, requests: 0 };
+      grouped[key] = {
+        cost: 0,
+        tokens: 0,
+        requests: 0,
+        inputTokens: 0,
+        cacheWriteTokens: 0,
+        cacheReadTokens: 0,
+        outputTokens: 0
+      };
     }
 
     grouped[key].cost += record.total_cost;
     grouped[key].tokens += record.total_tokens;
     grouped[key].requests += 1;
+    grouped[key].inputTokens += record.input_tokens;
+    grouped[key].cacheWriteTokens += record.cache_write_input_tokens;
+    grouped[key].cacheReadTokens += record.cache_read_input_tokens;
+    grouped[key].outputTokens += record.output_tokens;
   });
 
   return grouped;
 };
 
 // Convert grouped data to chart format
-export const formatForChart = (grouped: Record<string, { cost: number; tokens: number; requests: number }>) => {
+export const formatForChart = (grouped: Record<string, {
+  cost: number;
+  tokens: number;
+  requests: number;
+  inputTokens: number;
+  cacheWriteTokens: number;
+  cacheReadTokens: number;
+  outputTokens: number;
+}>) => {
   return Object.entries(grouped)
     .map(([date, data]) => ({
       date,
       cost: Number(data.cost.toFixed(6)),
       tokens: data.tokens,
       requests: data.requests,
+      inputTokens: data.inputTokens,
+      cacheWriteTokens: data.cacheWriteTokens,
+      cacheReadTokens: data.cacheReadTokens,
+      outputTokens: data.outputTokens,
       formattedDate: new Date(date).toLocaleDateString(),
       formattedTime: new Date(date).toLocaleTimeString()
     }))
@@ -86,12 +118,15 @@ export const formatCurrency = (amount: number, currency: string = 'USD') => {
   }).format(amount);
 };
 
-// Format large numbers
+// Format large numbers with abbreviated units
 export const formatNumber = (num: number) => {
-  if (num >= 1000000) {
+  if (num >= 1000000000) { // Billions
+    return (num / 1000000000).toFixed(1) + 'B';
+  }
+  if (num >= 1000000) { // Millions
     return (num / 1000000).toFixed(1) + 'M';
   }
-  if (num >= 1000) {
+  if (num >= 1000) { // Thousands
     return (num / 1000).toFixed(1) + 'K';
   }
   return num.toString();

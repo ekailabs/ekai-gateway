@@ -10,8 +10,7 @@ dotenv.config({ path: join(__dirname, '../../.env') });
 
 import express from 'express';
 import cors from 'cors';
-import { handleOpenAIChat, handleAnthropicChat } from './app/handlers/chat-handler.js';
-import { handleModelsRequest } from './app/handlers/models-handler.js';
+import { handleOpenAIFormatChat, handleAnthropicFormatChat } from './app/handlers/chat-handler.js';
 import { handleUsageRequest } from './app/handlers/usage-handler.js';
 import { logger } from './infrastructure/utils/logger.js';
 
@@ -20,7 +19,7 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 // Health check
 app.get('/health', (req, res) => {
@@ -32,14 +31,13 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
-app.get('/v1/models', handleModelsRequest);
-app.post('/v1/chat/completions', handleOpenAIChat);
-app.post('/v1/messages', handleAnthropicChat);
+app.post('/v1/chat/completions', handleOpenAIFormatChat);
+app.post('/v1/messages', handleAnthropicFormatChat);
 app.get('/usage', handleUsageRequest);
 
 // Start server
 app.listen(PORT, () => {
-  logger.info(`AI Proxy server started`, { 
+  logger.info(`Ekai Gateway server started`, { 
     port: PORT, 
     environment: process.env.NODE_ENV || 'development' 
   });

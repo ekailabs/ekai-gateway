@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { UsageRecord } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatNumber } from '@/lib/utils';
 import { useUsageData } from '@/hooks/useUsageData';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ErrorState from '@/components/ui/ErrorState';
@@ -103,7 +103,7 @@ export default function UsageTable({ className = '' }: UsageTableProps) {
                   Model <SortIcon field="model" />
                 </div>
               </th>
-              <th 
+              <th
                 className="px-4 py-3 text-right text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-50"
                 onClick={() => handleSort('input_tokens')}
               >
@@ -111,7 +111,23 @@ export default function UsageTable({ className = '' }: UsageTableProps) {
                   Input Tokens <SortIcon field="input_tokens" />
                 </div>
               </th>
-              <th 
+              <th
+                className="px-4 py-3 text-right text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-50"
+                onClick={() => handleSort('cache_write_input_tokens')}
+              >
+                <div className="flex items-center gap-1 justify-end">
+                  Cache Write <SortIcon field="cache_write_input_tokens" />
+                </div>
+              </th>
+              <th
+                className="px-4 py-3 text-right text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-50"
+                onClick={() => handleSort('cache_read_input_tokens')}
+              >
+                <div className="flex items-center gap-1 justify-end">
+                  Cache Read <SortIcon field="cache_read_input_tokens" />
+                </div>
+              </th>
+              <th
                 className="px-4 py-3 text-right text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-50"
                 onClick={() => handleSort('output_tokens')}
               >
@@ -137,17 +153,23 @@ export default function UsageTable({ className = '' }: UsageTableProps) {
                 </td>
                 <td className="px-4 py-3">
                   <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                    {record.provider.charAt(0).toUpperCase() + record.provider.slice(1)}
+                    {record.provider === 'xAI' ? 'xAI' : record.provider.charAt(0).toUpperCase() + record.provider.slice(1)}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-900 font-mono">
                   {record.model}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-900 text-right">
-                  {record.input_tokens.toLocaleString()}
+                  {formatNumber(record.input_tokens)}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-900 text-right">
-                  {record.output_tokens.toLocaleString()}
+                  {formatNumber(record.cache_write_input_tokens)}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                  {formatNumber(record.cache_read_input_tokens)}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                  {formatNumber(record.output_tokens)}
                 </td>
                 <td className="px-4 py-3 text-sm font-semibold text-gray-900 text-right">
                   {formatCurrency(record.total_cost)}
@@ -160,22 +182,34 @@ export default function UsageTable({ className = '' }: UsageTableProps) {
 
       {/* Summary footer */}
       <div className="mt-6 pt-6 border-t border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-center">
           <div>
             <p className="text-2xl font-semibold text-gray-900">
               {records.length}
             </p>
-            <p className="text-sm text-gray-600">Total Requests</p>
+            <p className="text-sm text-gray-600">Requests</p>
           </div>
           <div>
             <p className="text-2xl font-semibold text-gray-900">
-              {records.reduce((sum, r) => sum + r.input_tokens, 0).toLocaleString()}
+              {formatNumber(records.reduce((sum, r) => sum + r.input_tokens, 0))}
             </p>
             <p className="text-sm text-gray-600">Input Tokens</p>
           </div>
           <div>
+            <p className="text-xl font-semibold text-blue-600">
+              {formatNumber(records.reduce((sum, r) => sum + r.cache_write_input_tokens, 0))}
+            </p>
+            <p className="text-sm text-gray-600">Cache Write</p>
+          </div>
+          <div>
+            <p className="text-xl font-semibold text-green-600">
+              {formatNumber(records.reduce((sum, r) => sum + r.cache_read_input_tokens, 0))}
+            </p>
+            <p className="text-sm text-gray-600">Cache Read</p>
+          </div>
+          <div>
             <p className="text-2xl font-semibold text-gray-900">
-              {records.reduce((sum, r) => sum + r.output_tokens, 0).toLocaleString()}
+              {formatNumber(records.reduce((sum, r) => sum + r.output_tokens, 0))}
             </p>
             <p className="text-sm text-gray-600">Output Tokens</p>
           </div>

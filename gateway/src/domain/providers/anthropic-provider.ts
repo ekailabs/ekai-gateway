@@ -21,14 +21,52 @@ interface AnthropicResponse {
   stop_reason: 'end_turn' | 'max_tokens' | 'stop_sequence';
   usage: {
     input_tokens: number;
+    cache_creation_input_tokens?: number;
+    cache_read_input_tokens?: number;
     output_tokens: number;
   };
 }
+
+// Constants
+const DEFAULT_MAX_TOKENS = 1000;
+const ANTHROPIC_VERSION = '2023-06-01';
+const REQUEST_TIMEOUT = 30000;
 
 export class AnthropicProvider extends BaseProvider {
   readonly name = 'anthropic';
   protected readonly baseUrl = 'https://api.anthropic.com/v1';
   protected readonly apiKey = process.env.ANTHROPIC_API_KEY;
+
+  private validateApiKey(): void {
+    if (!this.apiKey) {
+      throw new APIError(401, `${this.name} API key not configured`);
+    }
+  }
+
+  private async makeRequest(url: string, body: any, stream: boolean = false): Promise<Response> {
+    this.validateApiKey();
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+    
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ ...body, stream }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new APIError(response.status, `${this.name} API error: ${response.status} - ${errorText}`);
+      }
+
+      return response;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
 
   async chatCompletion(request: CanonicalRequest): Promise<CanonicalResponse> {
     // For non-streaming, collect the stream and parse it
@@ -37,35 +75,22 @@ export class AnthropicProvider extends BaseProvider {
     return this.parseStreamToCanonical(text, request);
   }
 
-  // NEW: Get raw streaming response for passthrough
+  // Get raw streaming response  
   async getStreamingResponse(request: CanonicalRequest): Promise<Response> {
     const transformedRequest = this.transformRequest(request);
-    transformedRequest.stream = true;
-
-    if (!this.apiKey) {
-      throw new APIError(401, `${this.name} API key not configured`);
-    }
-
     const url = `${this.baseUrl}${this.getChatCompletionEndpoint()}`;
-    const headers = this.getHeaders();
     
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(transformedRequest)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new APIError(response.status, `${this.name} API error: ${response.status} - ${errorText}`);
-    }
-
-    return response;
+    return await this.makeRequest(url, transformedRequest, true);
   }
 
   private parseStreamToCanonical(streamText: string, originalRequest: CanonicalRequest): CanonicalResponse {
     let finalMessage = '';
-    let usage = { input_tokens: 0, output_tokens: 0 };
+    let usage = { 
+      input_tokens: 0, 
+      output_tokens: 0, 
+      cache_creation_input_tokens: 0,
+      cache_read_input_tokens: 0
+    };
 
     // Parse Server-Sent Events format
     const lines = streamText.split('\n');
@@ -89,12 +114,7 @@ export class AnthropicProvider extends BaseProvider {
       }
     }
 
-    // Track usage
-    if (usage.input_tokens || usage.output_tokens) {
-      import('../../infrastructure/utils/usage-tracker.js').then(({ usageTracker }) => {
-        usageTracker.trackUsage(originalRequest.model, this.name, usage.input_tokens, usage.output_tokens);
-      });
-    }
+    // Note: Usage tracking is now handled by BaseProvider
 
     // Return canonical response
     return {
@@ -111,20 +131,20 @@ export class AnthropicProvider extends BaseProvider {
       finishReason: 'stop',
       usage: {
         inputTokens: usage.input_tokens,
+        cacheWriteInputTokens: usage.cache_creation_input_tokens,
+        cacheReadInputTokens: usage.cache_read_input_tokens,
         outputTokens: usage.output_tokens,
-        totalTokens: usage.input_tokens + usage.output_tokens
+        totalTokens: usage.input_tokens + (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0) + usage.output_tokens
       }
     };
   }
 
   protected getHeaders(): Record<string, string> {
-    if (!this.apiKey) {
-      throw new APIError(401, `${this.name} API key not configured`);
-    }
+    this.validateApiKey();
     return {
-      'x-api-key': this.apiKey,
+      'x-api-key': this.apiKey!,
       'Content-Type': 'application/json',
-      'anthropic-version': '2023-06-01'
+      'anthropic-version': ANTHROPIC_VERSION
     };
   }
 
@@ -160,7 +180,7 @@ export class AnthropicProvider extends BaseProvider {
 
     const anthropicRequest: AnthropicRequest = {
       model: request.model,
-      max_tokens: request.maxTokens || 1000,
+      max_tokens: request.maxTokens || DEFAULT_MAX_TOKENS,
       messages,
       temperature: request.temperature,
       stream: request.stream || false
@@ -193,8 +213,10 @@ export class AnthropicProvider extends BaseProvider {
       finishReason: this.mapFinishReason(response.stop_reason),
       usage: {
         inputTokens: response.usage.input_tokens,
+        cacheWriteInputTokens: response.usage.cache_creation_input_tokens,
+        cacheReadInputTokens: response.usage.cache_read_input_tokens,
         outputTokens: response.usage.output_tokens,
-        totalTokens: response.usage.input_tokens + response.usage.output_tokens
+        totalTokens: response.usage.input_tokens + (response.usage.cache_creation_input_tokens || 0) + (response.usage.cache_read_input_tokens || 0) + response.usage.output_tokens
       }
     };
   }
@@ -211,4 +233,6 @@ export class AnthropicProvider extends BaseProvider {
         return 'stop';
     }
   }
+
+
 }

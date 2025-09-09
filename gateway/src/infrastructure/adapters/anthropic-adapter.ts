@@ -64,7 +64,7 @@ export class AnthropicAdapter implements FormatAdapter<AnthropicMessagesRequest,
       id: response.id,
       type: 'message',
       role: 'assistant',
-      content,
+      content: content as Array<{ type: "text"; text: string; }>,
       model: response.model,
       stop_reason: this.mapFinishReason(response.finishReason),
       usage: {

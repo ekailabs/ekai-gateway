@@ -1,5 +1,5 @@
 import fetch from 'node-fetch';
-import { CanonicalRequest, CanonicalResponse, ModelsResponse } from 'shared/types/index.js';
+import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
 import { APIError } from '../../infrastructure/utils/error-handler.js';
 import { usageTracker } from '../../infrastructure/utils/usage-tracker.js';
 import { AIProvider, ProviderRequest, ProviderResponse, HTTP_STATUS } from '../types/provider.js';
@@ -31,9 +31,6 @@ export abstract class BaseProvider implements AIProvider {
     return '/chat/completions';
   }
 
-  protected getModelsEndpoint(): string {
-    return '/models';
-  }
 
   protected async makeAPIRequest<T>(endpoint: string, options: Record<string, unknown> = {}): Promise<T> {
     if (!this.apiKey) {
@@ -43,7 +40,7 @@ export abstract class BaseProvider implements AIProvider {
     const url = `${this.baseUrl}${endpoint}`;
     const headers = {
       ...this.getHeaders(),
-      ...options.headers
+      ...(options.headers as Record<string, string> || {})
     };
 
     const response = await fetch(url, {
@@ -74,17 +71,19 @@ export abstract class BaseProvider implements AIProvider {
     // Track usage
     if (transformedResponse.usage) {
       usageTracker.trackUsage(
-        request.model, 
-        this.name, 
+        request.model,
+        this.name,
         transformedResponse.usage.inputTokens,
-        transformedResponse.usage.outputTokens
+        transformedResponse.usage.outputTokens,
+        transformedResponse.usage.cacheWriteInputTokens || 0,
+        transformedResponse.usage.cacheReadInputTokens || 0
       );
     }
     
     return transformedResponse;
   }
 
-  async getStreamingResponse(request: CanonicalRequest): Promise<Response> {
+  async getStreamingResponse(request: CanonicalRequest): Promise<any> {
     const transformedRequest = this.transformRequest(request);
     
     // Set stream: true for streaming requests
@@ -118,7 +117,4 @@ export abstract class BaseProvider implements AIProvider {
     return response;
   }
 
-  async getModels(): Promise<ModelsResponse> {
-    return this.makeAPIRequest<ModelsResponse>(this.getModelsEndpoint());
-  }
 }

@@ -1,3 +1,6 @@
+import { writeFileSync, appendFileSync, existsSync, mkdirSync } from 'fs';
+import { join, dirname } from 'path';
+
 // Simple logger interface - can be extended to use winston/pino later
 export interface Logger {
   info(message: string, meta?: Record<string, unknown>): void;
@@ -6,23 +9,57 @@ export interface Logger {
   debug(message: string, meta?: Record<string, unknown>): void;
 }
 
-class ConsoleLogger implements Logger {
+class FileLogger implements Logger {
+  private logFile: string;
+
+  constructor() {
+    // Create logs directory if it doesn't exist
+    const logsDir = join(process.cwd(), 'logs');
+    if (!existsSync(logsDir)) {
+      mkdirSync(logsDir, { recursive: true });
+    }
+    
+    this.logFile = join(logsDir, 'gateway.log');
+  }
+
+  private writeLog(level: string, message: string, meta?: Record<string, unknown>, error?: Error): void {
+    const timestamp = new Date().toISOString();
+    const logEntry = {
+      timestamp,
+      level,
+      message,
+      ...(meta && { meta }),
+      ...(error && { error: error.message, stack: error.stack })
+    };
+    
+    const logLine = JSON.stringify(logEntry) + '\n';
+    
+    try {
+      appendFileSync(this.logFile, logLine);
+    } catch (err) {
+      console.error('Failed to write to log file:', err);
+    }
+    
+    // Also log to console for development
+    console.log(`[${level}] ${message}`, meta ? JSON.stringify(meta, null, 2) : '');
+  }
+
   info(message: string, meta?: Record<string, unknown>): void {
-    console.log(`[INFO] ${message}`, meta ? JSON.stringify(meta, null, 2) : '');
+    this.writeLog('INFO', message, meta);
   }
 
   error(message: string, error?: Error, meta?: Record<string, unknown>): void {
-    console.error(`[ERROR] ${message}`, error?.stack || error, meta ? JSON.stringify(meta, null, 2) : '');
+    this.writeLog('ERROR', message, meta, error);
   }
 
   warn(message: string, meta?: Record<string, unknown>): void {
-    console.warn(`[WARN] ${message}`, meta ? JSON.stringify(meta, null, 2) : '');
+    this.writeLog('WARN', message, meta);
   }
 
   debug(message: string, meta?: Record<string, unknown>): void {
-    console.debug(`[DEBUG] ${message}`, meta ? JSON.stringify(meta, null, 2) : '');
+    this.writeLog('DEBUG', message, meta);
   }
 }
 
 // Singleton logger instance
-export const logger: Logger = new ConsoleLogger();
+export const logger: Logger = new FileLogger();

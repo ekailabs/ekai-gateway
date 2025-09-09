@@ -3,22 +3,30 @@ import { AIProvider } from '../types/provider.js';
 import { AnthropicProvider } from '../providers/anthropic-provider.js';
 import { OpenAIProvider } from '../providers/openai-provider.js';
 import { OpenRouterProvider } from '../providers/openrouter-provider.js';
+import { XAIProvider } from '../providers/xai-provider.js';
 import { logger } from '../../infrastructure/utils/logger.js';
+import { pricingLoader, ModelPricing } from '../../infrastructure/utils/pricing-loader.js';
+import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
 
-type ProviderName = 'anthropic' | 'openai' | 'openrouter';
+enum Provider {
+  ANTHROPIC = 'anthropic',
+  OPENAI = 'openai',
+  OPENROUTER = 'openrouter',
+  XAI = 'xAI'
+}
 
 export class ProviderService {
-  private providers = new Map<ProviderName, AIProvider>();
-  private readonly PROVIDER_NAMES: ProviderName[] = ['anthropic', 'openai', 'openrouter'];
+  private providers = new Map<Provider, AIProvider>();
 
-  private createProvider(name: ProviderName): AIProvider {
-    const providerMap = {
-      anthropic: () => new AnthropicProvider(),
-      openai: () => new OpenAIProvider(),
-      openrouter: () => new OpenRouterProvider()
+  private createAdapter(name: Provider): AIProvider {
+    const adapterMap = {
+      [Provider.ANTHROPIC]: () => new AnthropicProvider(),
+      [Provider.OPENAI]: () => new OpenAIProvider(),
+      [Provider.OPENROUTER]: () => new OpenRouterProvider(),
+      [Provider.XAI]: () => new XAIProvider()
     };
 
-    const factory = providerMap[name];
+    const factory = adapterMap[name];
     if (!factory) {
       throw new Error(`Unknown provider: ${name}`);
     }
@@ -26,9 +34,9 @@ export class ProviderService {
     return factory();
   }
 
-  private getOrCreateProvider(name: ProviderName): AIProvider {
+  private getOrCreateProvider(name: Provider): AIProvider {
     if (!this.providers.has(name)) {
-      this.providers.set(name, this.createProvider(name));
+      this.providers.set(name, this.createAdapter(name));
     }
     
     const provider = this.providers.get(name);
@@ -39,98 +47,109 @@ export class ProviderService {
     return provider;
   }
 
-  getAvailableProviders(): ProviderName[] {
-    return this.PROVIDER_NAMES.filter(name => {
+  getAvailableProviders(): Provider[] {
+    return Object.values(Provider).filter(name => {
       const provider = this.getOrCreateProvider(name);
       return provider.isConfigured();
     });
   }
 
-  private getConfiguredProvider(request: CanonicalRequest): AIProvider {
-    const selectedProvider = this.selectOptimalProvider(request.model);
-    
-    if (!selectedProvider) {
-      throw new Error('No configured AI providers available');
-    }
-
-    const provider = this.getOrCreateProvider(selectedProvider);
-    
-    if (!provider.isConfigured()) {
-      throw new Error(`Provider ${selectedProvider} is not configured`);
-    }
-
-    return provider;
-  }
-
-  private selectOptimalProvider(modelName: string): ProviderName | null {
+  getMostOptimalProvider(modelName: string): { provider: Provider; error?: never } | { provider?: never; error: { code: string; message: string } } {
+    const normalizedModel = ModelUtils.normalizeModelName(modelName);
     const availableProviders = this.getAvailableProviders();
     
     if (availableProviders.length === 0) {
-      return null;
-    }
-
-    // Route Claude models to Anthropic
-    if (modelName.startsWith('claude-') && availableProviders.includes('anthropic')) {
-      return 'anthropic';
-    }
-    
-    // Route OpenAI models (no slash) to OpenAI
-    if (!modelName.includes('/') && availableProviders.includes('openai')) {
-      return 'openai';
+      logger.error(`PROVIDER_SERVICE: No providers configured, please check your .env file`);
+      return { 
+        error: { 
+          code: 'NO_PROVIDERS_CONFIGURED', 
+          message: 'No inference providers are configured. Please add your API keys to the .env file.' 
+        }
+      };
     }
     
-    // Route everything else to OpenRouter
-    if (availableProviders.includes('openrouter')) {
-      return 'openrouter';
+    // Check for explicit provider matches first
+    if (modelName.includes('grok-') || modelName.includes('grok_beta')) {
+      if (availableProviders.includes(Provider.XAI)) {
+        return { provider: Provider.XAI };
+      }
     }
 
-    return availableProviders[0];
+    // Find cheapest available provider that supports this model
+    let cheapestProvider: Provider | null = null;
+    let lowestCost = Infinity;
+    
+    const allPricing = pricingLoader.loadAllPricing();
+    
+    for (const providerName of availableProviders) {
+      const pricingConfig = allPricing.get(providerName);
+      const modelPricing = pricingConfig?.models[normalizedModel];
+      
+      if (modelPricing) {
+        const totalCost = modelPricing.input + modelPricing.output;
+        if (totalCost < lowestCost) {
+          lowestCost = totalCost;
+          cheapestProvider = providerName;
+        }
+      }
+    }
+
+    if (!cheapestProvider) {
+      logger.error(`PROVIDER_SERVICE: No providers found for model ${normalizedModel} among available providers ${availableProviders.join(', ')}`);
+      return { 
+        error: { 
+          code: 'MODEL_NOT_SUPPORTED', 
+          message: `Model '${modelName}' is not supported by any available providers. Either try a different model or add more providers to your .env file.` 
+        }
+      };
+    }
+
+    return { provider: cheapestProvider };
   }
 
-  async processChatCompletion(request: CanonicalRequest): Promise<CanonicalResponse> {
-    const provider = this.getConfiguredProvider(request);
+
+  async processChatCompletion(
+    request: CanonicalRequest,
+    providerName: Provider,
+    clientType?: 'openai' | 'anthropic',
+    originalRequest?: unknown
+  ): Promise<CanonicalResponse> {
+    const provider = this.providers.get(providerName)!;
+    
+    // Ensure Anthropic models have required suffixes
+    if (providerName === Provider.ANTHROPIC) {
+      request.model = ModelUtils.ensureAnthropicSuffix(request.model);
+    }
     
     logger.info(`Processing chat completion`, {
-      provider: provider.name,
+      provider: providerName,
       model: request.model,
       streaming: request.stream
     });
     
-    return provider.chatCompletion(request);
+    return await provider.chatCompletion(request);
   }
 
-  async processStreamingRequest(request: CanonicalRequest): Promise<any> {
-    const provider = this.getConfiguredProvider(request);
+  async processStreamingRequest(
+    request: CanonicalRequest,
+    providerName: Provider,
+    clientType?: 'openai' | 'anthropic',
+    originalRequest?: unknown
+  ): Promise<any> {
+    const provider = this.providers.get(providerName)!;
+    
+    // Ensure Anthropic models have required suffixes
+    if (providerName === Provider.ANTHROPIC) {
+      request.model = ModelUtils.ensureAnthropicSuffix(request.model);
+    }
     
     logger.info(`Processing streaming request`, {
-      provider: provider.name,
+      provider: providerName,
       model: request.model
     });
     
     return provider.getStreamingResponse(request);
   }
 
-  async getAllModels(): Promise<any> {
-    const availableProviders = this.getAvailableProviders();
-    const allModels: any[] = [];
 
-    for (const providerName of availableProviders) {
-      const provider = this.getOrCreateProvider(providerName);
-      try {
-        const modelsResponse = await provider.getModels();
-        const modelsWithProvider = modelsResponse.data.map((model: any) => ({
-          ...model,
-          provider: providerName
-        }));
-        allModels.push(...modelsWithProvider);
-      } catch (error) {
-        logger.error(`Error fetching models from ${providerName}`, error instanceof Error ? error : new Error(String(error)));
-      }
-    }
-
-    return {
-      object: 'list',
-      data: allModels
-    };
-  }
 }

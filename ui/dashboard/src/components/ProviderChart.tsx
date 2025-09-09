@@ -19,7 +19,7 @@ export default function ProviderChart({ className = '' }: ProviderChartProps) {
   // Convert to chart data format
   const data = Object.entries(costByProvider)
     .map(([provider, cost]) => ({
-      name: provider.charAt(0).toUpperCase() + provider.slice(1),
+      name: provider === 'xAI' ? 'xAI' : provider.charAt(0).toUpperCase() + provider.slice(1),
       value: Number(cost.toFixed(6)),
       percentage: totalCost > 0 ? ((cost / totalCost) * 100).toFixed(1) : '0'
     }))
@@ -57,7 +57,11 @@ export default function ProviderChart({ className = '' }: ProviderChartProps) {
               cx="50%"
               cy="50%"
               labelLine={false}
-              label={({ name, percentage }) => `${name} (${percentage}%)`}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              label={(props: any) => {
+                const percent = props.percent || 0;
+                return percent >= 5 ? `${props.name || ''} (${percent.toFixed(1)}%)` : '';
+              }}
               outerRadius={80}
               fill="#8884d8"
               dataKey="value"

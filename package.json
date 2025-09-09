@@ -4,6 +4,7 @@
   "description": "Ekai Gateway - Multi-provider AI request routing with dashboard",
   "private": true,
   "scripts": {
+    "postinstall": "cd gateway && npm install && cd ../ui/dashboard && npm install",
     "dev": "concurrently \"npm run dev:gateway\" \"npm run dev:ui\"",
     "dev:gateway": "cd gateway && npm run dev",
     "dev:ui": "cd ui/dashboard && npm run dev",
@@ -11,6 +12,9 @@
     "build:gateway": "cd gateway && npm run build",
     "build:ui": "cd ui/dashboard && npm run build",
     "start": "cd gateway && npm start",
+    "clean": "npm run clean:gateway && npm run clean:ui && rm -rf node_modules gateway/node_modules ui/dashboard/node_modules",
+    "clean:gateway": "cd gateway && npm run clean",
+    "clean:ui": "cd ui/dashboard && rm -rf .next",
     "install:all": "npm install && cd gateway && npm install && cd ../ui/dashboard && npm install"
   },
   "devDependencies": {

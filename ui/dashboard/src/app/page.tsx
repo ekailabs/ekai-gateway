@@ -26,16 +26,16 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-6 py-12">
         <div className="space-y-12">
 
-          
+
           {/* Trend Chart */}
           <TrendChart />
-          
+
           {/* Provider and Model Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <ProviderChart />
             <ModelChart />
           </div>
-          
+
           {/* Usage Table */}
           <UsageTable />
         </div>
