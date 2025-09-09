@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-Multi-provider AI proxy with usage dashboard supporting OpenAI, OpenRouter, and Anthropic models through OpenAI-compatible and Anthropic-compatible APIs.
+Multi-provider AI proxy with usage dashboard supporting Anthropic, OpenAI, xAI, and OpenRouter models through OpenAI-compatible and Anthropic-compatible APIs.
 
 **Designed for self-hosted personal use** - run your own instance to securely proxy AI requests using your API keys.
 
@@ -18,11 +18,12 @@ ekai-gateway/
 
 ## Features
 
-- 🤖 **Multi-provider**: OpenAI + OpenRouter + Anthropic models
+- 🤖 **Multi-provider**: Anthropic + OpenAI + xAI + OpenRouter models
 - 🔄 **Dual APIs**: OpenAI-compatible + Anthropic-compatible endpoints
-- 🔀 **Smart routing**: Automatic provider selection based on model name
+- 🔀 **Cost-optimized routing**: Automatic selection of cheapest provider for each model
 - 💰 **Usage tracking**: Track token usage and costs with visual dashboard
 - 🗄️ **Database storage**: SQLite database for persistent usage tracking
+- 📊 **Analytics dashboard**: Real-time cost analysis and usage breakdowns
 
 ## Quick Start
 
@@ -31,9 +32,11 @@ ekai-gateway/
 npm install
 
 # Setup environment (create .env in repository root)
-OPENROUTER_API_KEY=your_key_here
-OPENAI_API_KEY=your_key_here
+# At least one API key is required
 ANTHROPIC_API_KEY=your_key_here
+OPENAI_API_KEY=your_key_here
+XAI_API_KEY=your_key_here
+OPENROUTER_API_KEY=your_key_here
 PORT=3001
 
 # Start development servers
@@ -47,7 +50,6 @@ Access the gateway at `http://localhost:3001` and dashboard at `http://localhost
 ```bash
 POST /v1/chat/completions  # OpenAI-compatible chat endpoint
 POST /v1/messages          # Anthropic-compatible messages endpoint
-GET  /v1/models           # List available models
 GET  /usage               # View token usage and costs
 GET  /health              # Health check endpoint
 ```
@@ -63,6 +65,11 @@ curl -X POST http://localhost:3001/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model": "claude-3-5-sonnet-20241022", "messages": [{"role": "user", "content": "Hello"}]}'
 
+# Use xAI Grok models
+curl -X POST http://localhost:3001/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "grok-code-fast", "messages": [{"role": "user", "content": "Hello"}]}'
+
 # Anthropic-compatible endpoint
 curl -X POST http://localhost:3001/v1/messages \
   -H "Content-Type: application/json" \
@@ -75,15 +82,21 @@ curl -X POST http://localhost:3001/v1/messages \
 curl http://localhost:3001/usage
 ```
 
-## Model Routing
+## Model Routing (Cost-Optimized)
 
-The proxy automatically routes requests to the appropriate provider:
+The proxy uses **cost-based optimization** to automatically select the cheapest available provider:
 
-- **Claude models** (e.g., `claude-3-5-sonnet-20241022`) → Anthropic
-- **OpenAI models** (e.g., `gpt-4o`, `gpt-3.5-turbo`) → OpenAI  
-- **Other models** (e.g., `anthropic/claude-3.5-sonnet`, `meta-llama/llama-3.1-8b-instruct`) → OpenRouter
+1. **Special routing**: Grok models (`grok-code-fast`, `grok-beta`) → xAI (if available)
+2. **Cost optimization**: All other models are routed to the cheapest provider that supports them
+3. **Provider fallback**: Graceful fallback if preferred provider is unavailable
 
-**Multi-client proxy**: Web apps, mobile apps, and scripts share one conversation across all providers with automatic cost tracking.
+**Supported providers**:
+- **Anthropic**: Claude models (direct API access)
+- **OpenAI**: GPT models (direct API access)  
+- **xAI**: Grok models (direct API access)
+- **OpenRouter**: Multi-provider access with `provider/model` format
+
+**Multi-client proxy**: Web apps, mobile apps, and scripts share conversations across providers with automatic cost tracking and optimization.
 
 ## Development
 
