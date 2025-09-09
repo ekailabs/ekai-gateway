@@ -2,11 +2,13 @@ import { BaseProvider } from './base-provider.js';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
 import fetch, { Response } from 'node-fetch';
 import { APIError } from '../../infrastructure/utils/error-handler.js';
+import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
 
 interface OpenAIRequest {
   model: string;
   messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string; }>;
   max_tokens?: number;
+  max_completion_tokens?: number;
   temperature?: number;
   stream?: boolean;
   stop?: string | string[];
@@ -69,14 +71,24 @@ export class OpenAIProvider extends BaseProvider {
         .join('')
     }));
 
-    return {
+    const requestData: OpenAIRequest = {
       model: request.model,
       messages,
-      max_tokens: request.maxTokens,
       temperature: request.temperature,
       stream: request.stream || false,
       stop: request.stopSequences
     };
+
+    // Use max_completion_tokens for o1/o3/o4 series models, max_tokens for others
+    if (request.maxTokens) {
+      if (ModelUtils.requiresMaxCompletionTokens(request.model)) {
+        requestData.max_completion_tokens = request.maxTokens;
+      } else {
+        requestData.max_tokens = request.maxTokens;
+      }
+    }
+
+    return requestData;
   }
 
   protected transformResponse(response: OpenAIResponse): CanonicalResponse {

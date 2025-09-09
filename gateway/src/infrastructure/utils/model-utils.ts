@@ -56,4 +56,24 @@ export class ModelUtils {
     return modelName + '-latest';
   }
 
+  /**
+   * Check if a model requires max_completion_tokens instead of max_tokens
+   * OpenAI o1/o3/o4 series and GPT-5 series models require max_completion_tokens parameter
+   * Examples:
+   * - o1 → true
+   * - o1-mini → true
+   * - o1-pro → true
+   * - o3-mini → true
+   * - gpt-5 → true
+   * - gpt-5-mini → true
+   * - openai/gpt-5 → true
+   * - gpt-4o → false
+   */
+  static requiresMaxCompletionTokens(modelName: string): boolean {
+    const normalizedName = this.removeProviderPrefix(modelName.toLowerCase());
+    
+    // OpenAI o1, o3, o4 series models and GPT-5 series models
+    return /^o[1-4](-|$)/.test(normalizedName) || /^gpt-5(-|$)/.test(normalizedName);
+  }
+
 }

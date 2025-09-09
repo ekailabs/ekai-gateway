@@ -1,11 +1,13 @@
 import { BaseProvider } from './base-provider.js';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
 import { pricingLoader } from '../../infrastructure/utils/pricing-loader.js';
+import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
 
 interface OpenRouterRequest {
   model: string;
   messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string; }>;
   max_tokens?: number;
+  max_completion_tokens?: number;
   temperature?: number;
   stream?: boolean;
   stop?: string | string[];
@@ -54,14 +56,24 @@ export class OpenRouterProvider extends BaseProvider {
     // Get the actual OpenRouter model ID from pricing data
     const openRouterModel = this.getOpenRouterModelId(request.model);
 
-    return {
+    const requestData: OpenRouterRequest = {
       model: openRouterModel,
       messages,
-      max_tokens: request.maxTokens,
       temperature: request.temperature,
       stream: request.stream || false,
       stop: request.stopSequences
     };
+
+    // Use max_completion_tokens for o1/o3/o4 series models, max_tokens for others
+    if (request.maxTokens) {
+      if (ModelUtils.requiresMaxCompletionTokens(openRouterModel)) {
+        requestData.max_completion_tokens = request.maxTokens;
+      } else {
+        requestData.max_tokens = request.maxTokens;
+      }
+    }
+
+    return requestData;
   }
 
   private getOpenRouterModelId(modelName: string): string {
