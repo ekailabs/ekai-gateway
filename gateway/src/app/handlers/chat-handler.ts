@@ -8,6 +8,7 @@ import { HTTP_STATUS, CONTENT_TYPES } from '../../domain/types/provider.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
 import { CanonicalRequest } from 'shared/types/index.js';
 import { anthropicPassthrough } from '../../infrastructure/passthrough/anthropic-passthrough.js';
+import { xaiPassthrough } from '../../infrastructure/passthrough/xai-passthrough.js';
 
 type ClientFormat = 'openai' | 'anthropic';
 type ProviderName = string;
@@ -101,9 +102,19 @@ export class ChatHandler {
   }
 
   // Pass-through scenarios: where clientFormat and providerFormat are the same, we want to take a quick route
-  // Currently supporting claude code proxy through pass-through, i.e., we skip the canonicalization step
+  // Currently supporting claude code proxy and xAI through pass-through, i.e., we skip the canonicalization step
   private shouldUsePassThrough(clientFormat: ClientFormat, providerName: ProviderName): boolean {
-    return clientFormat === 'anthropic' && providerName === PROVIDERS.ANTHROPIC;
+    // Anthropic passthrough for Claude models
+    if (clientFormat === 'anthropic' && providerName === PROVIDERS.ANTHROPIC) {
+      return true;
+    }
+
+    // xAI passthrough for Grok models (assuming Anthropic compatibility)
+    if (clientFormat === 'anthropic' && providerName === 'xAI') {
+      return true;
+    }
+
+    return false;
   }
 
   private setStreamingHeaders(res: Response): void {
@@ -117,7 +128,12 @@ export class ChatHandler {
   }
 
   private async handlePassThrough(originalRequest: any, res: Response, clientFormat: ClientFormat, providerName: ProviderName): Promise<void> {
-    await anthropicPassthrough.handleDirectRequest(originalRequest, res);
+    if (providerName === 'xAI') {
+      await xaiPassthrough.handleDirectRequest(originalRequest, res);
+    } else {
+      // Default to Anthropic passthrough for backward compatibility
+      await anthropicPassthrough.handleDirectRequest(originalRequest, res);
+    }
   }
 
 }

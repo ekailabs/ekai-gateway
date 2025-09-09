@@ -76,6 +76,9 @@ export class PricingLoader {
             const pricing = this.loadProviderPricing(provider);
             this.pricingCache.set(provider, pricing);
             console.log(`✅ Loaded pricing for ${provider}: ${Object.keys(pricing.models).length} models`);
+            if (provider === 'xAI') {
+              console.log('xAI models loaded:', Object.keys(pricing.models));
+            }
           } catch (error) {
             console.error(`❌ Failed to load pricing for ${provider}:`, error);
           }
@@ -115,6 +118,11 @@ export class PricingLoader {
       config.models = this.normalizeAnthropicCacheFields(config.models);
     }
 
+    // Normalize cache field names for xAI
+    if (provider === 'xAI') {
+      config.models = this.normalizeXAICacheFields(config.models);
+    }
+
     return config;
   }
 
@@ -137,6 +145,28 @@ export class PricingLoader {
       }
       if (modelPricing['cache_read'] !== undefined) {
         normalizedPricing.cache_read = modelPricing['cache_read'];
+      }
+
+      normalizedModels[modelName] = normalizedPricing;
+    });
+
+    return normalizedModels;
+  }
+
+  /**
+   * Normalize xAI cache field names to generic format
+   */
+  private normalizeXAICacheFields(models: Record<string, any>): Record<string, ModelPricing> {
+    const normalizedModels: Record<string, ModelPricing> = {};
+
+    Object.entries(models).forEach(([modelName, modelPricing]: [string, any]) => {
+      const normalizedPricing: ModelPricing = { ...modelPricing };
+
+      // Map xAI-specific cache field names to generic ones
+      if (modelPricing['cached_input'] !== undefined) {
+        // For xAI, cached_input is used for both read and write operations
+        normalizedPricing.cache_write = modelPricing['cached_input'];
+        normalizedPricing.cache_read = modelPricing['cached_input'];
       }
 
       normalizedModels[modelName] = normalizedPricing;

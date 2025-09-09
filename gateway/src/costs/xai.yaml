@@ -1,31 +1,26 @@
-provider: "xai"
+provider: "xAI"
 currency: "USD"
 unit: "MTok"
 
 models:
-  grok-code-fast-1:
-    input: 0.20
-    cached_input: 0.02
-    output: 1.50
-    
   grok-4:
     input: 3.00
     cached_input: 0.75
     output: 15.00
-  
+
   grok-3:
     input: 3.00
     cached_input: 0.75
     output: 15.00
-  
+
   grok-3-mini:
     input: 0.30
     cached_input: 0.0075
     output: 0.50
-  
 
 metadata:
-  last_updated: "2025-10-06"
-  source: "https://docs.x.ai/docs/models"
-  notes: "Prices in USD per 1M tokens."
-  version: "0.1"
+  last_updated: "2024-12-19"
+  source: "https://docs.x.ai/docs#models"
+  notes: "xAI Grok model pricing with cache support."
+  version: "1.0"
+  contributor: "xAI"

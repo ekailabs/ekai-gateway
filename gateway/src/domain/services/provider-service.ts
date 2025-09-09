@@ -3,6 +3,7 @@ import { AIProvider } from '../types/provider.js';
 import { AnthropicProvider } from '../providers/anthropic-provider.js';
 import { OpenAIProvider } from '../providers/openai-provider.js';
 import { OpenRouterProvider } from '../providers/openrouter-provider.js';
+import { XAIProvider } from '../providers/xai-provider.js';
 import { logger } from '../../infrastructure/utils/logger.js';
 import { pricingLoader, ModelPricing } from '../../infrastructure/utils/pricing-loader.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
@@ -10,7 +11,8 @@ import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
 enum Provider {
   ANTHROPIC = 'anthropic',
   OPENAI = 'openai',
-  OPENROUTER = 'openrouter'
+  OPENROUTER = 'openrouter',
+  XAI = 'xAI'
 }
 
 export class ProviderService {
@@ -20,7 +22,8 @@ export class ProviderService {
     const adapterMap = {
       [Provider.ANTHROPIC]: () => new AnthropicProvider(),
       [Provider.OPENAI]: () => new OpenAIProvider(),
-      [Provider.OPENROUTER]: () => new OpenRouterProvider()
+      [Provider.OPENROUTER]: () => new OpenRouterProvider(),
+      [Provider.XAI]: () => new XAIProvider()
     };
 
     const factory = adapterMap[name];
@@ -65,6 +68,13 @@ export class ProviderService {
       };
     }
     
+    // Check for explicit provider matches first
+    if (modelName.includes('grok-') || modelName.includes('grok_beta')) {
+      if (availableProviders.includes(Provider.XAI)) {
+        return { provider: Provider.XAI };
+      }
+    }
+
     // Find cheapest available provider that supports this model
     let cheapestProvider: Provider | null = null;
     let lowestCost = Infinity;

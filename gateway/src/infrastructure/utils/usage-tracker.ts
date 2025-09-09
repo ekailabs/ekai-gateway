@@ -1,5 +1,6 @@
 import { pricingLoader, CostCalculation } from './pricing-loader.js';
 import { dbQueries, type UsageRecord } from '../db/queries.js';
+import { ModelUtils } from './model-utils.js';
 
 /**
  * Usage summary interface for consistent return types
@@ -57,9 +58,11 @@ export class UsageTracker {
 
     const now = new Date();
     
+    const pricing = pricingLoader.getModelPricing(provider, model);
+
     // Calculate cost using the pricing system
     const costCalculation = pricingLoader.calculateCost(provider, model, inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens);
-    
+
     if (costCalculation) {
       // Generate unique request ID
       const requestId = this.generateRequestId(provider, model, now);

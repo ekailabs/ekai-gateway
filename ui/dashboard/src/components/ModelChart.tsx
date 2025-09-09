@@ -74,7 +74,7 @@ export default function ModelChart({ className = '' }: ModelChartProps) {
               cx="50%"
               cy="50%"
               labelLine={false}
-              label={({ name }) => name}
+              label={({ name, percentage }) => parseFloat(percentage) >= 5 ? name : ''}
               outerRadius={80}
               fill="#8884d8"
               dataKey="value"
