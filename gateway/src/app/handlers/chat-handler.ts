@@ -35,7 +35,7 @@ export class ChatHandler {
 
   async handleChatRequest(req: Request, res: Response, clientFormat: ClientFormat): Promise<void> {
     try {
-      logger.info('Processing chat request HEADERS', req.headers);
+      logger.info('CHAT_HANDLER: HEADERS INFORMATION', req.headers);
       const originalRequest = req.body;
       const result = this.providerService.getMostOptimalProvider(req.body.model);
       if (result.error) {

@@ -1,6 +1,7 @@
 import { pricingLoader, CostCalculation } from './pricing-loader.js';
 import { dbQueries, type UsageRecord } from '../db/queries.js';
 import { ModelUtils } from './model-utils.js';
+import { logger } from './logger.js';
 
 /**
  * Usage summary interface for consistent return types
@@ -88,6 +89,8 @@ export class UsageTracker {
         });
 
         console.log(`💰 Cost for ${model} (${provider}): $${costCalculation.totalCost.toFixed(6)} (${inputTokens} input + ${cacheWriteTokens} cache_write + ${cacheReadTokens} cache_read + ${outputTokens} output tokens)`);
+        logger.info(`USAGE_TRACKER: Cost for ${model} (${provider}): $${costCalculation.totalCost.toFixed(6)} (${inputTokens} input + ${cacheWriteTokens} cache_write + ${cacheReadTokens} cache_read + ${outputTokens} output tokens)`);
+
       } catch (error) {
         console.error('❌ Failed to save usage record to database:', error);
         throw new Error(`Failed to track usage: ${error instanceof Error ? error.message : 'Unknown error'}`);
