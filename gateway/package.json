@@ -5,11 +5,9 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "npm run generate-types && tsc",
+    "build": "tsc",
     "start": "node dist/index.js",
-    "clean": "rm -rf dist",
-    "generate-types": "node scripts/generate-types.js",
-    "prebuild": "npm run generate-types"
+    "clean": "rm -rf dist"
   },
   "dependencies": {
     "@types/js-yaml": "^4.0.9",

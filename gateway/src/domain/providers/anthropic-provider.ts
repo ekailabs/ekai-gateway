@@ -85,7 +85,12 @@ export class AnthropicProvider extends BaseProvider {
 
   private parseStreamToCanonical(streamText: string, originalRequest: CanonicalRequest): CanonicalResponse {
     let finalMessage = '';
-    let usage = { input_tokens: 0, output_tokens: 0 };
+    let usage = { 
+      input_tokens: 0, 
+      output_tokens: 0, 
+      cache_creation_input_tokens: 0,
+      cache_read_input_tokens: 0
+    };
 
     // Parse Server-Sent Events format
     const lines = streamText.split('\n');
