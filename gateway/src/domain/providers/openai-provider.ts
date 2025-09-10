@@ -68,6 +68,8 @@ export class OpenAIProvider extends BaseProvider {
       model: request.model,
       messages,
       temperature: request.temperature,
+      stream: request.stream || false,
+      stop: request.stopSequences
     };
 
     // Use max_completion_tokens for o1/o3/o4 series models, max_tokens for others
@@ -140,24 +142,6 @@ export class OpenAIProvider extends BaseProvider {
     return response;
   }
 
-  protected transformRequest(request: CanonicalRequest): OpenAIRequest {
-    const messages = request.messages.map(msg => ({
-      role: msg.role,
-      content: msg.content
-        .filter(c => c.type === 'text')
-        .map(c => c.text)
-        .join('')
-    }));
-
-    return {
-      model: request.model,
-      messages,
-      max_tokens: request.maxTokens,
-      temperature: request.temperature,
-      stream: request.stream || false,
-      stop: request.stopSequences
-    };
-  }
 
   protected transformResponse(response: OpenAIResponse): CanonicalResponse {
     const choice = response.choices[0];

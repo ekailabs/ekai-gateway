@@ -97,14 +97,15 @@ export class ChatHandler {
       }
     } catch (error) {
       logger.error('Chat request failed', error instanceof Error ? error : new Error(String(error)));
-      handleError(error, res, clientFormat);
+      const errorFormat = clientFormat === 'openai_responses' ? 'openai' : clientFormat;
+      handleError(error, res, errorFormat);
     }
   }
 
 
   private async handleNonStreaming(canonicalRequest: CanonicalRequest, res: Response, clientFormat: ClientFormat, providerName?: ProviderName, originalRequest?: any): Promise<void> {
     if (clientFormat === 'openai_responses') {
-      const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest);
+      const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, 'openai' as any, 'openai', originalRequest);
       const clientResponse = this.adapters[clientFormat].fromCanonical(canonicalResponse);
       res.status(HTTP_STATUS.OK).json(clientResponse);
       return;
@@ -118,7 +119,7 @@ export class ChatHandler {
 
   private async handleStreaming(canonicalRequest: CanonicalRequest, res: Response, clientFormat: ClientFormat, providerName?: ProviderName, originalRequest?: any): Promise<void> {
     if (clientFormat === 'openai_responses') {
-      const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest);
+      const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest, 'openai' as any, 'openai', originalRequest);
 
       res.writeHead(HTTP_STATUS.OK, {
         'Content-Type': CONTENT_TYPES.EVENT_STREAM,
