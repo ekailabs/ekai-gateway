@@ -18,19 +18,8 @@ export default function ModelChart({ className = '' }: ModelChartProps) {
 
   // Helper function to clean model names for display
   const cleanModelName = (modelName: string) => {
-    // First, apply the prefix formatting
-    let cleaned = modelName.replace('gpt-', 'GPT-').replace('claude-', 'Claude-');
-
-    // Remove everything after the last dash (typically version suffixes)
-    const lastDashIndex = cleaned.lastIndexOf('-');
-    if (lastDashIndex > 0) {
-      // Keep the part before the last dash, but preserve the prefix
-      const prefix = cleaned.startsWith('GPT-') ? 'GPT-' : cleaned.startsWith('Claude-') ? 'Claude-' : '';
-      const baseName = cleaned.substring(prefix.length, lastDashIndex);
-      cleaned = prefix + baseName;
-    }
-
-    return cleaned;
+    // Just return the model name as-is, no formatting needed
+    return modelName;
   };
 
   // Convert to chart data format

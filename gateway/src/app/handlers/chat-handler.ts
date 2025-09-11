@@ -10,6 +10,7 @@ import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
 import { CanonicalRequest } from 'shared/types/index.js';
 import { anthropicPassthrough } from '../../infrastructure/passthrough/anthropic-passthrough.js';
 import { xaiPassthrough } from '../../infrastructure/passthrough/xai-passthrough.js';
+import { openaiResponsesPassthrough } from '../../infrastructure/passthrough/openai-responses-passthrough.js';
 
 type ClientFormat = 'openai' | 'anthropic' | 'openai_responses';
 type ProviderName = string;
@@ -37,33 +38,37 @@ export class ChatHandler {
 
   async handleChatRequest(req: Request, res: Response, clientFormat: ClientFormat): Promise<void> {
     try {
-      // OpenAI Responses doesn't need the complex provider selection logic
+      logger.info('CHAT_HANDLER: HEADERS INFORMATION', req.headers);
+      const originalRequest = req.body;
+
+      // For OpenAI responses, we need to determine if we should use passthrough
+      // This requires provider selection logic
+      let providerName: ProviderName;
+      let canonicalRequest: CanonicalRequest;
+
       if (clientFormat === 'openai_responses') {
-        const canonicalRequest = this.adapters[clientFormat].toCanonical(req.body);
+        // For responses, we always want to use OpenAI provider (responses API is OpenAI-specific)
+        // But we still need to check if passthrough should be used
+        providerName = 'openai';
+        canonicalRequest = this.adapters[clientFormat].toCanonical(req.body);
 
         logger.info('CHAT_HANDLER: Processing OpenAI Responses request', {
           clientFormat,
           model: canonicalRequest.model,
-          streaming: canonicalRequest.stream
+          streaming: canonicalRequest.stream,
+          provider: providerName
         });
-
-        if (canonicalRequest.stream) {
-          await this.handleStreaming(canonicalRequest, res, clientFormat);
-        } else {
-          await this.handleNonStreaming(canonicalRequest, res, clientFormat);
+      } else {
+        // Normal flow for other client formats
+        const result = this.providerService.getMostOptimalProvider(req.body.model);
+        if (result.error) {
+          const statusCode = result.error.code === 'NO_PROVIDERS_CONFIGURED' ? 503 : 400;
+          throw new APIError(statusCode, result.error.message, result.error.code);
         }
-        return;
-      }
 
-      logger.info('CHAT_HANDLER: HEADERS INFORMATION', req.headers);
-      const originalRequest = req.body;
-      const result = this.providerService.getMostOptimalProvider(req.body.model);
-      if (result.error) {
-        const statusCode = result.error.code === 'NO_PROVIDERS_CONFIGURED' ? 503 : 400;
-        throw new APIError(statusCode, result.error.message, result.error.code);
+        providerName = result.provider;
+        canonicalRequest = this.adapters[clientFormat].toCanonical(req.body);
       }
-
-      const providerName = result.provider;
 
       // Normalize model name, example: anthropic/claude-3-5-sonnet → claude-3-5-sonnet.
       // will need to move it to normalization canonical step in future
@@ -88,7 +93,10 @@ export class ChatHandler {
         return;
       }
 
-      const canonicalRequest = this.adapters[clientFormat].toCanonical(req.body);
+      // For non-passthrough cases, ensure we have canonical request
+      if (clientFormat !== 'openai_responses') {
+        canonicalRequest = this.adapters[clientFormat].toCanonical(req.body);
+      }
 
       if (canonicalRequest.stream) {
         await this.handleStreaming(canonicalRequest, res, clientFormat, providerName, originalRequest);
@@ -160,6 +168,11 @@ export class ChatHandler {
       return true;
     }
 
+    // OpenAI responses passthrough for responses API
+    if (clientFormat === 'openai_responses' && providerName === 'openai') {
+      return true;
+    }
+
     return false;
   }
 
@@ -176,6 +189,8 @@ export class ChatHandler {
   private async handlePassThrough(originalRequest: any, res: Response, clientFormat: ClientFormat, providerName: ProviderName): Promise<void> {
     if (providerName === 'xAI') {
       await xaiPassthrough.handleDirectRequest(originalRequest, res);
+    } else if (clientFormat === 'openai_responses' && providerName === 'openai') {
+      await openaiResponsesPassthrough.handleDirectRequest(originalRequest, res);
     } else {
       // Default to Anthropic passthrough for backward compatibility
       await anthropicPassthrough.handleDirectRequest(originalRequest, res);

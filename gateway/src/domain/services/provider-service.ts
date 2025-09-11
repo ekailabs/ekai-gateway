@@ -114,7 +114,7 @@ export class ProviderService {
     clientType?: 'openai' | 'anthropic',
     originalRequest?: unknown
   ): Promise<CanonicalResponse> {
-    const provider = this.providers.get(providerName)!;
+    const provider = this.getOrCreateProvider(providerName);
 
     // Ensure Anthropic models have required suffixes
     if (providerName === Provider.ANTHROPIC) {
@@ -136,7 +136,7 @@ export class ProviderService {
     clientType?: 'openai' | 'anthropic',
     originalRequest?: unknown
   ): Promise<any> {
-    const provider = this.providers.get(providerName)!;
+    const provider = this.getOrCreateProvider(providerName);
 
     // Ensure Anthropic models have required suffixes
     if (providerName === Provider.ANTHROPIC) {
