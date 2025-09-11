@@ -10,7 +10,7 @@ dotenv.config({ path: join(__dirname, '../../.env') });
 
 import express from 'express';
 import cors from 'cors';
-import { handleOpenAIFormatChat, handleAnthropicFormatChat } from './app/handlers/chat-handler.js';
+import { handleOpenAIFormatChat, handleAnthropicFormatChat, handleOpenAIResponses } from './app/handlers/chat-handler.js';
 import { handleUsageRequest } from './app/handlers/usage-handler.js';
 import { logger } from './infrastructure/utils/logger.js';
 
@@ -23,8 +23,8 @@ app.use(express.json({ limit: '50mb' }));
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
     version: '1.0.0'
   });
@@ -33,23 +33,13 @@ app.get('/health', (req, res) => {
 // API Routes
 app.post('/v1/chat/completions', handleOpenAIFormatChat);
 app.post('/v1/messages', handleAnthropicFormatChat);
+app.post('/v1/responses', handleOpenAIResponses);
 app.get('/usage', handleUsageRequest);
 
 // Start server
 app.listen(PORT, () => {
-  logger.info(`Ekai Gateway server started`, { 
-    port: PORT, 
-    environment: process.env.NODE_ENV || 'development' 
+  logger.info(`Ekai Gateway server started`, {
+    port: PORT,
+    environment: process.env.NODE_ENV || 'development'
   });
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully');
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully');
-  process.exit(0);
 });
