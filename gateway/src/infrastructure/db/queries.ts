@@ -54,14 +54,15 @@ export class DatabaseQueries {
     return result.lastInsertRowid as number;
   }
 
-  // Get all usage records (with optional limit)
-  getAllUsageRecords(limit?: number): UsageRecord[] {
-    const query = limit 
-      ? 'SELECT * FROM usage_records ORDER BY timestamp DESC LIMIT ?'
-      : 'SELECT * FROM usage_records ORDER BY timestamp DESC';
-    
-    const stmt = this.db.prepare(query);
-    return limit ? stmt.all(limit) as UsageRecord[] : stmt.all() as UsageRecord[];
+  // Get all usage records (with optional limit, required date range)
+  getAllUsageRecords(limit: number = 100, startDate: string, endDate: string): UsageRecord[] {
+    const stmt = this.db.prepare(`
+      SELECT * FROM usage_records 
+      WHERE timestamp >= ? AND timestamp < ? 
+      ORDER BY timestamp DESC 
+      LIMIT ?
+    `);
+    return stmt.all(startDate, endDate, limit) as UsageRecord[];
   }
 
   // Get usage records by date range
@@ -74,35 +75,45 @@ export class DatabaseQueries {
     return stmt.all(startDate, endDate) as UsageRecord[];
   }
 
-  // Get total cost
-  getTotalCost(): number {
-    const stmt = this.db.prepare('SELECT SUM(total_cost) as total FROM usage_records');
-    const result = stmt.get() as { total: number | null };
+  // Get total cost (with date range)
+  getTotalCost(startDate: string, endDate: string): number {
+    const stmt = this.db.prepare(`
+      SELECT SUM(total_cost) as total FROM usage_records 
+      WHERE timestamp >= ? AND timestamp < ?
+    `);
+    const result = stmt.get(startDate, endDate) as { total: number | null };
     return result.total || 0;
   }
 
-  // Get total tokens
-  getTotalTokens(): number {
-    const stmt = this.db.prepare('SELECT SUM(total_tokens) as total FROM usage_records');
-    const result = stmt.get() as { total: number | null };
+  // Get total tokens (with date range)
+  getTotalTokens(startDate: string, endDate: string): number {
+    const stmt = this.db.prepare(`
+      SELECT SUM(total_tokens) as total FROM usage_records 
+      WHERE timestamp >= ? AND timestamp < ?
+    `);
+    const result = stmt.get(startDate, endDate) as { total: number | null };
     return result.total || 0;
   }
 
-  // Get total requests
-  getTotalRequests(): number {
-    const stmt = this.db.prepare('SELECT COUNT(*) as total FROM usage_records');
-    const result = stmt.get() as { total: number };
+  // Get total requests (with date range)
+  getTotalRequests(startDate: string, endDate: string): number {
+    const stmt = this.db.prepare(`
+      SELECT COUNT(*) as total FROM usage_records 
+      WHERE timestamp >= ? AND timestamp < ?
+    `);
+    const result = stmt.get(startDate, endDate) as { total: number };
     return result.total;
   }
 
-  // Get cost by provider
-  getCostByProvider(): Record<string, number> {
+  // Get cost by provider (with date range)
+  getCostByProvider(startDate: string, endDate: string): Record<string, number> {
     const stmt = this.db.prepare(`
       SELECT provider, SUM(total_cost) as total 
       FROM usage_records 
+      WHERE timestamp >= ? AND timestamp < ?
       GROUP BY provider
     `);
-    const results = stmt.all() as Array<{ provider: string; total: number }>;
+    const results = stmt.all(startDate, endDate) as Array<{ provider: string; total: number }>;
     
     const costByProvider: Record<string, number> = {};
     results.forEach(row => {
@@ -112,14 +123,15 @@ export class DatabaseQueries {
     return costByProvider;
   }
 
-  // Get cost by model
-  getCostByModel(): Record<string, number> {
+  // Get cost by model (with date range)
+  getCostByModel(startDate: string, endDate: string): Record<string, number> {
     const stmt = this.db.prepare(`
       SELECT model, SUM(total_cost) as total 
       FROM usage_records 
+      WHERE timestamp >= ? AND timestamp < ?
       GROUP BY model
     `);
-    const results = stmt.all() as Array<{ model: string; total: number }>;
+    const results = stmt.all(startDate, endDate) as Array<{ model: string; total: number }>;
     
     const costByModel: Record<string, number> = {};
     results.forEach(row => {
