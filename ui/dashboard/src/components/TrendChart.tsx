@@ -104,7 +104,9 @@ export default function TrendChart({ className = '' }: TrendChartProps) {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="date" 
-                    tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                    tickFormatter={(value) => timeframe === 'hour' ? 
+                      new Date(value).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 
+                      new Date(value).toLocaleDateString()}
                     tick={{ fontSize: 10 }}
                   />
                   <YAxis 
@@ -126,7 +128,9 @@ export default function TrendChart({ className = '' }: TrendChartProps) {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="date" 
-                    tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                    tickFormatter={(value) => timeframe === 'hour' ? 
+                      new Date(value).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 
+                      new Date(value).toLocaleDateString()}
                     tick={{ fontSize: 10 }}
                   />
                   <YAxis 
@@ -151,7 +155,9 @@ export default function TrendChart({ className = '' }: TrendChartProps) {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
-                    tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                    tickFormatter={(value) => timeframe === 'hour' ? 
+                      new Date(value).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 
+                      new Date(value).toLocaleDateString()}
                     tick={{ fontSize: 10 }}
                   />
                   <YAxis
@@ -197,7 +203,9 @@ export default function TrendChart({ className = '' }: TrendChartProps) {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
-                    tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                    tickFormatter={(value) => timeframe === 'hour' ? 
+                      new Date(value).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 
+                      new Date(value).toLocaleDateString()}
                     tick={{ fontSize: 10 }}
                   />
                   <YAxis
