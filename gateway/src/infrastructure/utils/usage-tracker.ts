@@ -135,11 +135,13 @@ export class UsageTracker {
 
   /**
    * Get cost breakdown by provider
+   * @param startDate - Start date for filtering (ISO string)
+   * @param endDate - End date for filtering (ISO string)
    * @returns Record mapping provider names to total costs
    */
-  getCostByProvider(): Record<string, number> {
+  getCostByProvider(startDate: string, endDate: string): Record<string, number> {
     try {
-      return dbQueries.getCostByProvider();
+      return dbQueries.getCostByProvider(startDate, endDate);
     } catch (error) {
       console.error('❌ Failed to get cost by provider from database:', error);
       return {};
@@ -148,11 +150,13 @@ export class UsageTracker {
 
   /**
    * Get cost breakdown by model type (e.g., "gpt-4" from "gpt-4o")
+   * @param startDate - Start date for filtering (ISO string)
+   * @param endDate - End date for filtering (ISO string)
    * @returns Record mapping model types to total costs
    */
-  getCostByModelType(): Record<string, number> {
+  getCostByModelType(startDate: string, endDate: string): Record<string, number> {
     try {
-      const costByModel = dbQueries.getCostByModel();
+      const costByModel = dbQueries.getCostByModel(startDate, endDate);
       const costByModelType: Record<string, number> = {};
       
       Object.entries(costByModel).forEach(([model, cost]) => {
