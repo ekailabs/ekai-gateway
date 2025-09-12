@@ -9,12 +9,15 @@ import ErrorState from '@/components/ui/ErrorState';
 import EmptyState from '@/components/ui/EmptyState';
 import ChartTooltip from '@/components/ui/ChartTooltip';
 
+import { DateRange } from '@/components/DateRangePicker';
+
 interface ProviderChartProps {
   className?: string;
+  dateRange?: DateRange | null;
 }
 
-export default function ProviderChart({ className = '' }: ProviderChartProps) {
-  const { costByProvider, totalCost, loading, error, refetch } = useUsageData();
+export default function ProviderChart({ className = '', dateRange }: ProviderChartProps) {
+  const { costByProvider, totalCost, loading, error, refetch } = useUsageData(dateRange?.from, dateRange?.to);
 
   // Convert to chart data format
   const data = Object.entries(costByProvider)

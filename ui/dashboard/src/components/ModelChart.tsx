@@ -9,12 +9,15 @@ import ErrorState from '@/components/ui/ErrorState';
 import EmptyState from '@/components/ui/EmptyState';
 import ChartTooltip from '@/components/ui/ChartTooltip';
 
+import { DateRange } from '@/components/DateRangePicker';
+
 interface ModelChartProps {
   className?: string;
+  dateRange?: DateRange | null;
 }
 
-export default function ModelChart({ className = '' }: ModelChartProps) {
-  const { costByModel, totalCost, loading, error, refetch } = useUsageData();
+export default function ModelChart({ className = '', dateRange }: ModelChartProps) {
+  const { costByModel, totalCost, loading, error, refetch } = useUsageData(dateRange?.from, dateRange?.to);
 
   // Helper function to clean model names for display
   const cleanModelName = (modelName: string) => {

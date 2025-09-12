@@ -10,6 +10,7 @@ A comprehensive spend dashboard for tracking AI model usage and pricing across m
 - 🎯 **Model Comparison**: Compare costs and usage across different AI models
 - 📋 **Usage Table**: Detailed tabular view of all API requests with sorting and filtering
 - 💰 **Cost Optimization**: Identify the most cost-effective models for your use cases
+- 📅 **Date Range Filtering**: Filter analytics by custom date ranges or quick presets (Today, Yesterday, Last 7/30 Days, etc.)
 
 ## Dashboard Components
 
@@ -68,6 +69,11 @@ NEXT_PUBLIC_API_BASE_URL=http://your-backend-url:port
 The dashboard connects to the Ekai Gateway backend through these endpoints:
 
 - `GET /usage` - Fetch usage statistics and cost data
+  - Optional query parameters:
+    - `startTime` - ISO 8601 datetime string for filtering from this date/time
+    - `endTime` - ISO 8601 datetime string for filtering to this date/time  
+    - `timezone` - Timezone identifier (defaults to UTC)
+    - Example: `/usage?startTime=2025-01-01T00:00:00.000Z&endTime=2025-01-31T23:59:59.999Z`
 - `GET /health` - Check backend health status
 
 ## Architecture
@@ -86,15 +92,16 @@ src/
 │   ├── ProviderChart.tsx   # Provider cost breakdown  
 │   ├── ModelChart.tsx      # Model cost comparison
 │   ├── UsageTable.tsx      # Detailed request table
+│   ├── DateRangePicker.tsx # Date range filtering component
 │   └── ui/                 # Shared UI components
 │       ├── LoadingSkeleton.tsx
 │       ├── ErrorState.tsx
 │       ├── EmptyState.tsx
 │       └── ChartTooltip.tsx
 ├── hooks/
-│   └── useUsageData.ts     # Shared data fetching logic
+│   └── useUsageData.ts     # Shared data fetching logic with date filtering
 └── lib/
-    ├── api.ts              # API service functions
+    ├── api.ts              # API service functions with date parameters
     ├── constants.ts        # Shared constants
     └── utils.ts            # Utility functions
 ```

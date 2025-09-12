@@ -8,12 +8,15 @@ import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ErrorState from '@/components/ui/ErrorState';
 import EmptyState from '@/components/ui/EmptyState';
 
+import { DateRange } from '@/components/DateRangePicker';
+
 interface UsageTableProps {
   className?: string;
+  dateRange?: DateRange | null;
 }
 
-export default function UsageTable({ className = '' }: UsageTableProps) {
-  const { records, loading, error, refetch } = useUsageData();
+export default function UsageTable({ className = '', dateRange }: UsageTableProps) {
+  const { records, loading, error, refetch } = useUsageData(dateRange?.from, dateRange?.to);
   const [sortField, setSortField] = useState<keyof UsageRecord>('timestamp');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 

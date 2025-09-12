@@ -9,12 +9,15 @@ import ErrorState from '@/components/ui/ErrorState';
 import EmptyState from '@/components/ui/EmptyState';
 import ChartTooltip from '@/components/ui/ChartTooltip';
 
+import { DateRange } from '@/components/DateRangePicker';
+
 interface TrendChartProps {
   className?: string;
+  dateRange?: DateRange | null;
 }
 
-export default function TrendChart({ className = '' }: TrendChartProps) {
-  const { records, loading, error, refetch } = useUsageData();
+export default function TrendChart({ className = '', dateRange }: TrendChartProps) {
+  const { records, loading, error, refetch } = useUsageData(dateRange?.from, dateRange?.to);
   const [chartType, setChartType] = useState<'line' | 'bar'>('bar');
   const [timeframe, setTimeframe] = useState<'hour' | 'day'>('day');
 
@@ -104,7 +107,9 @@ export default function TrendChart({ className = '' }: TrendChartProps) {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="date" 
-                    tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                    tickFormatter={(value) => timeframe === 'hour' ? 
+                      new Date(value).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 
+                      new Date(value).toLocaleDateString()}
                     tick={{ fontSize: 10 }}
                   />
                   <YAxis 
@@ -126,7 +131,9 @@ export default function TrendChart({ className = '' }: TrendChartProps) {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="date" 
-                    tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                    tickFormatter={(value) => timeframe === 'hour' ? 
+                      new Date(value).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 
+                      new Date(value).toLocaleDateString()}
                     tick={{ fontSize: 10 }}
                   />
                   <YAxis 
@@ -151,7 +158,9 @@ export default function TrendChart({ className = '' }: TrendChartProps) {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
-                    tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                    tickFormatter={(value) => timeframe === 'hour' ? 
+                      new Date(value).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 
+                      new Date(value).toLocaleDateString()}
                     tick={{ fontSize: 10 }}
                   />
                   <YAxis
@@ -197,7 +206,9 @@ export default function TrendChart({ className = '' }: TrendChartProps) {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
-                    tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                    tickFormatter={(value) => timeframe === 'hour' ? 
+                      new Date(value).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 
+                      new Date(value).toLocaleDateString()}
                     tick={{ fontSize: 10 }}
                   />
                   <YAxis
