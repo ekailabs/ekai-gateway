@@ -34,8 +34,21 @@ export interface UsageResponse {
 // API service functions
 export const apiService = {
   // Fetch usage data
-  async getUsage(): Promise<UsageResponse> {
-    const response = await fetch(`${API_BASE_URL}/usage`);
+  async getUsage(fromDate?: Date, toDate?: Date): Promise<UsageResponse> {
+    let url = `${API_BASE_URL}/usage`;
+    
+    if (fromDate || toDate) {
+      const params = new URLSearchParams();
+      if (fromDate) {
+        params.append('startTime', fromDate.toISOString());
+      }
+      if (toDate) {
+        params.append('endTime', toDate.toISOString());
+      }
+      url += `?${params.toString()}`;
+    }
+    
+    const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to fetch usage data: ${response.statusText}`);
     }

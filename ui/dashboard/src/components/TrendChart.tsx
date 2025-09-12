@@ -9,12 +9,15 @@ import ErrorState from '@/components/ui/ErrorState';
 import EmptyState from '@/components/ui/EmptyState';
 import ChartTooltip from '@/components/ui/ChartTooltip';
 
+import { DateRange } from '@/components/DateRangePicker';
+
 interface TrendChartProps {
   className?: string;
+  dateRange?: DateRange | null;
 }
 
-export default function TrendChart({ className = '' }: TrendChartProps) {
-  const { records, loading, error, refetch } = useUsageData();
+export default function TrendChart({ className = '', dateRange }: TrendChartProps) {
+  const { records, loading, error, refetch } = useUsageData(dateRange?.from, dateRange?.to);
   const [chartType, setChartType] = useState<'line' | 'bar'>('bar');
   const [timeframe, setTimeframe] = useState<'hour' | 'day'>('day');
 
