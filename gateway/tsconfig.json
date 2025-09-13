@@ -17,8 +17,9 @@
     "baseUrl": ".",
     "paths": {
       "shared/*": ["../shared/*"]
-    }
+    },
+    "types": ["vitest/globals"]
   },
-  "include": ["src/**/*", "../shared/**/*"],
+  "include": ["src/**/*", "../shared/**/*", "tests/**/*", "vitest.d.ts"],
   "exclude": ["node_modules", "dist"]
 }
