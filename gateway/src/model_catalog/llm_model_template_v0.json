@@ -11,7 +11,7 @@
   "endpoints": [],
   "tools": [],
 
-  "snapshot_id": null,
+  "snapshots": [],
   "training_data_cutoff": null,
   "context_window": null,
   "max_output_tokens": null,
