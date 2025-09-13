@@ -30,7 +30,7 @@
   },
 
   "pricing": {
-    "text_tokens_per_1M": {
+    "text_per_MTok": {
       "batch": { "input": null, "cached_input": null, "output": null },
       "flex": { "input": null, "cached_input": null, "output": null },
       "standard": { "input": null, "cached_input": null, "output": null },
@@ -44,17 +44,17 @@
       }
     },
 
-    "image_tokens_per_1M": { "input": null, "cached_input": null, "output": null },
-    "audio_tokens_per_1M": { "input": null, "cached_input": null, "output": null },
+    "image_per_MTok": { "input": null, "cached_input": null, "output": null },
+    "audio_per_MTok": { "input": null, "cached_input": null, "output": null },
 
-    "fine_tuning_per_1M": {
+    "fine_tuning_per_MTok": {
       "batch": { "training": null, "input": null, "cached_input": null, "output": null },
       "standard": { "training": null, "input": null, "cached_input": null, "output": null }
     },
 
-    "embeddings_per_1M": { "cost": null, "batch_cost": null },
+    "embeddings_per_MTok": { "cost": null, "batch_cost": null },
 
-    "legacy_models_per_1M": {
+    "legacy_models_per_MTok": {
       "batch": { "input": null, "output": null },
       "standard": { "input": null, "output": null }
     },
