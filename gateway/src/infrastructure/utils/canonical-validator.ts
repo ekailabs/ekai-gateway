@@ -3,6 +3,7 @@ import addFormats from 'ajv-formats';
 import fs from 'fs';
 import path from 'path';
 import { Request, Response, StreamingResponse } from '../../canonical/types/index.js';
+import { logger } from './logger.js';
 
 class CanonicalValidator {
   private ajv: Ajv;
@@ -48,7 +49,7 @@ class CanonicalValidator {
       this.streamingResponseValidator = this.ajv.compile<StreamingResponse>(streamingResponseSchema);
 
     } catch (error) {
-      console.error('Error loading canonical schemas:', error);
+      logger.error('Error loading canonical schemas', error instanceof Error ? error : new Error(String(error)));
       throw new Error('Failed to initialize canonical validator');
     }
   }

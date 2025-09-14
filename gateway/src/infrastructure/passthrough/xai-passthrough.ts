@@ -82,7 +82,7 @@ export class XAIPassthrough {
                 cacheReadTokens
               );
             }).catch((error) => {
-              console.error('❌ XAI_PASSTHROUGH: Failed to track usage:', error);
+              logger.error('Usage tracking failed', error, { provider: 'xai', operation: 'passthrough' });
             });
 
             // Reset for next request
@@ -103,7 +103,7 @@ export class XAIPassthrough {
         }
       }
     } catch (error) {
-      console.error('❌ XAI_PASSTHROUGH: Error tracking usage:', error);
+      logger.error('Usage tracking failed', error instanceof Error ? error : new Error(String(error)), { provider: 'xai', operation: 'passthrough' });
     }
   }
 

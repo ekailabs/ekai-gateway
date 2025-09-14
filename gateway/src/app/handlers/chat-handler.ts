@@ -38,7 +38,7 @@ export class ChatHandler {
 
   async handleChatRequest(req: Request, res: Response, clientFormat: ClientFormat): Promise<void> {
     try {
-      logger.info('CHAT_HANDLER: HEADERS INFORMATION', req.headers);
+      logger.debug('Processing chat request', { requestId: req.requestId });
       const originalRequest = req.body;
 
       // For OpenAI responses, we need to determine if we should use passthrough
@@ -52,7 +52,8 @@ export class ChatHandler {
         providerName = 'openai';
         canonicalRequest = this.adapters[clientFormat].toCanonical(req.body);
 
-        logger.info('CHAT_HANDLER: Processing OpenAI Responses request', {
+        logger.debug('Processing OpenAI Responses request', {
+          requestId: req.requestId,
           clientFormat,
           model: canonicalRequest.model,
           streaming: canonicalRequest.stream,
@@ -80,8 +81,8 @@ export class ChatHandler {
       // Currently supporting claude code proxy through pass-through, i.e., we skip the canonicalization step
       const passThrough = this.shouldUsePassThrough(clientFormat, providerName);
 
-      logger.info('CHAT_HANDLER: Processing chat request', {
-        clientFormat,
+      logger.info('Chat request received', {
+        requestId: req.requestId,
         model: req.body.model,
         provider: providerName,
         streaming: req.body.stream,
@@ -104,7 +105,7 @@ export class ChatHandler {
         await this.handleNonStreaming(canonicalRequest, res, clientFormat, providerName, originalRequest);
       }
     } catch (error) {
-      logger.error('Chat request failed', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Chat request failed', error instanceof Error ? error : new Error(String(error)), { requestId: req.requestId });
       const errorFormat = clientFormat === 'openai_responses' ? 'openai' : clientFormat;
       handleError(error, res, errorFormat);
     }

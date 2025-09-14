@@ -59,7 +59,7 @@ export class ProviderService {
     const availableProviders = this.getAvailableProviders();
 
     if (availableProviders.length === 0) {
-      logger.error(`PROVIDER_SERVICE: No providers configured, please check your .env file`);
+      logger.error('No providers configured', undefined, { operation: 'provider_selection' });
       return {
         error: {
           code: 'NO_PROVIDERS_CONFIGURED',
@@ -95,7 +95,11 @@ export class ProviderService {
     }
 
     if (!cheapestProvider) {
-      logger.error(`PROVIDER_SERVICE: No providers found for model ${normalizedModel} among available providers ${availableProviders.join(', ')}`);
+      logger.error('No providers found for model', undefined, { 
+        operation: 'provider_selection',
+        model: normalizedModel,
+        availableProviders
+      });
       return {
         error: {
           code: 'MODEL_NOT_SUPPORTED',

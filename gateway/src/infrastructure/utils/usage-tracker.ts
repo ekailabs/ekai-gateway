@@ -88,15 +88,22 @@ export class UsageTracker {
           currency: costCalculation.currency
         });
 
-        console.log(`💰 Cost for ${model} (${provider}): $${costCalculation.totalCost.toFixed(6)} (${inputTokens} input + ${cacheWriteTokens} cache_write + ${cacheReadTokens} cache_read + ${outputTokens} output tokens)`);
-        logger.info(`USAGE_TRACKER: Cost for ${model} (${provider}): $${costCalculation.totalCost.toFixed(6)} (${inputTokens} input + ${cacheWriteTokens} cache_write + ${cacheReadTokens} cache_read + ${outputTokens} output tokens)`);
+        logger.debug('Usage tracked', {
+          model,
+          provider,
+          cost: costCalculation.totalCost,
+          inputTokens,
+          cacheWriteTokens,
+          cacheReadTokens,
+          outputTokens
+        });
 
       } catch (error) {
-        console.error('❌ Failed to save usage record to database:', error);
+        logger.error('Failed to save usage record', error, { operation: 'usage_tracking' });
         throw new Error(`Failed to track usage: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     } else {
-      console.warn(`⚠️ No pricing found for model: ${model} (${provider})`);
+      logger.warn('No pricing data found', { model, provider, operation: 'usage_tracking' });
     }
 
     return costCalculation;
@@ -120,7 +127,7 @@ export class UsageTracker {
         records: dbQueries.getAllUsageRecords(recordLimit, startDate, endDate)
       };
     } catch (error) {
-      console.error('❌ Failed to get usage from database:', error);
+      logger.error('Failed to get usage data', error, { operation: 'usage_retrieval' });
       // Return empty summary rather than circular reference
       return {
         totalRequests: 0,
@@ -143,7 +150,7 @@ export class UsageTracker {
     try {
       return dbQueries.getCostByProvider(startDate, endDate);
     } catch (error) {
-      console.error('❌ Failed to get cost by provider from database:', error);
+      logger.error('Failed to get cost by provider', error, { operation: 'usage_retrieval' });
       return {};
     }
   }
@@ -166,7 +173,7 @@ export class UsageTracker {
 
       return costByModelType;
     } catch (error) {
-      console.error('❌ Failed to get cost by model type from database:', error);
+      logger.error('Failed to get cost by model type', error, { operation: 'usage_retrieval' });
       return {};
     }
   }
@@ -194,7 +201,7 @@ export class UsageTracker {
 
       return hourlyCosts;
     } catch (error) {
-      console.error('❌ Failed to get hourly cost breakdown from database:', error);
+      logger.error('Failed to get hourly cost breakdown', error, { operation: 'usage_retrieval' });
       return {};
     }
   }
@@ -207,10 +214,9 @@ export class UsageTracker {
     try {
       // Note: This would require implementing clearAllUsageRecords in dbQueries
       // For now, just log that it's not implemented
-      console.log('🔄 Usage tracker reset - database clearing not implemented');
-      console.warn('⚠️ Database reset functionality needs to be implemented in dbQueries');
+      logger.warn('Usage reset not implemented', { operation: 'usage_reset' });
     } catch (error) {
-      console.error('❌ Failed to reset usage tracker:', error);
+      logger.error('Failed to reset usage tracker', error, { operation: 'usage_reset' });
       throw new Error(`Failed to reset usage tracker: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

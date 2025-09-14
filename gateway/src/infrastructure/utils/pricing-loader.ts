@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import { ModelUtils } from './model-utils.js';
+import { logger } from './logger.js';
 
 // Type definitions for pricing configuration
 export interface PricingConfig {
@@ -75,21 +76,21 @@ export class PricingLoader {
           try {
             const pricing = this.loadProviderPricing(provider);
             this.pricingCache.set(provider, pricing);
-            console.log(`✅ Loaded pricing for ${provider}: ${Object.keys(pricing.models).length} models`);
+            logger.debug('Pricing loaded', { provider, modelCount: Object.keys(pricing.models).length });
             if (provider === 'xAI') {
-              console.log('xAI models loaded:', Object.keys(pricing.models));
+              logger.debug('Models loaded', { provider: 'xai', models: Object.keys(pricing.models) });
             }
           } catch (error) {
-            console.error(`❌ Failed to load pricing for ${provider}:`, error);
+            logger.error('Failed to load pricing', error, { provider, operation: 'pricing_load' });
           }
         }
       });
 
       this.lastLoadTime = now;
-      console.log(`📊 Loaded pricing for ${this.pricingCache.size} providers`);
+      logger.info('Pricing cache loaded', { providerCount: this.pricingCache.size });
       
     } catch (error) {
-      console.error('❌ Failed to load pricing directory:', error);
+      logger.error('Failed to load pricing directory', error, { operation: 'pricing_load' });
     }
 
     return this.pricingCache;

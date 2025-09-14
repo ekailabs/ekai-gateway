@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { logger } from './logger.js';
 
 export class APIError extends Error {
   constructor(
@@ -30,7 +31,10 @@ export function createAnthropicErrorResponse(message: string, code?: string) {
 }
 
 export function handleError(error: unknown, res: Response, clientFormat: 'openai' | 'anthropic' = 'openai') {
-  console.error('API Error:', error);
+  const req = res.req as any;
+  const requestId = req?.requestId;
+  
+  logger.error('API Error', error instanceof Error ? error : new Error(String(error)), { requestId });
   
   const isAnthropic = clientFormat === 'anthropic';
   
