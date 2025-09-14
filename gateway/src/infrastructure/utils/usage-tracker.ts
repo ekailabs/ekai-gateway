@@ -95,15 +95,16 @@ export class UsageTracker {
           inputTokens,
           cacheWriteTokens,
           cacheReadTokens,
-          outputTokens
+          outputTokens,
+          module: 'usage-tracker'
         });
 
       } catch (error) {
-        logger.error('Failed to save usage record', error, { operation: 'usage_tracking' });
+        logger.error('Failed to save usage record', error, { operation: 'usage_tracking', module: 'usage-tracker' });
         throw new Error(`Failed to track usage: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     } else {
-      logger.warn('No pricing data found', { model, provider, operation: 'usage_tracking' });
+      logger.warn('No pricing data found', { model, provider, operation: 'usage_tracking', module: 'usage-tracker' });
     }
 
     return costCalculation;
@@ -127,7 +128,7 @@ export class UsageTracker {
         records: dbQueries.getAllUsageRecords(recordLimit, startDate, endDate)
       };
     } catch (error) {
-      logger.error('Failed to get usage data', error, { operation: 'usage_retrieval' });
+      logger.error('Failed to get usage data', error, { operation: 'usage_retrieval', module: 'usage-tracker' });
       // Return empty summary rather than circular reference
       return {
         totalRequests: 0,
@@ -150,7 +151,7 @@ export class UsageTracker {
     try {
       return dbQueries.getCostByProvider(startDate, endDate);
     } catch (error) {
-      logger.error('Failed to get cost by provider', error, { operation: 'usage_retrieval' });
+      logger.error('Failed to get cost by provider', error, { operation: 'usage_retrieval', module: 'usage-tracker' });
       return {};
     }
   }
@@ -173,7 +174,7 @@ export class UsageTracker {
 
       return costByModelType;
     } catch (error) {
-      logger.error('Failed to get cost by model type', error, { operation: 'usage_retrieval' });
+      logger.error('Failed to get cost by model type', error, { operation: 'usage_retrieval', module: 'usage-tracker' });
       return {};
     }
   }
@@ -201,7 +202,7 @@ export class UsageTracker {
 
       return hourlyCosts;
     } catch (error) {
-      logger.error('Failed to get hourly cost breakdown', error, { operation: 'usage_retrieval' });
+      logger.error('Failed to get hourly cost breakdown', error, { operation: 'usage_retrieval', module: 'usage-tracker' });
       return {};
     }
   }
@@ -214,9 +215,9 @@ export class UsageTracker {
     try {
       // Note: This would require implementing clearAllUsageRecords in dbQueries
       // For now, just log that it's not implemented
-      logger.warn('Usage reset not implemented', { operation: 'usage_reset' });
+      logger.warn('Usage reset not implemented', { operation: 'usage_reset', module: 'usage-tracker' });
     } catch (error) {
-      logger.error('Failed to reset usage tracker', error, { operation: 'usage_reset' });
+      logger.error('Failed to reset usage tracker', error, { operation: 'usage_reset', module: 'usage-tracker' });
       throw new Error(`Failed to reset usage tracker: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

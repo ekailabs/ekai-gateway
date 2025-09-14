@@ -327,7 +327,7 @@ describe('UsageHandler', () => {
 
         await usageHandler.getUsage(mockReq, mockRes);
 
-        expect(logger.error).toHaveBeenCalledWith('Failed to fetch usage data', testError);
+        expect(logger.error).toHaveBeenCalledWith('Failed to fetch usage data', testError, expect.objectContaining({ module: 'usage-handler' }));
         expect(handleError).toHaveBeenCalledWith(testError, mockRes);
       });
 
@@ -345,7 +345,8 @@ describe('UsageHandler', () => {
 
         expect(logger.error).toHaveBeenCalledWith(
           'Failed to fetch usage data', 
-          new Error('String error')
+          new Error('String error'),
+          expect.objectContaining({ module: 'usage-handler' })
         );
         expect(handleError).toHaveBeenCalledWith(testError, mockRes);
       });

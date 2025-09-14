@@ -42,6 +42,7 @@ app.get('/usage', handleUsageRequest);
 app.listen(PORT, () => {
   logger.info(`Ekai Gateway server started`, {
     port: PORT,
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    module: 'server'
   });
 });

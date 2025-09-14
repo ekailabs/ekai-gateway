@@ -76,21 +76,21 @@ export class PricingLoader {
           try {
             const pricing = this.loadProviderPricing(provider);
             this.pricingCache.set(provider, pricing);
-            logger.debug('Pricing loaded', { provider, modelCount: Object.keys(pricing.models).length });
+            logger.debug('Pricing loaded', { provider, modelCount: Object.keys(pricing.models).length, module: 'pricing-loader' });
             if (provider === 'xAI') {
-              logger.debug('Models loaded', { provider: 'xai', models: Object.keys(pricing.models) });
+              logger.debug('Models loaded', { provider: 'xai', models: Object.keys(pricing.models), module: 'pricing-loader' });
             }
           } catch (error) {
-            logger.error('Failed to load pricing', error, { provider, operation: 'pricing_load' });
+            logger.error('Failed to load pricing', error, { provider, operation: 'pricing_load', module: 'pricing-loader' });
           }
         }
       });
 
       this.lastLoadTime = now;
-      logger.info('Pricing cache loaded', { providerCount: this.pricingCache.size });
+      logger.info('Pricing cache loaded', { providerCount: this.pricingCache.size, module: 'pricing-loader' });
       
     } catch (error) {
-      logger.error('Failed to load pricing directory', error, { operation: 'pricing_load' });
+      logger.error('Failed to load pricing directory', error, { operation: 'pricing_load', module: 'pricing-loader' });
     }
 
     return this.pricingCache;

@@ -8,6 +8,7 @@ export interface LogContext {
   provider?: string;
   model?: string;
   duration?: number;
+  module?: string;
   [key: string]: unknown;
 }
 
@@ -40,6 +41,9 @@ class PinoLogger implements Logger {
           level: (label) => ({ level: label }),
         },
         redact: ['password', 'token', 'key', 'secret', 'authorization'],
+        serializers: {
+          err: pino.stdSerializers.err,
+        },
       },
       pino.multistream([
         { stream: process.stdout },

@@ -59,7 +59,7 @@ export class ProviderService {
     const availableProviders = this.getAvailableProviders();
 
     if (availableProviders.length === 0) {
-      logger.error('No providers configured', undefined, { operation: 'provider_selection' });
+      logger.warn('No providers configured', { operation: 'provider_selection', module: 'provider-service' });
       return {
         error: {
           code: 'NO_PROVIDERS_CONFIGURED',
@@ -95,8 +95,9 @@ export class ProviderService {
     }
 
     if (!cheapestProvider) {
-      logger.error('No providers found for model', undefined, { 
+      logger.warn('No providers found for model', { 
         operation: 'provider_selection',
+        module: 'provider-service',
         model: normalizedModel,
         availableProviders
       });
@@ -128,7 +129,8 @@ export class ProviderService {
     logger.info(`Processing chat completion`, {
       provider: providerName,
       model: request.model,
-      streaming: request.stream
+      streaming: request.stream,
+      module: 'provider-service'
     });
 
     return await provider.chatCompletion(request);
@@ -149,7 +151,8 @@ export class ProviderService {
 
     logger.info(`Processing streaming request`, {
       provider: providerName,
-      model: request.model
+      model: request.model,
+      module: 'provider-service'
     });
 
     return provider.getStreamingResponse(request);

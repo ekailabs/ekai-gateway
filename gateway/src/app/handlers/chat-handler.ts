@@ -38,7 +38,7 @@ export class ChatHandler {
 
   async handleChatRequest(req: Request, res: Response, clientFormat: ClientFormat): Promise<void> {
     try {
-      logger.debug('Processing chat request', { requestId: req.requestId });
+      logger.debug('Processing chat request', { requestId: req.requestId, module: 'chat-handler' });
       const originalRequest = req.body;
 
       // For OpenAI responses, we need to determine if we should use passthrough
@@ -57,7 +57,8 @@ export class ChatHandler {
           clientFormat,
           model: canonicalRequest.model,
           streaming: canonicalRequest.stream,
-          provider: providerName
+          provider: providerName,
+          module: 'chat-handler'
         });
       } else {
         // Normal flow for other client formats
@@ -86,7 +87,8 @@ export class ChatHandler {
         model: req.body.model,
         provider: providerName,
         streaming: req.body.stream,
-        passThrough
+        passThrough,
+        module: 'chat-handler'
       });
 
       if (passThrough) {
@@ -105,7 +107,7 @@ export class ChatHandler {
         await this.handleNonStreaming(canonicalRequest, res, clientFormat, providerName, originalRequest);
       }
     } catch (error) {
-      logger.error('Chat request failed', error instanceof Error ? error : new Error(String(error)), { requestId: req.requestId });
+      logger.error('Chat request failed', error instanceof Error ? error : new Error(String(error)), { requestId: req.requestId, module: 'chat-handler' });
       const errorFormat = clientFormat === 'openai_responses' ? 'openai' : clientFormat;
       handleError(error, res, errorFormat);
     }
