@@ -40,11 +40,12 @@ export class UsageHandler {
         return;
       }
      
-      logger.info('USAGE_TRACKER: Fetching usage data', {
+      logger.info('Fetching usage data', {
         requestId: req.requestId,
         start: start.toISOString(),
         end: end.toISOString(),
-        tz,
+        timezone: tz,
+        operation: 'usage_fetch',
         module: 'usage-handler'
       });
       

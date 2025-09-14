@@ -118,7 +118,7 @@ export class AnthropicPassthrough {
         }
       }
     } catch (error) {
-      logger.error('Usage tracking failed', error, { provider: 'anthropic', operation: 'passthrough', module: 'anthropic-passthrough' });
+      logger.error('Usage tracking failed', error instanceof Error ? error : new Error(String(error)), { provider: 'anthropic', operation: 'passthrough', module: 'anthropic-passthrough' });
     }
   }
 

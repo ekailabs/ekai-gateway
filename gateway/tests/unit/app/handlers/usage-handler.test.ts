@@ -97,9 +97,11 @@ describe('UsageHandler', () => {
         await usageHandler.getUsage(mockReq, mockRes);
 
         expect(logger.info).toHaveBeenCalledWith(
-          'USAGE_TRACKER: Fetching usage data',
+          'Fetching usage data',
           expect.objectContaining({
-            tz: 'UTC'
+            timezone: 'UTC',
+            operation: 'usage_fetch',
+            module: 'usage-handler'
           })
         );
       });
@@ -118,9 +120,11 @@ describe('UsageHandler', () => {
         await usageHandler.getUsage(mockReq, mockRes);
 
         expect(logger.info).toHaveBeenCalledWith(
-          'USAGE_TRACKER: Fetching usage data',
+          'Fetching usage data',
           expect.objectContaining({
-            tz: 'America/New_York'
+            timezone: 'America/New_York',
+            operation: 'usage_fetch',
+            module: 'usage-handler'
           })
         );
       });
