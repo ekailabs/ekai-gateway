@@ -1,16 +1,27 @@
-import { writeFileSync, appendFileSync, existsSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
+import pino from 'pino';
+import { existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
 
-// Simple logger interface - can be extended to use winston/pino later
-export interface Logger {
-  info(message: string, meta?: Record<string, unknown>): void;
-  error(message: string, error?: Error, meta?: Record<string, unknown>): void;
-  warn(message: string, meta?: Record<string, unknown>): void;
-  debug(message: string, meta?: Record<string, unknown>): void;
+export interface LogContext {
+  requestId?: string;
+  operation?: string;
+  provider?: string;
+  model?: string;
+  duration?: number;
+  module?: string;
+  [key: string]: unknown;
 }
 
-class FileLogger implements Logger {
-  private logFile: string;
+export interface Logger {
+  info(message: string, meta?: LogContext): void;
+  error(message: string, error?: unknown, meta?: LogContext): void;
+  warn(message: string, meta?: LogContext): void;
+  debug(message: string, meta?: LogContext): void;
+  timer(operation: string): () => void;
+}
+
+class PinoLogger implements Logger {
+  private pino: pino.Logger;
 
   constructor() {
     // Create logs directory if it doesn't exist
@@ -19,47 +30,56 @@ class FileLogger implements Logger {
       mkdirSync(logsDir, { recursive: true });
     }
     
-    this.logFile = join(logsDir, 'gateway.log');
+    const logFile = join(logsDir, 'gateway.log');
+
+    // Create pino logger with file and console output
+    this.pino = pino(
+      {
+        level: process.env.LOG_LEVEL || 'info',
+        timestamp: pino.stdTimeFunctions.isoTime,
+        formatters: {
+          level: (label) => ({ level: label }),
+        },
+        redact: ['password', 'token', 'key', 'secret', 'authorization'],
+        serializers: {
+          err: pino.stdSerializers.err,
+        },
+      },
+      pino.multistream([
+        { stream: process.stdout },
+        { stream: pino.destination(logFile) }
+      ])
+    );
   }
 
-  private writeLog(level: string, message: string, meta?: Record<string, unknown>, error?: Error): void {
-    const timestamp = new Date().toISOString();
-    const logEntry = {
-      timestamp,
-      level,
-      message,
-      ...(meta && { meta }),
-      ...(error && { error: error.message, stack: error.stack })
+  info(message: string, meta?: LogContext): void {
+    this.pino.info(meta || {}, message);
+  }
+
+  error(message: string, error?: unknown, meta?: LogContext): void {
+    const logData = {
+      ...(meta || {}),
+      ...(error && { err: error }),
     };
-    
-    const logLine = JSON.stringify(logEntry) + '\n';
-    
-    try {
-      appendFileSync(this.logFile, logLine);
-    } catch (err) {
-      console.error('Failed to write to log file:', err);
-    }
-    
-    // Also log to console for development
-    console.log(`[${level}] ${message}`, meta ? JSON.stringify(meta, null, 2) : '');
+    this.pino.error(logData, message);
   }
 
-  info(message: string, meta?: Record<string, unknown>): void {
-    this.writeLog('INFO', message, meta);
+  warn(message: string, meta?: LogContext): void {
+    this.pino.warn(meta || {}, message);
   }
 
-  error(message: string, error?: Error, meta?: Record<string, unknown>): void {
-    this.writeLog('ERROR', message, meta, error);
+  debug(message: string, meta?: LogContext): void {
+    this.pino.debug(meta || {}, message);
   }
 
-  warn(message: string, meta?: Record<string, unknown>): void {
-    this.writeLog('WARN', message, meta);
-  }
-
-  debug(message: string, meta?: Record<string, unknown>): void {
-    this.writeLog('DEBUG', message, meta);
+  timer(operation: string): () => void {
+    const start = Date.now();
+    return () => {
+      const duration = Date.now() - start;
+      this.debug('Operation completed', { operation, duration });
+    };
   }
 }
 
 // Singleton logger instance
-export const logger: Logger = new FileLogger();
+export const logger: Logger = new PinoLogger();

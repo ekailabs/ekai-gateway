@@ -38,7 +38,7 @@ export class ChatHandler {
 
   async handleChatRequest(req: Request, res: Response, clientFormat: ClientFormat): Promise<void> {
     try {
-      logger.info('CHAT_HANDLER: HEADERS INFORMATION', req.headers);
+      logger.debug('Processing chat request', { requestId: req.requestId, module: 'chat-handler' });
       const originalRequest = req.body;
 
       // For OpenAI responses, we need to determine if we should use passthrough
@@ -52,15 +52,17 @@ export class ChatHandler {
         providerName = 'openai';
         canonicalRequest = this.adapters[clientFormat].toCanonical(req.body);
 
-        logger.info('CHAT_HANDLER: Processing OpenAI Responses request', {
+        logger.debug('Processing OpenAI Responses request', {
+          requestId: req.requestId,
           clientFormat,
           model: canonicalRequest.model,
           streaming: canonicalRequest.stream,
-          provider: providerName
+          provider: providerName,
+          module: 'chat-handler'
         });
       } else {
         // Normal flow for other client formats
-        const result = this.providerService.getMostOptimalProvider(req.body.model);
+        const result = this.providerService.getMostOptimalProvider(req.body.model, req.requestId);
         if (result.error) {
           const statusCode = result.error.code === 'NO_PROVIDERS_CONFIGURED' ? 503 : 400;
           throw new APIError(statusCode, result.error.message, result.error.code);
@@ -80,12 +82,13 @@ export class ChatHandler {
       // Currently supporting claude code proxy through pass-through, i.e., we skip the canonicalization step
       const passThrough = this.shouldUsePassThrough(clientFormat, providerName);
 
-      logger.info('CHAT_HANDLER: Processing chat request', {
-        clientFormat,
+      logger.info('Chat request received', {
+        requestId: req.requestId,
         model: req.body.model,
         provider: providerName,
         streaming: req.body.stream,
-        passThrough
+        passThrough,
+        module: 'chat-handler'
       });
 
       if (passThrough) {
@@ -99,35 +102,35 @@ export class ChatHandler {
       }
 
       if (canonicalRequest.stream) {
-        await this.handleStreaming(canonicalRequest, res, clientFormat, providerName, originalRequest);
+        await this.handleStreaming(canonicalRequest, res, clientFormat, providerName, originalRequest, req);
       } else {
-        await this.handleNonStreaming(canonicalRequest, res, clientFormat, providerName, originalRequest);
+        await this.handleNonStreaming(canonicalRequest, res, clientFormat, providerName, originalRequest, req);
       }
     } catch (error) {
-      logger.error('Chat request failed', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Chat request failed', error, { requestId: req.requestId, module: 'chat-handler' });
       const errorFormat = clientFormat === 'openai_responses' ? 'openai' : clientFormat;
       handleError(error, res, errorFormat);
     }
   }
 
 
-  private async handleNonStreaming(canonicalRequest: CanonicalRequest, res: Response, clientFormat: ClientFormat, providerName?: ProviderName, originalRequest?: any): Promise<void> {
+  private async handleNonStreaming(canonicalRequest: CanonicalRequest, res: Response, clientFormat: ClientFormat, providerName?: ProviderName, originalRequest?: any, req?: Request): Promise<void> {
     if (clientFormat === 'openai_responses') {
-      const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, 'openai' as any, 'openai', originalRequest);
+      const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, 'openai' as any, 'openai', originalRequest, req.requestId);
       const clientResponse = this.adapters[clientFormat].fromCanonical(canonicalResponse);
       res.status(HTTP_STATUS.OK).json(clientResponse);
       return;
     }
 
-    const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, providerName as any, clientFormat, originalRequest);
+    const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, providerName as any, clientFormat, originalRequest, req.requestId);
     const clientResponse = this.adapters[clientFormat].fromCanonical(canonicalResponse);
 
     res.status(HTTP_STATUS.OK).json(clientResponse);
   }
 
-  private async handleStreaming(canonicalRequest: CanonicalRequest, res: Response, clientFormat: ClientFormat, providerName?: ProviderName, originalRequest?: any): Promise<void> {
+  private async handleStreaming(canonicalRequest: CanonicalRequest, res: Response, clientFormat: ClientFormat, providerName?: ProviderName, originalRequest?: any, req?: Request): Promise<void> {
     if (clientFormat === 'openai_responses') {
-      const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest, 'openai' as any, 'openai', originalRequest);
+      const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest, 'openai' as any, 'openai', originalRequest, req.requestId);
 
       res.writeHead(HTTP_STATUS.OK, {
         'Content-Type': CONTENT_TYPES.EVENT_STREAM,
@@ -144,7 +147,7 @@ export class ChatHandler {
       return;
     }
 
-    const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest, providerName as any, clientFormat, originalRequest);
+    const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest, providerName as any, clientFormat, originalRequest, req.requestId);
 
     this.setStreamingHeaders(res);
 

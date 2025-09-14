@@ -54,12 +54,12 @@ export class ProviderService {
     });
   }
 
-  getMostOptimalProvider(modelName: string): { provider: Provider; error?: never } | { provider?: never; error: { code: string; message: string } } {
+  getMostOptimalProvider(modelName: string, requestId?: string): { provider: Provider; error?: never } | { provider?: never; error: { code: string; message: string } } {
     const normalizedModel = ModelUtils.normalizeModelName(modelName);
     const availableProviders = this.getAvailableProviders();
 
     if (availableProviders.length === 0) {
-      logger.error(`PROVIDER_SERVICE: No providers configured, please check your .env file`);
+      logger.warn('No providers configured', { operation: 'provider_selection', requestId, module: 'provider-service' });
       return {
         error: {
           code: 'NO_PROVIDERS_CONFIGURED',
@@ -95,7 +95,13 @@ export class ProviderService {
     }
 
     if (!cheapestProvider) {
-      logger.error(`PROVIDER_SERVICE: No providers found for model ${normalizedModel} among available providers ${availableProviders.join(', ')}`);
+      logger.warn('No providers found for model', { 
+        operation: 'provider_selection',
+        module: 'provider-service',
+        model: normalizedModel,
+        availableProviders,
+        requestId
+      });
       return {
         error: {
           code: 'MODEL_NOT_SUPPORTED',
@@ -112,7 +118,8 @@ export class ProviderService {
     request: CanonicalRequest,
     providerName: Provider,
     clientType?: 'openai' | 'anthropic',
-    originalRequest?: unknown
+    originalRequest?: unknown,
+    requestId?: string
   ): Promise<CanonicalResponse> {
     const provider = this.getOrCreateProvider(providerName);
 
@@ -124,7 +131,9 @@ export class ProviderService {
     logger.info(`Processing chat completion`, {
       provider: providerName,
       model: request.model,
-      streaming: request.stream
+      streaming: request.stream,
+      requestId,
+      module: 'provider-service'
     });
 
     return await provider.chatCompletion(request);
@@ -134,7 +143,8 @@ export class ProviderService {
     request: CanonicalRequest,
     providerName: Provider,
     clientType?: 'openai' | 'anthropic',
-    originalRequest?: unknown
+    originalRequest?: unknown,
+    requestId?: string
   ): Promise<any> {
     const provider = this.getOrCreateProvider(providerName);
 
@@ -145,7 +155,9 @@ export class ProviderService {
 
     logger.info(`Processing streaming request`, {
       provider: providerName,
-      model: request.model
+      model: request.model,
+      requestId,
+      module: 'provider-service'
     });
 
     return provider.getStreamingResponse(request);

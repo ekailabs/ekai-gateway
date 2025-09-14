@@ -53,9 +53,11 @@ export class AnthropicPassthrough {
               cacheReadTokens: data.message.usage.cache_read_input_tokens || 0
             };
 
-            logger.info('ANTHROPIC_PASSTHROUGH: Captured initial usage', {
+            logger.debug('Usage tracking started', {
+              provider: 'anthropic',
               model,
-              ...this.initialUsage
+              ...this.initialUsage,
+              module: 'anthropic-passthrough'
             });
           }
         }
@@ -70,10 +72,12 @@ export class AnthropicPassthrough {
           if (data.usage && this.initialUsage) {
             const outputTokens = data.usage.output_tokens || 0;
 
-            logger.info('ANTHROPIC_PASSTHROUGH: Tracking final usage', {
+            logger.debug('Usage tracking completed', {
+              provider: 'anthropic',
               model,
               ...this.initialUsage,
-              outputTokens
+              outputTokens,
+              module: 'anthropic-passthrough'
             });
 
             import('../utils/usage-tracker.js').then(({ usageTracker }) => {
@@ -96,12 +100,15 @@ export class AnthropicPassthrough {
             const cacheReadTokens = data.usage.cache_read_input_tokens || 0;
             const outputTokens = data.usage.output_tokens || 0;
 
-            logger.warn('ANTHROPIC_PASSTHROUGH: Missed message_start, using fallback usage tracking', {
+            logger.warn('Using fallback usage tracking', {
+              provider: 'anthropic',
+              reason: 'missed_message_start',
               model,
               inputTokens,
               cacheCreationTokens,
               cacheReadTokens,
-              outputTokens
+              outputTokens,
+              module: 'anthropic-passthrough'
             });
 
             import('../utils/usage-tracker.js').then(({ usageTracker }) => {
@@ -111,7 +118,7 @@ export class AnthropicPassthrough {
         }
       }
     } catch (error) {
-      logger.error('ANTHROPIC_PASSTHROUGH: Error tracking usage', error);
+      logger.error('Usage tracking failed', error, { provider: 'anthropic', operation: 'passthrough', module: 'anthropic-passthrough' });
     }
   }
 
@@ -155,12 +162,14 @@ export class AnthropicPassthrough {
         const cacheReadTokens = json.usage.cache_read_input_tokens || 0;
         const outputTokens = json.usage.output_tokens || 0;
 
-        logger.info('ANTHROPIC_PASSTHROUGH: Tracking non-streaming usage', {
+        logger.debug('Tracking non-streaming usage', {
+          provider: 'anthropic',
           model: request.model,
           inputTokens,
           cacheCreationTokens,
           cacheReadTokens,
-          outputTokens
+          outputTokens,
+          module: 'anthropic-passthrough'
         });
 
         import('../utils/usage-tracker.js').then(({ usageTracker }) => {

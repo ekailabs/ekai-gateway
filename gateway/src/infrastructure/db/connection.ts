@@ -26,9 +26,9 @@ class DatabaseConnection {
       // Create tables from schema
       this.createTables();
       
-      logger.info('Database initialized successfully');
+      logger.info('Database initialized', { operation: 'db_init', module: 'db-connection' });
     } catch (error) {
-      logger.error('Database initialization failed:', error);
+      logger.error('Database initialization failed', error, { operation: 'db_init', module: 'db-connection' });
       throw error;
     }
   }
@@ -49,9 +49,9 @@ class DatabaseConnection {
         }
       });
       
-      logger.info('Database tables created successfully');
+      logger.debug('Database tables created', { operation: 'db_schema', module: 'db-connection' });
     } catch (error) {
-      logger.error('Failed to create tables:', error);
+      logger.error('Failed to create tables', error, { operation: 'db_schema', module: 'db-connection' });
       throw error;
     }
   }
@@ -67,7 +67,7 @@ class DatabaseConnection {
     if (this.db) {
       this.db.close();
       this.db = null;
-      logger.info('Database connection closed');
+      logger.info('Database connection closed', { operation: 'db_cleanup', module: 'db-connection' });
     }
   }
 }

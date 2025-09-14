@@ -40,17 +40,20 @@ export class UsageHandler {
         return;
       }
      
-      logger.info('USAGE_TRACKER: Fetching usage data', {
-        start,
-        end,
-        tz
+      logger.info('Fetching usage data', {
+        requestId: req.requestId,
+        start: start.toISOString(),
+        end: end.toISOString(),
+        timezone: tz,
+        operation: 'usage_fetch',
+        module: 'usage-handler'
       });
       
       // Get usage data with date range filtering
       const usage = usageTracker.getUsageFromDatabase(start.toISOString(), end.toISOString());
       res.json(usage);
     } catch (error) {
-      logger.error('Failed to fetch usage data', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Failed to fetch usage data', error, { requestId: req.requestId, module: 'usage-handler' });
       handleError(error, res);
     }
   }

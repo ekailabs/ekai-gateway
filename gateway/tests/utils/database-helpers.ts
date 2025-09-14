@@ -98,7 +98,7 @@ export class TestDatabase {
   }
 
   // Helper to create a mock database connection for dependency injection
-  static createMockConnection(testDb: TestDatabase) {
+  static createMockConnection(testDb: TestDatabase): any {
     return {
       getDatabase: () => testDb.getDatabase()
     };

@@ -71,11 +71,11 @@ export class OpenAIResponsesPassthrough {
         // Extract the complete JSON
         const jsonString = this.eventBuffer.substring(startIndex, endIndex + 1);
         
-        console.log('OPENAI_RESPONSES_PASSTHROUGH: Found JSON:', jsonString.substring(0, 100) + '...');
+        logger.debug('JSON response found', { provider: 'openai', operation: 'response_parsing', module: 'openai-responses-passthrough' });
         
         try {
           const data = JSON.parse(jsonString);
-          console.log('OPENAI_RESPONSES_PASSTHROUGH: Parsed successfully, checking for usage...');
+          logger.debug('Response parsed successfully', { provider: 'openai', operation: 'usage_extraction', module: 'openai-responses-passthrough' });
           
           // Extract usage data from response.usage
           if (data.response?.usage) {
@@ -87,14 +87,16 @@ export class OpenAIResponsesPassthrough {
             const totalTokens = usage.total_tokens || (totalInputTokens + outputTokens);
             const reasoningTokens = usage.output_tokens_details?.reasoning_tokens || 0;
 
-            logger.info('OPENAI_RESPONSES_PASSTHROUGH: Tracking usage from response.completed', {
+            logger.debug('Usage tracking from response', {
+              provider: 'openai',
               model,
               totalInputTokens,
-              nonCachedInputTokens, // For pricing calculation
-              cachedTokens,         // For pricing calculation
+              nonCachedInputTokens,
+              cachedTokens,
               outputTokens,
               totalTokens,
-              reasoningTokens
+              reasoningTokens,
+              module: 'openai-responses-passthrough'
             });
 
             import('../utils/usage-tracker.js').then(({ usageTracker }) => {
@@ -107,21 +109,21 @@ export class OpenAIResponsesPassthrough {
                 0 // cache read tokens
               );
             }).catch((error) => {
-              logger.error('OPENAI_RESPONSES_PASSTHROUGH: Failed to track usage', error);
+              logger.error('Usage tracking failed', error, { provider: 'openai', operation: 'passthrough', module: 'openai-responses-passthrough' });
             });
           } else {
-            console.log('OPENAI_RESPONSES_PASSTHROUGH: No usage data found in response');
+            logger.warn('No usage data in response', { provider: 'openai', operation: 'passthrough', module: 'openai-responses-passthrough' });
           }
         } catch (parseError) {
-          console.error('OPENAI_RESPONSES_PASSTHROUGH: JSON parse error:', parseError);
-          console.log('OPENAI_RESPONSES_PASSTHROUGH: Raw JSON:', jsonString.substring(0, 200));
+          logger.error('JSON parse error', parseError, { provider: 'openai', operation: 'response_parsing', module: 'openai-responses-passthrough' });
+          logger.debug('Raw JSON data', { provider: 'openai', operation: 'response_parsing', module: 'openai-responses-passthrough' });
         }
         
         // Clear buffer after processing
         this.eventBuffer = '';
       }
     } catch (error) {
-      logger.error('OPENAI_RESPONSES_PASSTHROUGH: Error tracking usage', error);
+      logger.error('Usage tracking failed', error, { provider: 'openai', operation: 'passthrough', module: 'openai-responses-passthrough' });
     }
   }
 
@@ -166,14 +168,16 @@ export class OpenAIResponsesPassthrough {
         const totalTokens = json.usage.total_tokens || (totalInputTokens + outputTokens);
         const reasoningTokens = json.usage.output_tokens_details?.reasoning_tokens || 0;
 
-        logger.info('OPENAI_RESPONSES_PASSTHROUGH: Tracking non-streaming usage', {
+        logger.debug('Tracking non-streaming usage', {
+          provider: 'openai',
           model: request.model,
           totalInputTokens,
-          nonCachedInputTokens, // For pricing calculation
-          cachedTokens,         // For pricing calculation
+          nonCachedInputTokens,
+          cachedTokens,
           outputTokens,
           totalTokens,
-          reasoningTokens
+          reasoningTokens,
+          module: 'openai-responses-passthrough'
         });
 
         import('../utils/usage-tracker.js').then(({ usageTracker }) => {

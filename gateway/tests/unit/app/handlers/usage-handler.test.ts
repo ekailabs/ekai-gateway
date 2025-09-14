@@ -97,9 +97,11 @@ describe('UsageHandler', () => {
         await usageHandler.getUsage(mockReq, mockRes);
 
         expect(logger.info).toHaveBeenCalledWith(
-          'USAGE_TRACKER: Fetching usage data',
+          'Fetching usage data',
           expect.objectContaining({
-            tz: 'UTC'
+            timezone: 'UTC',
+            operation: 'usage_fetch',
+            module: 'usage-handler'
           })
         );
       });
@@ -118,9 +120,11 @@ describe('UsageHandler', () => {
         await usageHandler.getUsage(mockReq, mockRes);
 
         expect(logger.info).toHaveBeenCalledWith(
-          'USAGE_TRACKER: Fetching usage data',
+          'Fetching usage data',
           expect.objectContaining({
-            tz: 'America/New_York'
+            timezone: 'America/New_York',
+            operation: 'usage_fetch',
+            module: 'usage-handler'
           })
         );
       });
@@ -327,7 +331,7 @@ describe('UsageHandler', () => {
 
         await usageHandler.getUsage(mockReq, mockRes);
 
-        expect(logger.error).toHaveBeenCalledWith('Failed to fetch usage data', testError);
+        expect(logger.error).toHaveBeenCalledWith('Failed to fetch usage data', testError, expect.objectContaining({ module: 'usage-handler' }));
         expect(handleError).toHaveBeenCalledWith(testError, mockRes);
       });
 
@@ -345,7 +349,8 @@ describe('UsageHandler', () => {
 
         expect(logger.error).toHaveBeenCalledWith(
           'Failed to fetch usage data', 
-          new Error('String error')
+          testError,
+          expect.objectContaining({ module: 'usage-handler' })
         );
         expect(handleError).toHaveBeenCalledWith(testError, mockRes);
       });

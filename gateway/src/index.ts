@@ -13,16 +13,25 @@ import cors from 'cors';
 import { handleOpenAIFormatChat, handleAnthropicFormatChat, handleOpenAIResponses } from './app/handlers/chat-handler.js';
 import { handleUsageRequest } from './app/handlers/usage-handler.js';
 import { logger } from './infrastructure/utils/logger.js';
+import { requestContext } from './infrastructure/middleware/request-context.js';
+import { requestLogging } from './infrastructure/middleware/request-logging.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
+app.use(requestContext);
+app.use(requestLogging);
 app.use(express.json({ limit: '50mb' }));
 
 // Health check
 app.get('/health', (req, res) => {
+  logger.debug('Health check accessed', { 
+    requestId: req.requestId,
+    module: 'health-endpoint'
+  });
+  
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -40,6 +49,7 @@ app.get('/usage', handleUsageRequest);
 app.listen(PORT, () => {
   logger.info(`Ekai Gateway server started`, {
     port: PORT,
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    module: 'server'
   });
 });
