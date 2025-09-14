@@ -349,7 +349,7 @@ describe('UsageHandler', () => {
 
         expect(logger.error).toHaveBeenCalledWith(
           'Failed to fetch usage data', 
-          new Error('String error'),
+          testError,
           expect.objectContaining({ module: 'usage-handler' })
         );
         expect(handleError).toHaveBeenCalledWith(testError, mockRes);

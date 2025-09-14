@@ -34,7 +34,7 @@ export function handleError(error: unknown, res: Response, clientFormat: 'openai
   const req = res.req as any;
   const requestId = req?.requestId;
   
-  logger.error('API Error', error instanceof Error ? error : new Error(String(error)), { requestId, module: 'error-handler' });
+  logger.error('API Error', error, { requestId, module: 'error-handler' });
   
   const isAnthropic = clientFormat === 'anthropic';
   

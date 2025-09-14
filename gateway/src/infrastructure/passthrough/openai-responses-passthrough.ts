@@ -109,13 +109,13 @@ export class OpenAIResponsesPassthrough {
                 0 // cache read tokens
               );
             }).catch((error) => {
-              logger.error('Usage tracking failed', error instanceof Error ? error : new Error(String(error)), { provider: 'openai', operation: 'passthrough', module: 'openai-responses-passthrough' });
+              logger.error('Usage tracking failed', error, { provider: 'openai', operation: 'passthrough', module: 'openai-responses-passthrough' });
             });
           } else {
             logger.warn('No usage data in response', { provider: 'openai', operation: 'passthrough', module: 'openai-responses-passthrough' });
           }
         } catch (parseError) {
-          logger.error('JSON parse error', parseError instanceof Error ? parseError : new Error(String(parseError)), { provider: 'openai', operation: 'response_parsing', module: 'openai-responses-passthrough' });
+          logger.error('JSON parse error', parseError, { provider: 'openai', operation: 'response_parsing', module: 'openai-responses-passthrough' });
           logger.debug('Raw JSON data', { provider: 'openai', operation: 'response_parsing', module: 'openai-responses-passthrough' });
         }
         
@@ -123,7 +123,7 @@ export class OpenAIResponsesPassthrough {
         this.eventBuffer = '';
       }
     } catch (error) {
-      logger.error('Usage tracking failed', error instanceof Error ? error : new Error(String(error)), { provider: 'openai', operation: 'passthrough', module: 'openai-responses-passthrough' });
+      logger.error('Usage tracking failed', error, { provider: 'openai', operation: 'passthrough', module: 'openai-responses-passthrough' });
     }
   }
 

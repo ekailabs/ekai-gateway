@@ -78,7 +78,7 @@ export class PricingLoader {
             this.pricingCache.set(provider, pricing);
             logger.debug('Pricing loaded', { provider, modelCount: Object.keys(pricing.models).length, operation: 'pricing_load', module: 'pricing-loader' });
           } catch (error) {
-            logger.error('Failed to load pricing', error instanceof Error ? error : new Error(String(error)), { provider, operation: 'pricing_load', module: 'pricing-loader' });
+            logger.error('Failed to load pricing', error, { provider, operation: 'pricing_load', module: 'pricing-loader' });
           }
         }
       });
@@ -87,7 +87,7 @@ export class PricingLoader {
       logger.info('Pricing cache loaded', { providerCount: this.pricingCache.size, operation: 'pricing_load', module: 'pricing-loader' });
       
     } catch (error) {
-      logger.error('Failed to load pricing directory', error instanceof Error ? error : new Error(String(error)), { operation: 'pricing_load', module: 'pricing-loader' });
+      logger.error('Failed to load pricing directory', error, { operation: 'pricing_load', module: 'pricing-loader' });
     }
 
     return this.pricingCache;

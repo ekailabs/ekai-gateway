@@ -53,7 +53,7 @@ export class UsageHandler {
       const usage = usageTracker.getUsageFromDatabase(start.toISOString(), end.toISOString());
       res.json(usage);
     } catch (error) {
-      logger.error('Failed to fetch usage data', error instanceof Error ? error : new Error(String(error)), { requestId: req.requestId, module: 'usage-handler' });
+      logger.error('Failed to fetch usage data', error, { requestId: req.requestId, module: 'usage-handler' });
       handleError(error, res);
     }
   }

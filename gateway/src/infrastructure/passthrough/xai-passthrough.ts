@@ -103,7 +103,7 @@ export class XAIPassthrough {
         }
       }
     } catch (error) {
-      logger.error('Usage tracking failed', error instanceof Error ? error : new Error(String(error)), { provider: 'xai', operation: 'passthrough', module: 'xai-passthrough' });
+      logger.error('Usage tracking failed', error, { provider: 'xai', operation: 'passthrough', module: 'xai-passthrough' });
     }
   }
 

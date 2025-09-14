@@ -28,7 +28,7 @@ class DatabaseConnection {
       
       logger.info('Database initialized', { operation: 'db_init', module: 'db-connection' });
     } catch (error) {
-      logger.error('Database initialization failed', error instanceof Error ? error : new Error(String(error)), { operation: 'db_init', module: 'db-connection' });
+      logger.error('Database initialization failed', error, { operation: 'db_init', module: 'db-connection' });
       throw error;
     }
   }
@@ -51,7 +51,7 @@ class DatabaseConnection {
       
       logger.debug('Database tables created', { operation: 'db_schema', module: 'db-connection' });
     } catch (error) {
-      logger.error('Failed to create tables', error instanceof Error ? error : new Error(String(error)), { operation: 'db_schema', module: 'db-connection' });
+      logger.error('Failed to create tables', error, { operation: 'db_schema', module: 'db-connection' });
       throw error;
     }
   }

@@ -14,7 +14,7 @@ export interface LogContext {
 
 export interface Logger {
   info(message: string, meta?: LogContext): void;
-  error(message: string, error?: Error, meta?: LogContext): void;
+  error(message: string, error?: unknown, meta?: LogContext): void;
   warn(message: string, meta?: LogContext): void;
   debug(message: string, meta?: LogContext): void;
   timer(operation: string): () => void;
@@ -56,7 +56,7 @@ class PinoLogger implements Logger {
     this.pino.info(meta || {}, message);
   }
 
-  error(message: string, error?: Error, meta?: LogContext): void {
+  error(message: string, error?: unknown, meta?: LogContext): void {
     const logData = {
       ...(meta || {}),
       ...(error && { err: error }),

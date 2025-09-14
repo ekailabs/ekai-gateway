@@ -107,7 +107,7 @@ export class ChatHandler {
         await this.handleNonStreaming(canonicalRequest, res, clientFormat, providerName, originalRequest, req);
       }
     } catch (error) {
-      logger.error('Chat request failed', error instanceof Error ? error : new Error(String(error)), { requestId: req.requestId, module: 'chat-handler' });
+      logger.error('Chat request failed', error, { requestId: req.requestId, module: 'chat-handler' });
       const errorFormat = clientFormat === 'openai_responses' ? 'openai' : clientFormat;
       handleError(error, res, errorFormat);
     }

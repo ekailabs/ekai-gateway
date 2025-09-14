@@ -49,7 +49,7 @@ class CanonicalValidator {
       this.streamingResponseValidator = this.ajv.compile<StreamingResponse>(streamingResponseSchema);
 
     } catch (error) {
-      logger.error('Error loading canonical schemas', error instanceof Error ? error : new Error(String(error)), { module: 'canonical-validator' });
+      logger.error('Error loading canonical schemas', error, { module: 'canonical-validator' });
       throw new Error('Failed to initialize canonical validator');
     }
   }
