@@ -56,7 +56,8 @@ export class AnthropicPassthrough {
             logger.debug('Usage tracking started', {
               provider: 'anthropic',
               model,
-              ...this.initialUsage
+              ...this.initialUsage,
+              module: 'anthropic-passthrough'
             });
           }
         }
@@ -75,7 +76,8 @@ export class AnthropicPassthrough {
               provider: 'anthropic',
               model,
               ...this.initialUsage,
-              outputTokens
+              outputTokens,
+              module: 'anthropic-passthrough'
             });
 
             import('../utils/usage-tracker.js').then(({ usageTracker }) => {
@@ -105,7 +107,8 @@ export class AnthropicPassthrough {
               inputTokens,
               cacheCreationTokens,
               cacheReadTokens,
-              outputTokens
+              outputTokens,
+              module: 'anthropic-passthrough'
             });
 
             import('../utils/usage-tracker.js').then(({ usageTracker }) => {
@@ -115,7 +118,7 @@ export class AnthropicPassthrough {
         }
       }
     } catch (error) {
-      logger.error('Usage tracking failed', error, { provider: 'anthropic', operation: 'passthrough' });
+      logger.error('Usage tracking failed', error, { provider: 'anthropic', operation: 'passthrough', module: 'anthropic-passthrough' });
     }
   }
 
@@ -165,7 +168,8 @@ export class AnthropicPassthrough {
           inputTokens,
           cacheCreationTokens,
           cacheReadTokens,
-          outputTokens
+          outputTokens,
+          module: 'anthropic-passthrough'
         });
 
         import('../utils/usage-tracker.js').then(({ usageTracker }) => {

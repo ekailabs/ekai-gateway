@@ -71,11 +71,11 @@ export class OpenAIResponsesPassthrough {
         // Extract the complete JSON
         const jsonString = this.eventBuffer.substring(startIndex, endIndex + 1);
         
-        logger.debug('JSON response found', { provider: 'openai', operation: 'response_parsing' });
+        logger.debug('JSON response found', { provider: 'openai', operation: 'response_parsing', module: 'openai-responses-passthrough' });
         
         try {
           const data = JSON.parse(jsonString);
-          logger.debug('Response parsed successfully', { provider: 'openai', operation: 'usage_extraction' });
+          logger.debug('Response parsed successfully', { provider: 'openai', operation: 'usage_extraction', module: 'openai-responses-passthrough' });
           
           // Extract usage data from response.usage
           if (data.response?.usage) {
@@ -95,7 +95,8 @@ export class OpenAIResponsesPassthrough {
               cachedTokens,
               outputTokens,
               totalTokens,
-              reasoningTokens
+              reasoningTokens,
+              module: 'openai-responses-passthrough'
             });
 
             import('../utils/usage-tracker.js').then(({ usageTracker }) => {
@@ -108,21 +109,21 @@ export class OpenAIResponsesPassthrough {
                 0 // cache read tokens
               );
             }).catch((error) => {
-              logger.error('Usage tracking failed', error, { provider: 'openai', operation: 'passthrough' });
+              logger.error('Usage tracking failed', error, { provider: 'openai', operation: 'passthrough', module: 'openai-responses-passthrough' });
             });
           } else {
-            logger.warn('No usage data in response', { provider: 'openai', operation: 'passthrough' });
+            logger.warn('No usage data in response', { provider: 'openai', operation: 'passthrough', module: 'openai-responses-passthrough' });
           }
         } catch (parseError) {
-          logger.error('JSON parse error', parseError instanceof Error ? parseError : new Error(String(parseError)), { provider: 'openai', operation: 'response_parsing' });
-          logger.debug('Raw JSON data', { provider: 'openai', operation: 'response_parsing' });
+          logger.error('JSON parse error', parseError instanceof Error ? parseError : new Error(String(parseError)), { provider: 'openai', operation: 'response_parsing', module: 'openai-responses-passthrough' });
+          logger.debug('Raw JSON data', { provider: 'openai', operation: 'response_parsing', module: 'openai-responses-passthrough' });
         }
         
         // Clear buffer after processing
         this.eventBuffer = '';
       }
     } catch (error) {
-      logger.error('Usage tracking failed', error, { provider: 'openai', operation: 'passthrough' });
+      logger.error('Usage tracking failed', error, { provider: 'openai', operation: 'passthrough', module: 'openai-responses-passthrough' });
     }
   }
 
@@ -175,7 +176,8 @@ export class OpenAIResponsesPassthrough {
           cachedTokens,
           outputTokens,
           totalTokens,
-          reasoningTokens
+          reasoningTokens,
+          module: 'openai-responses-passthrough'
         });
 
         import('../utils/usage-tracker.js').then(({ usageTracker }) => {

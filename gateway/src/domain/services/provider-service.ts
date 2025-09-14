@@ -54,12 +54,12 @@ export class ProviderService {
     });
   }
 
-  getMostOptimalProvider(modelName: string): { provider: Provider; error?: never } | { provider?: never; error: { code: string; message: string } } {
+  getMostOptimalProvider(modelName: string, requestId?: string): { provider: Provider; error?: never } | { provider?: never; error: { code: string; message: string } } {
     const normalizedModel = ModelUtils.normalizeModelName(modelName);
     const availableProviders = this.getAvailableProviders();
 
     if (availableProviders.length === 0) {
-      logger.warn('No providers configured', { operation: 'provider_selection', module: 'provider-service' });
+      logger.warn('No providers configured', { operation: 'provider_selection', requestId, module: 'provider-service' });
       return {
         error: {
           code: 'NO_PROVIDERS_CONFIGURED',
@@ -99,7 +99,8 @@ export class ProviderService {
         operation: 'provider_selection',
         module: 'provider-service',
         model: normalizedModel,
-        availableProviders
+        availableProviders,
+        requestId
       });
       return {
         error: {
@@ -117,7 +118,8 @@ export class ProviderService {
     request: CanonicalRequest,
     providerName: Provider,
     clientType?: 'openai' | 'anthropic',
-    originalRequest?: unknown
+    originalRequest?: unknown,
+    requestId?: string
   ): Promise<CanonicalResponse> {
     const provider = this.getOrCreateProvider(providerName);
 
@@ -130,6 +132,7 @@ export class ProviderService {
       provider: providerName,
       model: request.model,
       streaming: request.stream,
+      requestId,
       module: 'provider-service'
     });
 
@@ -140,7 +143,8 @@ export class ProviderService {
     request: CanonicalRequest,
     providerName: Provider,
     clientType?: 'openai' | 'anthropic',
-    originalRequest?: unknown
+    originalRequest?: unknown,
+    requestId?: string
   ): Promise<any> {
     const provider = this.getOrCreateProvider(providerName);
 
@@ -152,6 +156,7 @@ export class ProviderService {
     logger.info(`Processing streaming request`, {
       provider: providerName,
       model: request.model,
+      requestId,
       module: 'provider-service'
     });
 
