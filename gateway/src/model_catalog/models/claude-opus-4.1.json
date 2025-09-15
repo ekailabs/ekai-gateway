@@ -1,0 +1,96 @@
+{
+  "provider": "anthropic",
+  "model_name": "claude-opus-4.1",
+
+  "modalities": {
+    "input": ["text", "image"],
+    "output": ["text"]
+  },
+
+  "capabilities": ["reasoning", "vision", "extended_thinking"],
+  "endpoints": ["messages", "models", "organization"],
+  "tools": ["bash", "code_execution", "text_editor", "web_search", "web_fetch", "computer_use", "mcp_connector"],
+
+  "snapshots": [
+    "claude-opus-4-1-20250805",
+    "claude-opus-4-1"
+  ],
+
+  "training_data_cutoff": "2025-03",
+  "context_window": 200000,
+  "max_output_tokens": 32000,
+  "reasoning": true,
+
+  "rate_limits": {
+    "tiers": {
+      "free":   { "rpm": null, "tpm": null, "batch_queue_limit": null },
+      "tier_1": { "rpm": null, "tpm": null, "batch_queue_limit": null },
+      "tier_2": { "rpm": null, "tpm": null, "batch_queue_limit": null },
+      "tier_3": { "rpm": null, "tpm": null, "batch_queue_limit": null },
+      "tier_4": { "rpm": null, "tpm": null, "batch_queue_limit": null },
+      "tier_5": { "rpm": null, "tpm": null, "batch_queue_limit": null }
+    },
+    "generic_limits": { "rpm": null, "tpm": null }
+  },
+
+  "pricing": {
+    "text_per_MTok": {
+      "batch":    { "input": null, "cached_input": null, "output": null },
+      "flex":     { "input": null, "cached_input": null, "output": null },
+      "standard": { "input": null, "cached_input": null, "output": null },
+      "priority": { "input": null, "cached_input": null, "output": null },
+      "base": {
+        "input": 15.00,
+        "cache_writes_5m": 18.75,
+        "cache_writes_1h": 30.00,
+        "cache_hits_refreshes": 1.50,
+        "output": 75.00
+      }
+    },
+
+    "image_per_MTok": { "input": null, "cached_input": null, "output": null },
+    "audio_per_MTok": { "input": null, "cached_input": null, "output": null },
+
+    "fine_tuning_per_MTok": {
+      "batch":    { "training": null, "input": null, "cached_input": null, "output": null },
+      "standard": { "training": null, "input": null, "cached_input": null, "output": null }
+    },
+
+    "embeddings_per_MTok": { "cost": null, "batch_cost": null },
+
+    "legacy_models_per_MTok": {
+      "batch":    { "input": null, "output": null },
+      "standard": { "input": null, "output": null }
+    },
+
+    "per_image": null,
+
+    "feature_specific": {
+      "batch_processing": { "input": 7.50, "output": 37.50 },
+      "long_context": {
+        "<=200k_input": 15.00,
+        "<=200k_output": 75.00,
+        ">200k_input": null,
+        ">200k_output": null
+      },
+      "tool_use": { "auto_none": 346, "any_tool": 313 }
+    },
+
+    "tools": {
+      "code_interpreter": 0.05,
+      "file_search_storage": null,
+      "file_search_call": null,
+      "web_search": 10.00,
+      "web_search_preview": null,
+      "mcp_connector": null,
+      "bash": 245,
+      "code_execution": 0.05,
+      "computer_use": 735,
+      "text_editor": 700,
+      "web_fetch": 0,
+      "livesearch": null
+    }
+  },
+
+  "last_updated": "2025-09-15"
+}

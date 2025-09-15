@@ -1,0 +1,111 @@
+{
+  "provider": "openai",
+  "model_name": "gpt-5-mini",
+
+  "modalities": {
+    "input": ["text", "image"],
+    "output": ["text"]
+  },
+
+  "capabilities": [
+    "streaming",
+    "structured_outputs",
+    "function_calling"
+  ],
+
+  "endpoints": [
+    "chat_completions",
+    "responses",
+    "batch"
+  ],
+
+  "tools": [
+    "web_search",
+    "file_search",
+    "code_interpreter",
+    "mcp"
+  ],
+
+  "snapshots": [
+    "gpt-5-mini",
+    "gpt-5-mini-2025-08-07"
+  ],
+
+  "training_data_cutoff": "2024-05-31",
+  "context_window": 400000,
+  "max_output_tokens": 128000,
+  "reasoning": true,
+
+  "rate_limits": {
+    "tiers": {
+      "free":   { "rpm": null,   "tpm": null,      "batch_queue_limit": null },
+      "tier_1": { "rpm": 500,    "tpm": 500000,    "batch_queue_limit": 5000000 },
+      "tier_2": { "rpm": 5000,   "tpm": 2000000,   "batch_queue_limit": 20000000 },
+      "tier_3": { "rpm": 5000,   "tpm": 4000000,   "batch_queue_limit": 40000000 },
+      "tier_4": { "rpm": 10000,  "tpm": 10000000,  "batch_queue_limit": 1000000000 },
+      "tier_5": { "rpm": 30000,  "tpm": 180000000, "batch_queue_limit": 15000000000 }
+    },
+    "generic_limits": { "rpm": null, "tpm": null }
+  },
+
+  "pricing": {
+    "text_per_MTok": {
+      "batch":    { "input": 0.125, "cached_input": 0.0125, "output": 1.00 },
+      "flex":     { "input": 0.125, "cached_input": 0.0125, "output": 1.00 },
+      "standard": { "input": 0.25,  "cached_input": 0.025,  "output": 2.00 },
+      "priority": { "input": 0.45,  "cached_input": 0.045,  "output": 3.60 },
+      "base": {
+        "input": null,
+        "cache_writes_5m": null,
+        "cache_writes_1h": null,
+        "cache_hits_refreshes": null,
+        "output": null
+      }
+    },
+
+    "image_per_MTok": { "input": null, "cached_input": null, "output": null },
+    "audio_per_MTok": { "input": null, "cached_input": null, "output": null },
+
+    "fine_tuning_per_MTok": {
+      "batch":    { "training": null, "input": null, "cached_input": null, "output": null },
+      "standard": { "training": null, "input": null, "cached_input": null, "output": null }
+    },
+
+    "embeddings_per_MTok": { "cost": null, "batch_cost": null },
+
+    "legacy_models_per_MTok": {
+      "batch":    { "input": null, "output": null },
+      "standard": { "input": null, "output": null }
+    },
+
+    "per_image": null,
+
+    "feature_specific": {
+      "batch_processing": { "input": null, "output": null },
+      "long_context": {
+        "<=200k_input": null,
+        "<=200k_output": null,
+        ">200k_input": null,
+        ">200k_output": null
+      },
+      "tool_use": { "auto_none": null, "any_tool": null }
+    },
+
+    "tools": {
+      "code_interpreter": 0.03,
+      "file_search_storage": 0.10,
+      "file_search_call": 2.50,
+      "web_search": 10.00,
+      "web_search_preview": 10.00,
+      "mcp_connector": null,
+      "bash": null,
+      "code_execution": null,
+      "computer_use": null,
+      "text_editor": null,
+      "web_fetch": null,
+      "livesearch": null
+    }
+  },
+
+  "last_updated": "2025-09-15"
+}
