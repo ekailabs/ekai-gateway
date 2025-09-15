@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Model Catalog – Compare</title>
+  <link rel="stylesheet" href="./styles.css">
+  <meta name="color-scheme" content="light dark">
+  <style>
+    /* Fallback if styles.css fails */
+    body{font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;}
+  </style>
+  <script defer src="./app.js"></script>
+  <script>
+    // Simple config you can tweak without touching app.js
+    window.ModelCompareConfig = {
+      // Prefer Tier 1 first, then Free, then higher tiers
+      defaultTierPreference: ['tier_1', 'free', 'tier_2', 'tier_3', 'tier_4', 'tier_5']
+    };
+  </script>
+  <noscript>Enable JavaScript to use the model comparison UI.</noscript>
+  </head>
+<body>
+  <header class="site-header">
+    <div class="container header-wrap">
+      <div>
+        <h1 class="title">Model Comparison</h1>
+        <p class="subtitle">Compare models side-by-side with tier-aware rate limits</p>
+      </div>
+      <div class="updated"><span>Last updated</span><time id="js-now"></time></div>
+    </div>
+  </header>
+
+  <main class="container main">
+    <section class="card controls">
+      <div class="controls-row">
+        <div class="field">
+          <label for="js-search">Search models</label>
+          <input id="js-search" placeholder="Search by name or provider" />
+        </div>
+        <div class="field">
+          <label for="js-provider">Provider</label>
+          <select id="js-provider"></select>
+        </div>
+      </div>
+      <div id="js-chips" class="chips"></div>
+    </section>
+
+    <section id="js-compare" class="card compare">
+      <div class="compare-header">
+        <h2>Selected Models</h2>
+        <p>Use the tier dropdown per column where available. RPM and TPM update accordingly.</p>
+      </div>
+      <div id="js-grid" class="grid"></div>
+    </section>
+  </main>
+
+  <footer class="container footer">
+    <small>Data source: model_catalog/models/*.json • This page is static and reads models.bundle.json generated from the folder.</small>
+  </footer>
+</body>
+</html>
