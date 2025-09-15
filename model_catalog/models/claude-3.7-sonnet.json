@@ -24,10 +24,10 @@
   "rate_limits": {
     "tiers": {
       "free":   { "rpm": null, "tpm": null, "batch_queue_limit": null },
-      "tier_1": { "rpm": null, "tpm": null, "batch_queue_limit": null },
-      "tier_2": { "rpm": null, "tpm": null, "batch_queue_limit": null },
-      "tier_3": { "rpm": null, "tpm": null, "batch_queue_limit": null },
-      "tier_4": { "rpm": null, "tpm": null, "batch_queue_limit": null },
+      "tier_1": { "rpm": 50, "tpm": 20000, "batch_queue_limit": null },
+      "tier_2": { "rpm": 1000, "tpm": 40000, "batch_queue_limit": null },
+      "tier_3": { "rpm": 2000, "tpm": 80000, "batch_queue_limit": null },
+      "tier_4": { "rpm": 4000, "tpm": 200000, "batch_queue_limit": null },
       "tier_5": { "rpm": null, "tpm": null, "batch_queue_limit": null }
     },
     "generic_limits": { "rpm": null, "tpm": null }
