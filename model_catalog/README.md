@@ -20,13 +20,3 @@ Quick start
    - python3 -m http.server 8080
    - Open http://localhost:8080 in your browser
 
-Notes
-- Tier dropdowns
-  - The UI shows a tier dropdown in each model column when rate_limits.tiers contains at least one tier with a non‑null rpm or tpm value.
-  - The single “Rate Limits” row displays RPM and TPM based on the selected tier. Default tier order: tier_1, free, then tier_2 → tier_5.
-- Updating data
-  - After changing any models/*.json, rerun: python model_catalog/build_ui.py, then refresh the browser.
-- Troubleshooting
-  - If the page looks stale, do a hard refresh to bust browser cache for app.js/models.bundle.json.
-  - If loading fails, ensure you’re serving over HTTP; browsers block fetch() from file:// URLs.
-
