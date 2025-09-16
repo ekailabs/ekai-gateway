@@ -14,9 +14,9 @@ Requirements
 Quick start
 1) Edit or add models in models/*.json
 2) Build the bundle
-   - python model_catalog/build_ui.py
+   - ```python model_catalog/build_ui.py```
    - This writes model_catalog/ui/models.bundle.json
 3) Serve the UI (from model_catalog/ui)
-   - python3 -m http.server 8080
+   - ```python3 -m http.server 8080```
    - Open http://localhost:8080 in your browser
 
