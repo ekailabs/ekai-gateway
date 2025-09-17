@@ -9,9 +9,26 @@
     "modalities": {
       "type": "object",
       "properties": {
-        "input": { "type": "array", "items": { "type": "string" } },
-        "output": { "type": "array", "items": { "type": "string" } }
-      }
+        "input": {
+          "type": "object",
+          "properties": {
+            "text":  { "type": "boolean" },
+            "image": { "type": "boolean" },
+            "audio": { "type": "boolean" }
+          },
+          "required": ["text", "image", "audio"]
+        },
+        "output": {
+          "type": "object",
+          "properties": {
+            "text":  { "type": "boolean" },
+            "image": { "type": "boolean" },
+            "audio": { "type": "boolean" }
+          },
+          "required": ["text", "image", "audio"]
+        }
+      },
+      "required": ["input", "output"]
     },
 
     "capabilities": { "type": "array", "items": { "type": "string" } },
