@@ -1,39 +1,32 @@
 import json
-from pathlib import Path
+from jsonschema import Draft202012Validator
 
-import jsonschema
-from jsonschema import validate
+# Paths
+schema_path = "model_schema_v0.json"  # updated schema with boolean modalities
+master_path = "programming_models.json"
 
+# Load schema
+with open(schema_path, "r") as f:
+    schema = json.load(f)
 
-def main() -> None:
-    base_dir = Path(__file__).resolve().parent
-    schema_path = base_dir / "model_schema_v0.json"
-    models_dir = base_dir / "models"
+# Load master file
+with open(master_path, "r") as f:
+    master = json.load(f)
 
-    with open(schema_path, "r") as f:
-        schema = json.load(f)
+# Initialize validator
+validator = Draft202012Validator(schema)
 
-    for model_file in sorted(models_dir.glob("*.json")):
-        try:
-            with open(model_file, "r") as f:
-                data = json.load(f)
-        except json.JSONDecodeError as e:
-            # Invalid JSON structure
-            print(f"{model_file.name}: invalid JSON - {e.msg} at line {e.lineno} column {e.colno}")
-            continue
-        except Exception as e:
-            # Other file read errors
-            print(f"{model_file.name}: unreadable - {e}")
-            continue
+def validate_entry(model_name, provider_name, entry):
+    errors = sorted(validator.iter_errors(entry), key=lambda e: e.path)
+    if errors:
+        print(f"❌ Validation failed for {model_name} ({provider_name}):")
+        for error in errors:
+            path = ".".join([str(p) for p in error.path])
+            print(f"   - {path}: {error.message}")
+    else:
+        print(f"✅ {model_name} ({provider_name}) is valid")
 
-        try:
-            validate(instance=data, schema=schema)
-            print(f"{model_file.name} follows schema.")
-        except jsonschema.exceptions.ValidationError as e:
-            # Invalid against schema; print filename and issue
-            path = "/".join(str(p) for p in e.path) or "<root>"
-            print(f"{model_file.name}: {e.message} [path: {path}]")
-
-
-if __name__ == "__main__":
-    main()
+# Iterate over all models and providers
+for model_name, providers in master.items():
+    for provider_name, entry in providers.items():
+        validate_entry(model_name, provider_name, entry)
