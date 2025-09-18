@@ -1,4 +1,4 @@
-import { beforeEach, afterEach, vi } from 'vitest';
+// All vitest globals (beforeEach, afterEach, vi, describe, it, expect) are available globally due to vitest config globals: true
 import request from 'supertest';
 import express from 'express';
 // We'll import the handler after we mock the DB

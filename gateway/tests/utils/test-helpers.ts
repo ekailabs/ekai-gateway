@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+// vi is available globally due to vitest config globals: true
 import type { Request, Response } from 'express';
 import type { UsageRecord } from '../../src/infrastructure/db/queries.js';
 import type { PricingConfig } from '../../src/infrastructure/utils/pricing-loader.js';

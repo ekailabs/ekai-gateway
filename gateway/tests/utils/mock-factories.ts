@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+// vi is available globally due to vitest config globals: true
 import fs from 'fs';
 import path from 'path';
 import type { CostCalculation, PricingConfig, ModelPricing } from '../../src/infrastructure/utils/pricing-loader.js';

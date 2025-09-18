@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
-import { vi } from 'vitest';
+// vi is available globally due to vitest config globals: true
 import type { UsageRecord } from '../../src/infrastructure/db/queries.js';
 
 /**

@@ -1,4 +1,4 @@
-import { beforeEach, afterEach, vi } from 'vitest';
+// All vitest globals (beforeEach, afterEach, vi, describe, it, expect) are available globally due to vitest config globals: true
 import { UsageHandler, handleUsageRequest } from '../../../../src/app/handlers/usage-handler.js';
 import { mockRequest, mockResponse, expectValidUsageSummary } from '../../../utils/test-helpers.js';
 import { RequestHelpers } from '../../../utils/request-helpers.js';
