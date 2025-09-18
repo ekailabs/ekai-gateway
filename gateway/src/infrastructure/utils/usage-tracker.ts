@@ -2,6 +2,7 @@ import { pricingLoader, CostCalculation } from './pricing-loader.js';
 import { dbQueries, type UsageRecord } from '../db/queries.js';
 import { ModelUtils } from './model-utils.js';
 import { logger } from './logger.js';
+import { recordUsage } from '../telemetry/usage.js';
 
 /**
  * Usage summary interface for consistent return types
@@ -97,6 +98,18 @@ export class UsageTracker {
           outputTokens,
           module: 'usage-tracker'
         });
+
+        // Record telemetry event for total token usage
+        const totalTokens = inputTokens + cacheWriteTokens + cacheReadTokens + outputTokens;
+        try {
+          recordUsage(totalTokens);
+        } catch (telemetryError) {
+          // Non-blocking: log warning but don't fail the request
+          logger.warn('Failed to record telemetry', { 
+            error: telemetryError instanceof Error ? telemetryError.message : telemetryError,
+            module: 'usage-tracker' 
+          });
+        }
 
       } catch (error) {
         logger.error('Failed to save usage record', error, { operation: 'usage_tracking', module: 'usage-tracker' });

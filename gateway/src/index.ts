@@ -1,13 +1,13 @@
+// Load environment variables before importing modules
 import dotenv from 'dotenv';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// Load environment variables
 dotenv.config({ path: join(__dirname, '../../.env') });
 
+// Import application modules
 import express from 'express';
 import cors from 'cors';
 import { handleOpenAIFormatChat, handleAnthropicFormatChat, handleOpenAIResponses } from './app/handlers/chat-handler.js';
@@ -18,7 +18,6 @@ import { requestLogging } from './infrastructure/middleware/request-logging.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-
 // Middleware
 app.use(cors());
 app.use(requestContext);
