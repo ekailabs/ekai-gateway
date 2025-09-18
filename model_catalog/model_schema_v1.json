@@ -498,35 +498,35 @@
         "tools": {
           "type": "object",
           "properties": {
-            "code_interpreter": {
+            "code_interpreter_per_container": {
               "type": [
                 "number",
                 "null"
               ],
               "minimum": 0
             },
-            "file_search_storage": {
+            "file_search_storage_per_GB_per_day": {
               "type": [
                 "number",
                 "null"
               ],
               "minimum": 0
             },
-            "file_search_call": {
+            "file_search_call_per_2k_calls": {
               "type": [
                 "number",
                 "null"
               ],
               "minimum": 0
             },
-            "web_search": {
+            "web_search_per_1k_calls": {
               "type": [
                 "number",
                 "null"
               ],
               "minimum": 0
             },
-            "web_search_preview": {
+            "web_search_preview_per_1k_calls": {
               "type": [
                 "number",
                 "null"
@@ -540,28 +540,28 @@
               ],
               "minimum": 0
             },
-            "bash": {
+            "bash_in_tokens": {
               "type": [
                 "number",
                 "null"
               ],
               "minimum": 0
             },
-            "code_execution": {
+            "code_execution_per_session_hour": {
               "type": [
                 "number",
                 "null"
               ],
               "minimum": 0
             },
-            "computer_use": {
+            "computer_use_in_tokens": {
               "type": [
                 "number",
                 "null"
               ],
               "minimum": 0
             },
-            "text_editor": {
+            "text_editor_in_tokens": {
               "type": [
                 "number",
                 "null"
