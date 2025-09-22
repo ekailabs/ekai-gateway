@@ -1,4 +1,4 @@
-import { vi, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+// All vitest globals (beforeAll, afterAll, beforeEach, afterEach, vi, describe, it, expect) are available globally due to vitest config globals: true
 import fs from 'fs';
 import path from 'path';
 
