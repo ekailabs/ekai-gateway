@@ -1,6 +1,6 @@
 {
   "name": "ekai-gateway",
-  "version": "1.0.0",
+  "version": "0.1.0-beta.1",
   "description": "Ekai Gateway - Multi-provider AI request routing with dashboard",
   "private": true,
   "scripts": {
@@ -11,7 +11,9 @@
     "build": "npm run build:gateway && npm run build:ui",
     "build:gateway": "cd gateway && npm run build",
     "build:ui": "cd ui/dashboard && npm run build",
-    "start": "cd gateway && npm start",
+    "start": "concurrently \"npm run start:gateway\" \"npm run start:ui\"",
+    "start:gateway": "cd gateway && npm start",
+    "start:ui": "cd ui/dashboard && npm start",
     "clean": "npm run clean:gateway && npm run clean:ui && rm -rf node_modules gateway/node_modules ui/dashboard/node_modules",
     "clean:gateway": "cd gateway && npm run clean",
     "clean:ui": "cd ui/dashboard && rm -rf .next",

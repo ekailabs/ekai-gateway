@@ -25,25 +25,38 @@ ekai-gateway/
 - 🗄️ **Database storage**: SQLite database for persistent usage tracking
 - 📊 **Analytics dashboard**: Real-time cost analysis and usage breakdowns
 
-## Quick Start
+## Quick Start (Beta)
 
 ```bash
-# Install dependencies
+# 1. Install dependencies
 npm install
 
-# Setup environment (create .env in repository root)
-# At least one API key is required
-ANTHROPIC_API_KEY=your_key_here
-OPENAI_API_KEY=your_key_here
-XAI_API_KEY=your_key_here
-OPENROUTER_API_KEY=your_key_here
-PORT=3001
+# 2. Setup environment variables
+cp .env.example .env
+# Edit .env and add at least one API key (see .env.example for details)
 
-# Start development servers
-npm run dev
+# 3. Build and start the application
+npm run build
+npm start
 ```
 
-Access the gateway at `http://localhost:3001` and dashboard at `http://localhost:3000`.
+**Access Points:**
+- Gateway API: `http://localhost:3001`
+- Dashboard UI: `http://localhost:3000`
+
+**Required:** At least one API key from Anthropic, OpenAI, xAI, or OpenRouter (see `.env.example` for configuration details).
+
+## Beta Testing Notes
+
+🚧 **This is a beta release** - please report any issues or feedback!
+
+**Known Limitations:**
+- Some edge cases in model routing may exist
+
+**Getting Help:**
+- Check the logs in `gateway/logs/gateway.log` for debugging
+- Ensure your API keys have sufficient credits
+- Test with simple requests first before complex workflows
 
 ## API Endpoints
 
@@ -104,12 +117,23 @@ The proxy uses **cost-based optimization** to automatically select the cheapest 
 
 **Multi-client proxy**: Web apps, mobile apps, and scripts share conversations across providers with automatic cost tracking and optimization.
 
+## Production Commands
+
+```bash
+npm run build  # Build TypeScript for production
+npm start      # Start both gateway and dashboard
+```
+
+**Individual services:**
+```bash
+npm run start:gateway  # Gateway API only (port 3001)
+npm run start:ui       # Dashboard UI only (port 3000)
+```
+
 ## Development
 
 ```bash
-npm run dev    # Start both gateway and dashboard
-npm run build  # Build TypeScript
-npm start      # Production server
+npm run dev    # Start both gateway and dashboard in development mode
 ```
 
 **Individual services:**
