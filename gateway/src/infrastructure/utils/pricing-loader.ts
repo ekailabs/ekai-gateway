@@ -1,8 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import { ModelUtils } from './model-utils.js';
 import { logger } from './logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Type definitions for pricing configuration
 export interface PricingConfig {

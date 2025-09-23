@@ -3,21 +3,17 @@
   "version": "0.1.0-beta.1",
   "description": "Ekai Gateway - Multi-provider AI request routing with dashboard",
   "private": true,
+  "workspaces": ["gateway", "ui/dashboard"],
   "scripts": {
-    "postinstall": "cd gateway && npm install && cd ../ui/dashboard && npm install",
-    "dev": "concurrently \"npm run dev:gateway\" \"npm run dev:ui\"",
-    "dev:gateway": "cd gateway && npm run dev",
-    "dev:ui": "cd ui/dashboard && npm run dev",
-    "build": "npm run build:gateway && npm run build:ui",
-    "build:gateway": "cd gateway && npm run build",
-    "build:ui": "cd ui/dashboard && npm run build",
+    "dev": "npm run dev --workspaces",
+    "build": "npm run build --workspaces --if-present",
     "start": "concurrently \"npm run start:gateway\" \"npm run start:ui\"",
-    "start:gateway": "cd gateway && npm start",
-    "start:ui": "cd ui/dashboard && npm start",
-    "clean": "npm run clean:gateway && npm run clean:ui && rm -rf node_modules gateway/node_modules ui/dashboard/node_modules",
-    "clean:gateway": "cd gateway && npm run clean",
-    "clean:ui": "cd ui/dashboard && rm -rf .next",
-    "install:all": "npm install && cd gateway && npm install && cd ../ui/dashboard && npm install"
+    "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
+    "test": "npm run test --workspace=gateway",
+    "dev:gateway": "npm run dev --workspace=gateway",
+    "dev:ui": "npm run dev --workspace=ui/dashboard",
+    "start:gateway": "npm run start --workspace=gateway",
+    "start:ui": "npm run start --workspace=ui/dashboard"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

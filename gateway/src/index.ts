@@ -2,10 +2,27 @@
 import dotenv from 'dotenv';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-dotenv.config({ path: join(__dirname, '../../.env') });
+
+// Find project root by looking for package.json (works in both dev and prod)
+function findProjectRoot(startPath: string): string {
+  let currentPath = startPath;
+  while (currentPath !== dirname(currentPath)) {
+    if (existsSync(join(currentPath, 'package.json')) && 
+        existsSync(join(currentPath, '.env.example'))) {
+      return currentPath;
+    }
+    currentPath = dirname(currentPath);
+  }
+  // Fallback to process.cwd() if not found
+  return process.cwd();
+}
+
+const projectRoot = findProjectRoot(__dirname);
+dotenv.config({ path: join(projectRoot, '.env') });
 
 // Import application modules
 import express from 'express';
