@@ -54,7 +54,7 @@ Use the gateway with Claude Code for multi-provider AI assistance:
 ```bash
 # Point Claude Code to the gateway
 export ANTHROPIC_BASE_URL="http://localhost:3001"
-export ANTHROPIC_MODEL="claude-3-5-sonnet-20241022"  # or "grok-code-fast", "gpt-4o"
+export ANTHROPIC_MODEL="claude-sonnet-4-20250514"  # or "grok-code-fast", "gpt-4o"
 
 # Start Claude Code as usual
 claude
