@@ -46,6 +46,34 @@ npm start
 
 **Required:** At least one API key from Anthropic, OpenAI, xAI, or OpenRouter (see `.env.example` for configuration details).
 
+## Integration Guides
+
+### 🤖 **Claude Code Integration**
+Use the gateway with Claude Code for multi-provider AI assistance:
+
+```bash
+# Point Claude Code to the gateway
+export ANTHROPIC_BASE_URL="http://localhost:3001"
+export ANTHROPIC_MODEL="claude-3-5-sonnet-20241022"  # or "grok-code-fast", "gpt-4o"
+
+# Start Claude Code as usual
+claude
+```
+
+📖 **[Complete Claude Code Guide →](./USAGE_WITH_CLAUDE_CODE.md)**
+
+### 💻 **Codex Integration** 
+Use the gateway with Codex for OpenAI-compatible development tools:
+
+```bash
+# Point Codex to the gateway
+export OPENAI_BASE_URL="http://localhost:3001/v1"
+
+# Start Codex as usual  
+codex
+```
+
+📖 **[Complete Codex Guide →](./USAGE_WITH_CODEX.md)**
 ## Beta Testing Notes
 
 🚧 **This is a beta release** - please report any issues or feedback!
