@@ -41,7 +41,7 @@ Navigate to your project directory where you want to use Claude Code:
 
 ```bash
 # Set the model (examples below)
-export ANTHROPIC_MODEL="claude-3-5-sonnet-20241022"  # Default Anthropic model
+export ANTHROPIC_MODEL="claude-sonnet-4-20250514"  # Default Anthropic model
 export ANTHROPIC_MODEL="grok-code-fast"              # xAI model
 export ANTHROPIC_MODEL="gpt-4o"                      # OpenAI model
 export ANTHROPIC_MODEL="moonshotai/kimi-k2"         # OpenRouter model
