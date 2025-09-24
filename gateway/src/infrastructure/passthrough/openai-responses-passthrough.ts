@@ -29,7 +29,7 @@ export class OpenAIResponsesPassthrough {
         'Authorization': `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ ...body, stream, store: false }) // Not storing responses
+      body: JSON.stringify({ ...body, stream, store: body.store ?? false }) // Use provided store value or default to false
     });
 
     if (!response.ok) {
@@ -38,6 +38,11 @@ export class OpenAIResponsesPassthrough {
     }
 
     return response;
+  }
+
+  // Build the exact body we would send to OpenAI Responses API (for test/diagnostics)
+  public buildRequestBody(originalRequest: any, stream: boolean): any {
+    return { ...originalRequest, stream, store: originalRequest.store ?? false };
   }
 
   private trackUsage(text: string, model: string): void {

@@ -32,6 +32,15 @@ export type ResponseFormat =
 /**
  * Universal schema for AI provider requests, superset of all input capabilities
  */
+export type IncludeItem =
+  | 'web_search_call.action.sources'
+  | 'code_interpreter_call.outputs'
+  | 'computer_call_output.output.image_url'
+  | 'file_search_call.results'
+  | 'message.input_image.image_url'
+  | 'message.output_text.logprobs'
+  | 'reasoning.encrypted_content';
+
 export interface CanonicalAIRequestSchema {
   schema_version: '1.0.1';
   model: string;
@@ -80,12 +89,18 @@ export interface CanonicalAIRequestSchema {
         name: string;
       };
   response_format?: ResponseFormat;
+  /**
+   * Specify additional output data to include in the model response
+   * Mirrors OpenAI Responses API include array
+   */
+  include?: IncludeItem[];
   safety_settings?: SafetySettings[];
   candidate_count?: number;
   stream?: boolean;
   stream_options?: {
     include_usage?: boolean;
   };
+  store?: boolean;
   service_tier?: 'auto' | 'default' | 'scale' | 'flex' | 'priority' | null;
   reasoning_effort?: 'low' | 'medium' | 'high';
   modalities?: ('text' | 'audio')[];
@@ -101,6 +116,10 @@ export interface CanonicalAIRequestSchema {
   thinking?: {
     enabled?: boolean;
     budget?: number;
+    // OpenAI Responses reasoning fields
+    summary?: any[];
+    content?: any;
+    encrypted_content?: string;
   };
   betas?: string[];
   extra_headers?: {

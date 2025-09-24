@@ -101,6 +101,7 @@ export class ChatHandler {
         canonicalRequest = this.adapters[clientFormat].toCanonical(req.body);
       }
 
+
       if (canonicalRequest.stream) {
         await this.handleStreaming(canonicalRequest, res, clientFormat, providerName, originalRequest, req);
       } else {
@@ -199,6 +200,7 @@ export class ChatHandler {
       await anthropicPassthrough.handleDirectRequest(originalRequest, res);
     }
   }
+
 
 }
 

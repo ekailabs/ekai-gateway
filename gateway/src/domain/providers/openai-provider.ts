@@ -39,19 +39,125 @@ export class OpenAIProvider extends BaseProvider {
     return Boolean((request as any).metadata?.useResponsesAPI);
   }
 
-  private transformRequestForResponses(request: CanonicalRequest): any {
-    // Flatten canonical messages to a simple string input when possible
-    const lastUser = [...request.messages].reverse().find(m => m.role === 'user');
-    const text = lastUser
-      ? lastUser.content.filter(c => c.type === 'text').map(c => c.text).join('')
-      : request.messages.map(m => m.content.filter(c => c.type === 'text').map(c => c.text).join('')).join('\n');
+  // Build the request body that would be sent to OpenAI Responses API (for diagnostics/tests)
+  static buildRequestBodyForResponses(request: CanonicalRequest): any {
+    // Use canonical input if available, otherwise reconstruct from messages
+    let input: any;
+    
+    if (request.input !== undefined) {
+      // Use the canonical input structure
+      if (typeof request.input === 'string') {
+        input = request.input;
+      } else {
+        // Convert canonical input items back to OpenAI Responses format
+        input = request.input.map(item => {
+          if (item.type === 'message') {
+            return {
+              type: 'message',
+              role: item.role,
+              content: item.content.map(c => ({ 
+                type: c.type === 'text' ? 'input_text' : c.type, 
+                text: c.text 
+              }))
+            };
+          } else if (item.type === 'reasoning') {
+            return {
+              type: 'reasoning',
+              summary: item.summary,
+              content: item.content,
+              encrypted_content: item.encrypted_content
+            };
+          }
+          return item;
+        });
+      }
+    } else {
+      // Fallback: reconstruct from messages
+      input = request.messages.map(m => ({
+        type: 'message',
+        role: m.role,
+        content: m.content.map(c => ({ type: 'input_text', text: c.type === 'text' ? c.text : '' }))
+      }));
+    }
+
     const body: any = {
       model: request.model,
-      input: text,
+      input,
       temperature: request.temperature,
     };
     if (request.maxTokens) body.max_output_tokens = request.maxTokens;
     if (request.stream) body.stream = true;
+    if (request.system) body.instructions = request.system;
+    if (request.store !== undefined) body.store = request.store;
+    if (request.parallelToolCalls !== undefined) body.parallel_tool_calls = request.parallelToolCalls;
+    if (request.reasoning) body.reasoning = request.reasoning;
+    if (request.reasoningEffort) body.reasoning_effort = request.reasoningEffort;
+    if (request.tools) body.tools = request.tools;
+    if (request.toolChoice) body.tool_choice = request.toolChoice;
+    if (request.responseFormat) body.response_format = request.responseFormat;
+    if (request.modalities) body.modalities = request.modalities;
+    if (request.audio) body.audio = request.audio;
+    if (request.seed !== undefined) body.seed = request.seed;
+    if (request.promptCacheKey) body.prompt_cache_key = request.promptCacheKey;
+    if (request.include) body.include = request.include;
+
+    return body;
+  }
+
+  private transformRequestForResponses(request: CanonicalRequest): any {
+    // Use the same input reconstruction logic as buildRequestBodyForResponses
+    let input: any;
+    
+    if (request.input !== undefined) {
+      // Use the canonical input structure
+      if (typeof request.input === 'string') {
+        input = request.input;
+      } else {
+        // Convert canonical input items back to OpenAI Responses format
+        input = request.input.map(item => {
+          if (item.type === 'message') {
+            return {
+              type: 'message',
+              role: item.role,
+              content: item.content.map(c => ({ 
+                type: c.type === 'text' ? 'input_text' : c.type, 
+                text: c.text 
+              }))
+            };
+          } else if (item.type === 'reasoning') {
+            return {
+              type: 'reasoning',
+              summary: item.summary,
+              content: item.content,
+              encrypted_content: item.encrypted_content
+            };
+          }
+          return item;
+        });
+      }
+    } else {
+      // Fallback: reconstruct from messages
+      input = request.messages.map(m => ({
+        type: 'message',
+        role: m.role,
+        content: m.content.map(c => ({ type: 'input_text', text: c.type === 'text' ? c.text : '' }))
+      }));
+    }
+
+    const body: any = {
+      model: request.model,
+      input,
+      temperature: request.temperature,
+    };
+    if (request.maxTokens) body.max_output_tokens = request.maxTokens;
+    if (request.stream) body.stream = true;
+    if (request.system) body.instructions = request.system;
+    if (request.store !== undefined) body.store = request.store;
+    if (request.parallelToolCalls !== undefined) body.parallel_tool_calls = request.parallelToolCalls;
+    if (request.reasoning) body.reasoning = request.reasoning;
+    if (request.reasoningEffort) body.reasoning_effort = request.reasoningEffort;
+    if (request.promptCacheKey) body.prompt_cache_key = request.promptCacheKey;
+    if (request.include) body.include = request.include;
     return body;
   }
 
