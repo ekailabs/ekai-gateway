@@ -40,9 +40,18 @@ npm run build
 npm start
 ```
 
+Important: The dashboard is initially empty. After setup, send a query using your own client/tool (IDE, app, or API) through the gateway; usage appears once at least one request is processed.
+
 **Access Points:**
 - Gateway API: `http://localhost:3001`
 - Dashboard UI: `http://localhost:3000`
+
+
+## Populate the Dashboard
+
+- Point your client/tool to the gateway (`http://localhost:3001` or `http://localhost:3001/v1`), see integration guides below.
+- Send a query using your usual workflow; both OpenAI-compatible and Anthropic-compatible endpoints are tracked.
+- Open `http://localhost:3000` to view usage and costs after your first request.
 
 **Required:** At least one API key from Anthropic, OpenAI, xAI, or OpenRouter (see `.env.example` for configuration details).
 
