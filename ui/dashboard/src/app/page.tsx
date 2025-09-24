@@ -9,6 +9,7 @@ import DateRangePicker, { DateRange } from '@/components/DateRangePicker';
 
 export default function Dashboard() {
   const [dateRange, setDateRange] = useState<DateRange | null>(null);
+  const [mounted, setMounted] = useState(false);
   
   useEffect(() => {
     // Set default to last 7 days after hydration
@@ -18,6 +19,7 @@ export default function Dashboard() {
     start.setDate(start.getDate() - 6);
     start.setHours(0, 0, 0, 0);
     setDateRange({ from: start, to: end });
+    setMounted(true);
   }, []);
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FFFCEC' }}>
@@ -31,7 +33,9 @@ export default function Dashboard() {
             </div>
             <div className="text-right">
               <div className="text-sm text-gray-500 mb-1">Last updated</div>
-              <div className="text-gray-900 font-medium">{new Date().toLocaleString()}</div>
+              <div className="text-gray-900 font-medium">
+                {mounted ? new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : 'Loading...'}
+              </div>
             </div>
           </div>
           

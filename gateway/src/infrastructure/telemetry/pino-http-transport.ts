@@ -3,11 +3,22 @@ import { Writable } from 'node:stream';
 import http from 'node:http';
 import https from 'node:https';
 
-export default async function transport(opts = {}) {
+interface TransportOptions {
+  url?: string;
+  batch?: number;
+  interval?: number;
+  headers?: Record<string, string>;
+}
+
+export default async function transport(opts: TransportOptions = {}): Promise<Writable> {
   const url = opts.url || process.env.TELEMETRY_ENDPOINT;
   if (!url) {
     // No endpoint configured → return a no-op writable (as per docs pattern)
-    return new Writable({ write(_chunk, _enc, cb) { cb(); } });
+    return new Writable({ 
+      write(_chunk: any, _enc: BufferEncoding, cb: (error?: Error | null) => void) { 
+        cb(); 
+      } 
+    });
   }
 
   const batchSize = Number(opts.batch ?? 20);     // how many lines per POST
@@ -19,18 +30,25 @@ export default async function transport(opts = {}) {
     ? new https.Agent({ keepAlive: true })
     : new http.Agent({ keepAlive: true });
 
-  let buffer = [];
+  let buffer: string[] = [];
 
-  async function flush() {
+  async function flush(): Promise<void> {
     if (buffer.length === 0) return;
     const lines = buffer.splice(0, batchSize);
     const body = lines.join('') + '\n';
 
-    await new Promise((resolve) => {
+    await new Promise<void>((resolve) => {
       const req = (url.startsWith('https:') ? https : http).request(
         url,
-        { method: 'POST', headers: { ...headers, 'content-length': Buffer.byteLength(body) }, agent },
-        (res) => { res.resume(); resolve(); } // consume & resolve regardless (non-blocking)
+        { 
+          method: 'POST', 
+          headers: { ...headers, 'content-length': Buffer.byteLength(body) }, 
+          agent 
+        },
+        (res) => { 
+          res.resume(); 
+          resolve(); 
+        } // consume & resolve regardless (non-blocking)
       );
       req.on('error', () => resolve());       // drop on network error (non-blocking)
       req.write(body);
@@ -41,17 +59,20 @@ export default async function transport(opts = {}) {
   const timer = setInterval(flush, flushMs);
 
   return new Writable({
-    write(chunk, _enc, cb) {
+    write(chunk: any, _enc: BufferEncoding, cb: (error?: Error | null) => void) {
       // Pino sends NDJSON lines already; keep as lines and batch
       buffer.push(chunk.toString().trimEnd() + '\n');
-      if (buffer.length >= batchSize) flush().finally(() => cb());
-      else cb();
+      if (buffer.length >= batchSize) {
+        flush().finally(() => cb());
+      } else {
+        cb();
+      }
     },
-    final(cb) {
+    final(cb: (error?: Error | null) => void) {
       clearInterval(timer);
       flush().finally(() => cb());
     },
-    destroy(err, cb) {
+    destroy(err: Error | null, cb?: (error?: Error | null) => void) {
       clearInterval(timer);
       buffer = [];
       cb?.(err);

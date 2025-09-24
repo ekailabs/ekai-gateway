@@ -3,7 +3,7 @@ import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { TELEMETRY_ENABLED, TELEMETRY_ENDPOINT, TELEMETRY_LEVEL, LOG_LEVEL } from '../config.js';
 
-import httpTransportFactory from '../telemetry/pino-http-transport.mjs';
+import httpTransportFactory from '../telemetry/pino-http-transport.js';
 
 export interface LogContext {
   requestId?: string;
