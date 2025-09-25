@@ -27,6 +27,7 @@ ekai-gateway/
 
 ## Quick Start (Beta)
 
+**Option 1: Using npm**
 ```bash
 # 1. Install dependencies
 npm install
@@ -40,12 +41,21 @@ npm run build
 npm start
 ```
 
+**Option 2: Using Docker**
+```bash
+# 1. Setup environment variables
+cp .env.example .env
+# Edit .env and add at least one API key (see .env.example for details)
+
+# 2. Start with Docker Compose
+docker compose up --build -d
+```
+
 Important: The dashboard is initially empty. After setup, send a query using your own client/tool (IDE, app, or API) through the gateway; usage appears once at least one request is processed.
 
 **Access Points:**
 - Gateway API: `http://localhost:3001`
 - Dashboard UI: `http://localhost:3000`
-
 
 ## Populate the Dashboard
 
