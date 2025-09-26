@@ -53,9 +53,72 @@ export ANTHROPIC_BASE_URL="http://localhost:3001"
 claude
 ```
 
+## Model Switching
+
+Currently, there are two ways to switch models:
+
+### Method 1: Environment Variable (Current)
+Change the `ANTHROPIC_MODEL` environment variable and restart Claude Code:
+
+```bash
+# Switch to a different model
+export ANTHROPIC_MODEL="grok-code-fast"  # Switch to xAI Grok
+claude  # Restart Claude Code
+
+# Or switch to OpenAI model
+export ANTHROPIC_MODEL="gpt-4o"
+claude  # Restart Claude Code
+```
+
+### Method 2: Interactive Selection
+
+/models in claude to switch
+
+### Method 3: Multiple Terminal Sessions
+Run multiple Claude Code instances with different models in separate terminals:
+
+```bash
+# Terminal 1 - Anthropic model
+export ANTHROPIC_MODEL="claude-sonnet-4-20250514"
+export ANTHROPIC_BASE_URL="http://localhost:3001"
+claude
+
+# Terminal 2 - xAI model  
+export ANTHROPIC_MODEL="grok-code-fast"
+export ANTHROPIC_BASE_URL="http://localhost:3001"
+claude
+```
+
+
+
 ### 4. Monitor Usage
 
 Open your browser and visit `http://localhost:3000` to view usage analytics and costs.
+
+## Supported Models
+
+The gateway supports models from multiple providers. You can see all available models by calling:
+
+### Popular Models by Provider
+
+**Anthropic Models:**
+- `claude-sonnet-4-20250514` - Latest Claude Sonnet (recommended)
+- `claude-3-5-sonnet-20241022` - Claude 3.5 Sonnet
+- `claude-opus-4.1` - Claude Opus (most capable)
+
+**xAI Models:**
+- `grok-code-fast` - Fast coding model (recommended for development)
+- `grok-4` - Latest Grok model
+
+**OpenAI Models:**
+- `gpt-4o` - GPT-4 Omni
+- `gpt-5` - Latest GPT-5
+- `gpt-5-mini` - Efficient GPT-5 variant
+
+**OpenRouter Models:**
+- `moonshotai/kimi-k2` - Moonshot AI model
+- `google/gemini-2.5-flash` - Google Gemini
+- `deepseek/deepseek-chat-v3.1` - DeepSeek model
 
 ## Supported Inference Providers
 1. Anthropic Models (Direct)
