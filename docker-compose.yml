@@ -1,0 +1,44 @@
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gateway-runtime
+    env_file:
+      - .env
+    environment:
+      - PORT=${PORT:-3001}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - TELEMETRY_ENABLED=${TELEMETRY_ENABLED:-true}
+      - TELEMETRY_ENDPOINT=${TELEMETRY_ENDPOINT:-https://ingest.ekailabs.xyz/ndjson}
+      - TELEMETRY_LEVEL=${TELEMETRY_LEVEL:-info}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - XAI_API_KEY=${XAI_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+    ports:
+      - "3001:3001"
+    volumes:
+      - gateway_logs:/app/gateway/logs
+      - gateway_db:/app/gateway/data
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dashboard-runtime
+    env_file:
+      - .env
+    environment:
+      # Browser must reach gateway via host, not docker DNS:
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3001}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+volumes:
+  gateway_logs:
+  gateway_db:
