@@ -80,7 +80,13 @@ export class ChatHandler {
 
       // Pass-through scenarios: where clientFormat and providerFormat are the same, we want to take a quick route
       // Currently supporting claude code proxy through pass-through, i.e., we skip the canonicalization step
-      const passThrough = this.shouldUsePassThrough(clientFormat, providerName);
+      let passThrough = this.shouldUsePassThrough(clientFormat, providerName);
+
+      // In canonical transformation test mode, force adapter path to enable comparison
+      const canonicalMode = ['true', '1', 'yes'].includes(String(process.env.CANONICAL_CANONICAL_MODE || '').toLowerCase());
+      if (canonicalMode && clientFormat === 'openai_responses') {
+        passThrough = false;
+      }
 
       logger.info('Chat request received', {
         requestId: req.requestId,
@@ -117,8 +123,20 @@ export class ChatHandler {
 
   private async handleNonStreaming(canonicalRequest: CanonicalRequest, res: Response, clientFormat: ClientFormat, providerName?: ProviderName, originalRequest?: any, req?: Request): Promise<void> {
     if (clientFormat === 'openai_responses') {
+      // Test mode: compare request transformation before making API call
+      const canonicalMode = ['true', '1', 'yes'].includes(String(process.env.CANONICAL_MODE || '').toLowerCase());
+      if (canonicalMode && providerName === 'openai') {
+        await this.compareRequestTransformation(originalRequest, canonicalRequest, req?.requestId);
+      }
+
       const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, 'openai' as any, 'openai', originalRequest, req.requestId);
       const clientResponse = this.adapters[clientFormat].fromCanonical(canonicalResponse);
+
+      // Test mode: compare response transformation with passthrough
+      if (canonicalMode && providerName === 'openai') {
+        await this.compareCanonicalTransformation(originalRequest, canonicalResponse, clientResponse, req?.requestId);
+      }
+
       res.status(HTTP_STATUS.OK).json(clientResponse);
       return;
     }
@@ -131,6 +149,12 @@ export class ChatHandler {
 
   private async handleStreaming(canonicalRequest: CanonicalRequest, res: Response, clientFormat: ClientFormat, providerName?: ProviderName, originalRequest?: any, req?: Request): Promise<void> {
     if (clientFormat === 'openai_responses') {
+      // Test mode: compare request transformation before making API call
+      const canonicalMode = ['true', '1', 'yes'].includes(String(process.env.CANONICAL_MODE || '').toLowerCase());
+      if (canonicalMode && providerName === 'openai') {
+        await this.compareRequestTransformation(originalRequest, canonicalRequest, req?.requestId);
+      }
+
       const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest, 'openai' as any, 'openai', originalRequest, req.requestId);
 
       res.writeHead(HTTP_STATUS.OK, {
@@ -140,11 +164,62 @@ export class ChatHandler {
         'Access-Control-Allow-Origin': '*',
       });
 
-      if (streamResponse?.body) {
-        streamResponse.body.pipe(res);
-      } else {
+      const compareStreaming = canonicalMode;
+
+      if (!streamResponse?.body) {
         throw new Error('No stream body received from provider');
       }
+
+      if (!compareStreaming) {
+        streamResponse.body.pipe(res);
+        return;
+      }
+
+      // In compare mode: stream adapter output to client while capturing it, and
+      // concurrently capture a passthrough stream to compare after completion.
+      const adapterChunks: string[] = [];
+      const adapterDone = new Promise<void>((resolve, reject) => {
+        try {
+          streamResponse.body.on('data', (chunk: Buffer) => {
+            const text = chunk.toString();
+            adapterChunks.push(text);
+            res.write(chunk);
+          });
+          streamResponse.body.on('end', () => {
+            // Ensure the client stream is closed
+            res.end();
+            resolve();
+          });
+          streamResponse.body.on('error', (err: unknown) => {
+            try { res.end(); } catch {}
+            reject(err);
+          });
+        } catch (e) {
+          try { res.end(); } catch {}
+          reject(e);
+        }
+      });
+
+      const passthroughDone = this.captureOpenAIResponsesPassthroughStream(originalRequest).catch((e) => {
+        logger.warn('Passthrough stream capture failed', { error: (e as Error)?.message, requestId: req?.requestId, module: 'chat-handler' });
+        return '';
+      });
+
+      // Wait for adapter stream to complete (client has received the stream already)
+      await adapterDone;
+
+      // Give passthrough a brief grace period to complete as well
+      let passthroughData = '';
+      try {
+        passthroughData = await Promise.race([
+          passthroughDone,
+          new Promise<string>((resolve) => setTimeout(() => resolve(''), 5000))
+        ]);
+      } catch {}
+
+      // Compare collected streams and log concise differences
+      const adapterData = adapterChunks.join('');
+      this.logSSEDifferences(passthroughData, adapterData, req?.requestId);
       return;
     }
 
@@ -156,6 +231,162 @@ export class ChatHandler {
       streamResponse.body.pipe(res);
     } else {
       throw new Error('No stream body received from provider');
+    }
+  }
+
+  // Capture passthrough SSE by mocking an Express Response that buffers writes
+  private async captureOpenAIResponsesPassthroughStream(originalRequest: any): Promise<string> {
+    const chunks: string[] = [];
+    const mockRes: Partial<Response> = {
+      writeHead: () => mockRes as any,
+      setHeader: () => {},
+      status: () => mockRes as any,
+      write: (chunk: any) => { try { chunks.push(Buffer.isBuffer(chunk) ? chunk.toString() : String(chunk)); } catch {} return true; },
+      end: (chunk?: any) => { if (chunk) { try { chunks.push(Buffer.isBuffer(chunk) ? chunk.toString() : String(chunk)); } catch {} } return mockRes as any; }
+    } as any;
+
+    await openaiResponsesPassthrough.handleDirectRequest(originalRequest, mockRes as Response);
+    return chunks.join('');
+  }
+
+  // Compare request transformation: what gets sent to OpenAI API
+  private async compareRequestTransformation(originalRequest: any, canonicalRequest: CanonicalRequest, requestId?: string): Promise<void> {
+    try {
+      // Import OpenAIProvider to build the request body that would be sent to OpenAI API
+      const { OpenAIProvider } = await import('../../domain/providers/openai-provider.js');
+      
+      // Get what the adapter path would send to OpenAI API
+      const adapterRequestBody = OpenAIProvider.buildRequestBodyForResponses(canonicalRequest);
+      
+      // Compare with what passthrough would send (original request)
+      const differences = this.findObjectDifferences(originalRequest, adapterRequestBody);
+
+      if (Object.keys(differences).length > 0) {
+        const diffMessages = Object.entries(differences).map(([param, diff]) => 
+          `${param}: passthrough="${this.serializeValue(diff.passthrough)}" vs adapter="${this.serializeValue(diff.adapter)}"`
+        );
+        
+        logger.error('Request transformation differences found', {
+          requestId,
+          message: diffMessages.join(' | '),
+          module: 'chat-handler'
+        });
+      } else {
+        logger.info('Request transformation: NO differences found', {
+          requestId,
+          module: 'chat-handler'
+        });
+      }
+    } catch (e) {
+      logger.error('Request comparison failed', { error: (e as Error)?.message, requestId, module: 'chat-handler' });
+    }
+  }
+
+  // Compare canonical transformation with passthrough ground truth
+  private async compareCanonicalTransformation(originalRequest: any, canonicalResponse: any, adapterResponse: any, requestId?: string): Promise<void> {
+    try {
+      // Get what the passthrough would return by making the same request
+      const passthroughResponse = await this.makeDirectPassthroughRequest(originalRequest);
+      
+      // Compare the passthrough response with the adapter response
+      const differences = this.findObjectDifferences(passthroughResponse, adapterResponse);
+
+      if (Object.keys(differences).length > 0) {
+        const diffMessages = Object.entries(differences).map(([param, diff]) => 
+          `${param}: passthrough="${this.serializeValue(diff.passthrough)}" vs adapter="${this.serializeValue(diff.adapter)}"`
+        );
+        
+        logger.info('Canonical transformation differences found', {
+          requestId,
+          message: diffMessages.join(' | '),
+          module: 'chat-handler'
+        });
+      } else {
+        logger.info('Canonical transformation: NO differences found', {
+          requestId,
+          module: 'chat-handler'
+        });
+      }
+    } catch (e) {
+      logger.info('Canonical comparison failed', { error: (e as Error)?.message, requestId, module: 'chat-handler' });
+    }
+  }
+
+  private async makeDirectPassthroughRequest(originalRequest: any): Promise<any> {
+    // Create a mock response object to capture the passthrough response
+    let capturedResponse: any = null;
+    const mockRes: Partial<Response> = {
+      status: () => mockRes as any,
+      json: (data: any) => { capturedResponse = data; return mockRes as any; },
+      writeHead: () => mockRes as any,
+      write: () => true,
+      end: () => mockRes as any
+    } as any;
+
+    await openaiResponsesPassthrough.handleDirectRequest(originalRequest, mockRes as Response);
+    return capturedResponse;
+  }
+
+  private findObjectDifferences(obj1: any, obj2: any, path: string = ''): Record<string, any> {
+    const differences: Record<string, any> = {};
+
+    const keys = new Set([...Object.keys(obj1 || {}), ...Object.keys(obj2 || {})]);
+
+    for (const key of keys) {
+      const currentPath = path ? `${path}.${key}` : key;
+      const val1 = obj1?.[key];
+      const val2 = obj2?.[key];
+
+      if (val1 === val2) continue;
+
+      if (typeof val1 === 'object' && typeof val2 === 'object' && val1 !== null && val2 !== null && !Array.isArray(val1) && !Array.isArray(val2)) {
+        const nestedDiffs = this.findObjectDifferences(val1, val2, currentPath);
+        Object.assign(differences, nestedDiffs);
+      } else {
+        differences[currentPath] = {
+          passthrough: val1,
+          adapter: val2
+        };
+      }
+    }
+
+    return differences;
+  }
+
+  private serializeValue(value: any): string {
+    if (value === null || value === undefined) {
+      return String(value);
+    }
+    if (typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+    return String(value);
+  }
+
+  // Compare two SSE streams; log only differences with limited lines
+  private logSSEDifferences(passthrough: string, adapter: string, requestId?: string): void {
+    try {
+      if (passthrough === adapter) {
+        logger.info('Streaming response transformation: NO differences found', { requestId, module: 'chat-handler' });
+        return;
+      }
+
+      const pLines = passthrough.split(/\r?\n/);
+      const aLines = adapter.split(/\r?\n/);
+      const max = Math.max(pLines.length, aLines.length);
+      const diffs: string[] = [];
+      for (let i = 0; i < max && diffs.length < 20; i++) {
+        const pl = pLines[i] ?? '';
+        const al = aLines[i] ?? '';
+        if (pl !== al) {
+          // Trim long lines for readability
+          const trim = (s: string) => (s.length > 300 ? s.slice(0, 300) + '…' : s);
+          diffs.push(`line ${i + 1}: passthrough="${trim(pl)}" vs adapter="${trim(al)}"`);
+        }
+      }
+      logger.info('Streaming response transformation differences:', { requestId, message: diffs.join(' | '), module: 'chat-handler' });
+    } catch (e) {
+      logger.warn('Streaming diff logging failed', { error: (e as Error)?.message, requestId, module: 'chat-handler' });
     }
   }
 
