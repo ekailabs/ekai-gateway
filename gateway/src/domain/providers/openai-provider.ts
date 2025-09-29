@@ -171,21 +171,31 @@ export class OpenAIProvider extends BaseProvider {
     return canonical as CanonicalResponse;
   }
 
-  // Add streaming support
-  async getStreamingResponse(request: CanonicalRequest): Promise<Response> {
+  // Add streaming support - returns canonical streaming chunks or raw response
+  async getStreamingResponse(request: CanonicalRequest): Promise<any> {
+    let rawResponse: Response;
+    let endpoint: string;
+    
     if (this.isResponsesAPI(request)) {
       const transformed = this.transformRequestForResponses(request);
-      return this.fetchStreaming('/responses', transformed);
+      endpoint = '/responses';
+      rawResponse = await this.fetchStreaming(endpoint, transformed);
+    } else {
+      const transformedRequest = this.transformRequest(request);
+      transformedRequest.stream = true;
+      endpoint = this.getChatCompletionEndpoint();
+      rawResponse = await this.fetchStreaming(endpoint, transformedRequest);
     }
 
-    const transformedRequest = this.transformRequest(request);
-    transformedRequest.stream = true;
-
-    if (!this.apiKey) {
-      throw new APIError(401, `${this.name} API key not configured`);
+    // Only parse to canonical chunks if CANONICAL_MODE is enabled
+    const canonicalMode = ['true', '1', 'yes'].includes(String(process.env.CANONICAL_MODE || '').toLowerCase());
+    if (canonicalMode) {
+      const streamText = await rawResponse.text();
+      return this.parseSSEToCanonical(streamText, endpoint);
     }
 
-    return this.fetchStreaming(this.getChatCompletionEndpoint(), transformedRequest);
+    // Return raw response for passthrough mode
+    return rawResponse;
   }
 
   private async fetchStreaming(endpoint: string, body: any): Promise<Response> {
@@ -200,6 +210,307 @@ export class OpenAIProvider extends BaseProvider {
       throw new APIError(response.status, `${this.name} API error: ${response.status} - ${errorText}`);
     }
     return response;
+  }
+
+  // Parse raw SSE stream into canonical streaming chunks
+  private parseSSEToCanonical(streamText: string, endpoint: string): any[] {
+    const chunks: any[] = [];
+    const lines = streamText.split('\n');
+    
+    let currentEvent = '';
+    
+    for (const line of lines) {
+      if (line.startsWith('event: ')) {
+        currentEvent = line.slice(7);
+        continue;
+      }
+      
+      if (line.startsWith('data: ')) {
+        const dataStr = line.slice(6);
+        if (dataStr === '[DONE]') {
+          chunks.push({
+            schema_version: '1.0.1',
+            stream_type: 'canonical',
+            event: {
+              type: 'complete',
+              finish_reason: 'stop'
+            }
+          });
+          break;
+        }
+        
+        try {
+          const data = JSON.parse(dataStr);
+          
+          // Handle OpenAI Responses format
+          if (endpoint === '/responses') {
+            if (data.type === 'response.created') {
+              chunks.push({
+                schema_version: '1.0.1',
+                stream_type: 'canonical',
+                event: {
+                  type: 'message_start',
+                  id: data.response?.id,
+                  model: data.response?.model,
+                  created: data.response?.created_at,
+                  response: data.response
+                }
+              });
+            } else if (data.type === 'response.output_text.delta') {
+              chunks.push({
+                schema_version: '1.0.1',
+                stream_type: 'canonical',
+                event: {
+                  type: 'content_delta',
+                  part: 'text',
+                  value: data.delta,
+                  delta: data.delta
+                }
+              });
+            } else if (data.type === 'response.output_item.added') {
+              // Check if this is a function call item
+              if (data.item?.type === 'message' && data.item?.content) {
+                const content = Array.isArray(data.item.content) ? data.item.content : [data.item.content];
+                const functionCallContent = content.find((c: any) => c.type === 'function_call' || c.type === 'tool_use');
+                
+                if (functionCallContent) {
+                  chunks.push({
+                    schema_version: '1.0.1',
+                    stream_type: 'canonical',
+                    event: {
+                      type: 'function_call',
+                      name: functionCallContent.name || functionCallContent.function?.name,
+                      arguments_json: functionCallContent.arguments || functionCallContent.function?.arguments || '',
+                      id: functionCallContent.id,
+                      call_id: functionCallContent.id
+                    }
+                  });
+                } else {
+                  chunks.push({
+                    schema_version: '1.0.1',
+                    stream_type: 'canonical',
+                    event: {
+                      type: 'content_block_start',
+                      index: data.output_index || 0,
+                      content_block: data.item
+                    }
+                  });
+                }
+              } else {
+                chunks.push({
+                  schema_version: '1.0.1',
+                  stream_type: 'canonical',
+                  event: {
+                    type: 'content_block_start',
+                    index: data.output_index || 0,
+                    content_block: data.item
+                  }
+                });
+              }
+            } else if (data.type === 'response.content_part.added') {
+              // Check if this is a function call part
+              if (data.part?.type === 'function_call' || data.part?.type === 'tool_use') {
+                chunks.push({
+                  schema_version: '1.0.1',
+                  stream_type: 'canonical',
+                  event: {
+                    type: 'function_call',
+                    name: data.part.name || data.part.function?.name,
+                    arguments_json: data.part.arguments || data.part.function?.arguments || '',
+                    id: data.part.id,
+                    call_id: data.part.id
+                  }
+                });
+              } else {
+                chunks.push({
+                  schema_version: '1.0.1',
+                  stream_type: 'canonical',
+                  event: {
+                    type: 'content_block_start',
+                    index: data.content_index || 0,
+                    content_block: data.part
+                  }
+                });
+              }
+            } else if (data.type === 'response.output_item.done') {
+              chunks.push({
+                schema_version: '1.0.1',
+                stream_type: 'canonical',
+                event: {
+                  type: 'output_item_done',
+                  output_index: data.output_index,
+                  item: data.item
+                }
+              });
+            } else if (data.type === 'response.function_call') {
+              chunks.push({
+                schema_version: '1.0.1',
+                stream_type: 'canonical',
+                event: {
+                  type: 'function_call',
+                  name: data.name,
+                  arguments_json: data.arguments_json || '',
+                  id: data.call_id,
+                  call_id: data.call_id
+                }
+              });
+            } else if (data.type === 'response.tool_call') {
+              chunks.push({
+                schema_version: '1.0.1',
+                stream_type: 'canonical',
+                event: {
+                  type: 'tool_call',
+                  name: data.name,
+                  arguments_json: data.arguments_json || '',
+                  id: data.call_id,
+                  call_id: data.call_id
+                }
+              });
+            } else if (data.type === 'response.usage') {
+              chunks.push({
+                schema_version: '1.0.1',
+                stream_type: 'canonical',
+                event: {
+                  type: 'usage',
+                  input_tokens: data.usage?.input_tokens,
+                  output_tokens: data.usage?.output_tokens,
+                  reasoning_tokens: data.usage?.reasoning_tokens,
+                  usage: data.usage
+                }
+              });
+            } else if (data.type === 'response.file_search_call.in_progress') {
+              chunks.push({
+                schema_version: '1.0.1',
+                stream_type: 'canonical',
+                event: {
+                  type: 'file_search_call_in_progress',
+                  call_id: data.call_id,
+                  tool_call_id: data.tool_call_id,
+                  file_search: data.file_search
+                }
+              });
+            } else if (data.type === 'response.file_search_call.searching') {
+              chunks.push({
+                schema_version: '1.0.1',
+                stream_type: 'canonical',
+                event: {
+                  type: 'file_search_call_searching',
+                  call_id: data.call_id,
+                  tool_call_id: data.tool_call_id,
+                  file_search: data.file_search
+                }
+              });
+            } else if (data.type === 'response.file_search_call.completed') {
+              chunks.push({
+                schema_version: '1.0.1',
+                stream_type: 'canonical',
+                event: {
+                  type: 'file_search_call_completed',
+                  call_id: data.call_id,
+                  tool_call_id: data.tool_call_id,
+                  file_search: data.file_search
+                }
+              });
+            } else if (data.type === 'response.completed') {
+              chunks.push({
+                schema_version: '1.0.1',
+                stream_type: 'canonical',
+                event: {
+                  type: 'complete',
+                  finish_reason: data.response?.status === 'completed' ? 'stop' : 'unknown',
+                  response: data.response
+                }
+              });
+            }
+          }
+          // Handle OpenAI Chat Completions format
+          else if (data.choices) {
+            const choice = data.choices[0];
+            if (choice.delta?.content) {
+              chunks.push({
+                schema_version: '1.0.1',
+                stream_type: 'canonical',
+                event: {
+                  type: 'content_delta',
+                  part: 'text',
+                  value: choice.delta.content,
+                  index: choice.index
+                }
+              });
+            }
+            if (choice.delta?.function_call) {
+              chunks.push({
+                schema_version: '1.0.1',
+                stream_type: 'canonical',
+                event: {
+                  type: 'function_call',
+                  name: choice.delta.function_call.name || '',
+                  arguments_json: choice.delta.function_call.arguments || '',
+                  id: `call_${Date.now()}`,
+                  arguments: choice.delta.function_call.arguments
+                }
+              });
+            }
+            if (choice.delta?.tool_calls) {
+              for (const toolCall of choice.delta.tool_calls) {
+                chunks.push({
+                  schema_version: '1.0.1',
+                  stream_type: 'canonical',
+                  event: {
+                    type: 'tool_call',
+                    name: toolCall.function?.name || '',
+                    arguments_json: toolCall.function?.arguments || '',
+                    id: toolCall.id || `call_${Date.now()}`,
+                    index: toolCall.index,
+                    function: toolCall.function
+                  }
+                });
+              }
+            }
+            if (choice.finish_reason) {
+              chunks.push({
+                schema_version: '1.0.1',
+                stream_type: 'canonical',
+                event: {
+                  type: 'complete',
+                  finish_reason: choice.finish_reason
+                }
+              });
+            }
+          }
+          // Handle OpenAI Completions format
+          else if (data.object === 'text_completion.chunk') {
+            const choice = data.choices?.[0];
+            if (choice?.text) {
+              chunks.push({
+                schema_version: '1.0.1',
+                stream_type: 'canonical',
+                event: {
+                  type: 'content_delta',
+                  part: 'text',
+                  value: choice.text,
+                  index: choice.index
+                }
+              });
+            }
+            if (choice?.finish_reason) {
+              chunks.push({
+                schema_version: '1.0.1',
+                stream_type: 'canonical',
+                event: {
+                  type: 'complete',
+                  finish_reason: choice.finish_reason
+                }
+              });
+            }
+          }
+        } catch (e) {
+          // Skip malformed JSON lines
+        }
+      }
+    }
+    
+    return chunks;
   }
 
 

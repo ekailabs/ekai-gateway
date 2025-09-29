@@ -162,4 +162,27 @@ export class ProviderService {
 
     return provider.getStreamingResponse(request);
   }
+
+  // New method to get canonical streaming chunks
+  async getStreamingChunks(
+    request: CanonicalRequest,
+    providerName: Provider,
+    requestId?: string
+  ): Promise<any[]> {
+    const provider = this.getOrCreateProvider(providerName);
+
+    // Ensure Anthropic models have required suffixes
+    if (providerName === Provider.ANTHROPIC) {
+      request.model = ModelUtils.ensureAnthropicSuffix(request.model);
+    }
+
+    logger.info(`Getting streaming chunks`, {
+      provider: providerName,
+      model: request.model,
+      requestId,
+      module: 'provider-service'
+    });
+
+    return provider.getStreamingResponse(request);
+  }
 }

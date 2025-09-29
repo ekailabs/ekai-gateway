@@ -27,14 +27,15 @@ interface OpenAIResponsesResponse {
   usage?: { input_tokens?: number; output_tokens?: number; total_tokens?: number };
 }
 
-export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequest, OpenAIResponsesResponse> {
-  toCanonical(input: OpenAIResponsesRequest): CanonicalRequest {
-    const instructions = (input as any).instructions;
+export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequest, OpenAIResponsesResponse, any, any> {
+  // Request path: Client → Canonical → Provider
+  encodeRequestToCanonical(clientRequest: OpenAIResponsesRequest): CanonicalRequest {
+    const instructions = (clientRequest as any).instructions;
     const systemPrompt = instructions ? (typeof instructions === 'string' ? instructions : String(instructions)) : undefined;
 
     // Map OpenAI Responses input to canonical messages
     const messages: any[] = [];
-    const inputData = (input as any).input;
+    const inputData = (clientRequest as any).input;
     
     if (typeof inputData === 'string') {
       messages.push({ role: 'user', content: inputData });
@@ -52,7 +53,7 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
           messages.push({ role, content });
         } else if (item?.type === 'reasoning') {
           // Map reasoning to a special message type that can be reconstructed
-          messages.push({
+      messages.push({
             role: 'system', // Use system role to distinguish reasoning
             content: [{
               type: 'reasoning',
@@ -67,100 +68,194 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
 
     const canonical: any = {
       schema_version: '1.0.1',
-      model: (input as any).model,
+      model: (clientRequest as any).model,
       messages: (messages.length ? messages : [{ role: 'user', content: '' }]),
       system: systemPrompt,
-      stream: Boolean((input as any).stream),
-      tools: (input as any).tools,
-      tool_choice: (input as any).tool_choice,
-      parallel_tool_calls: (input as any).parallel_tool_calls,
-      response_format: (input as any).response_format,
-      include: (input as any).include,
-      store: (input as any).store,
-      reasoning_effort: (input as any).reasoning_effort ?? (input as any).reasoning?.effort,
-      modalities: (input as any).modalities,
-      audio: (input as any).audio,
-      thinking: (input as any).reasoning ? {
-        budget: (input as any).reasoning.budget,
-        summary: (input as any).reasoning.summary,
-        content: (input as any).reasoning.content,
-        encrypted_content: (input as any).reasoning.encrypted_content
+      stream: Boolean((clientRequest as any).stream),
+      tools: (clientRequest as any).tools,
+      tool_choice: (clientRequest as any).tool_choice,
+      parallel_tool_calls: (clientRequest as any).parallel_tool_calls,
+      response_format: (clientRequest as any).response_format,
+      include: (clientRequest as any).include,
+      store: (clientRequest as any).store,
+      reasoning_effort: (clientRequest as any).reasoning_effort ?? (clientRequest as any).reasoning?.effort,
+      modalities: (clientRequest as any).modalities,
+      audio: (clientRequest as any).audio,
+      thinking: (clientRequest as any).reasoning ? {
+        budget: (clientRequest as any).reasoning.budget,
+        summary: (clientRequest as any).reasoning.summary,
+        content: (clientRequest as any).reasoning.content,
+        encrypted_content: (clientRequest as any).reasoning.encrypted_content
       } : undefined,
       generation: {
-        max_tokens: (input as any).max_output_tokens ?? (input as any).max_tokens,
-        temperature: (input as any).temperature,
-        top_p: (input as any).top_p,
-        stop: (input as any).stop,
-        stop_sequences: (input as any).stop_sequences,
-        seed: (input as any).seed
+        max_tokens: (clientRequest as any).max_output_tokens ?? (clientRequest as any).max_tokens,
+        temperature: (clientRequest as any).temperature,
+        top_p: (clientRequest as any).top_p,
+        stop: (clientRequest as any).stop,
+        stop_sequences: (clientRequest as any).stop_sequences,
+        seed: (clientRequest as any).seed
       },
-      provider_params: { openai: { use_responses_api: true, prompt_cache_key: (input as any).prompt_cache_key } }
+      provider_params: { openai: { use_responses_api: true, prompt_cache_key: (clientRequest as any).prompt_cache_key } }
     };
 
     return canonical as CanonicalRequest;
   }
 
-  fromCanonical(response: CanonicalResponse): OpenAIResponsesResponse {
-    const firstChoice: any = (response as any).choices?.[0] || {};
+  decodeCanonicalRequest(canonicalRequest: CanonicalRequest): any {
+    // Convert canonical request to OpenAI Responses API format
+    const messages = canonicalRequest.messages || [];
+    const input: any[] = [];
+    
+    for (const message of messages) {
+      if ((message as any).role === 'system') {
+        // Handle reasoning/system messages
+        const content = Array.isArray(message.content) ? message.content[0] : message.content;
+        if ((content as any)?.type === 'reasoning') {
+          input.push({
+            type: 'reasoning',
+            summary: (content as any).summary,
+            content: (content as any).content,
+            encrypted_content: (content as any).encrypted_content
+          });
+        }
+      } else {
+        // Handle regular messages
+        input.push({
+          type: 'message',
+          role: message.role,
+          content: Array.isArray(message.content) 
+            ? message.content.map((c: any) => ({
+                type: c.type === 'text' ? 'input_text' : c.type,
+                text: c.text || ''
+              }))
+            : [{ type: 'input_text', text: String(message.content || '') }]
+        });
+      }
+    }
+
+    return {
+      model: canonicalRequest.model,
+      input: input.length > 0 ? input : [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: '' }] }],
+      stream: canonicalRequest.stream,
+      temperature: canonicalRequest.generation?.temperature,
+      max_output_tokens: canonicalRequest.generation?.max_tokens,
+      top_p: canonicalRequest.generation?.top_p,
+      stop: canonicalRequest.generation?.stop,
+      stop_sequences: canonicalRequest.generation?.stop_sequences,
+      seed: canonicalRequest.generation?.seed,
+      tools: canonicalRequest.tools,
+      tool_choice: canonicalRequest.tool_choice,
+      parallel_tool_calls: canonicalRequest.parallel_tool_calls,
+      response_format: canonicalRequest.response_format,
+      include: canonicalRequest.include,
+      store: canonicalRequest.store,
+      reasoning: canonicalRequest.thinking ? {
+        budget: canonicalRequest.thinking.budget,
+        summary: canonicalRequest.thinking.summary,
+        content: canonicalRequest.thinking.content,
+        encrypted_content: canonicalRequest.thinking.encrypted_content,
+        effort: canonicalRequest.reasoning_effort
+      } : undefined,
+      modalities: canonicalRequest.modalities,
+      audio: canonicalRequest.audio,
+      prompt_cache_key: canonicalRequest.provider_params?.openai?.prompt_cache_key
+    };
+  }
+
+  // Response path: Provider → Canonical → Client
+  encodeResponseToCanonical(providerResponse: any): CanonicalResponse {
+    // This method will be implemented when we move provider logic here
+    // For now, return the provider response as-is
+    return providerResponse as CanonicalResponse;
+  }
+
+  decodeResponseToClient(canonicalResponse: CanonicalResponse): OpenAIResponsesResponse {
+    const firstChoice: any = (canonicalResponse as any).choices?.[0] || {};
     const parts: any[] = firstChoice?.message?.content || [];
     const text = parts
       .filter(p => p?.type === 'text')
       .map(p => p.text || '')
       .join('');
     return {
-      id: (response as any).id,
+      id: (canonicalResponse as any).id,
       object: 'response',
-      created: (response as any).created,
-      model: (response as any).model,
+      created: (canonicalResponse as any).created,
+      model: (canonicalResponse as any).model,
       output_text: text,
       output: [{ content: parts.map(p => p?.type === 'text' ? { type: 'text', text: p.text || '' } : { type: 'text', text: '' }) }],
       usage: {
-        input_tokens: (response as any).usage?.input_tokens ?? (response as any).usage?.prompt_tokens,
-        output_tokens: (response as any).usage?.output_tokens ?? (response as any).usage?.completion_tokens,
-        total_tokens: (response as any).usage?.total_tokens
+        input_tokens: (canonicalResponse as any).usage?.input_tokens ?? (canonicalResponse as any).usage?.prompt_tokens,
+        output_tokens: (canonicalResponse as any).usage?.output_tokens ?? (canonicalResponse as any).usage?.completion_tokens,
+        total_tokens: (canonicalResponse as any).usage?.total_tokens
       }
     } as OpenAIResponsesResponse;
   }
 
-  fromCanonicalStream?(chunk: any): string {
-    // Convert canonical streaming chunk to OpenAI Responses SSE format
+  // Streaming response path: Provider → Canonical → Client
+  encodeStreamToCanonical?(providerChunk: any): any {
+    // This method will be implemented when we move provider logic here
+    // For now, return the provider chunk as-is
+    return providerChunk;
+  }
+
+  decodeStreamToClient?(canonicalChunk: any): string {
+    // Convert streaming chunk to OpenAI Responses SSE format
     const lines: string[] = [];
     
-    // Handle different streaming event types from canonical chunk
-    if (chunk.event) {
-      const eventType = chunk.event.type;
+    // Handle canonical streaming schema (stream_type: 'canonical')
+    if (canonicalChunk.stream_type === 'canonical' && canonicalChunk.event) {
+      const eventType = canonicalChunk.event.type;
       
       switch (eventType) {
         case 'message_start':
           lines.push('event: response.created');
           lines.push(`data: ${JSON.stringify({
             type: 'response.created',
-            response: {
-              id: chunk.event.id || chunk.id,
+            response: canonicalChunk.event.response || {
+              id: canonicalChunk.event.id || `resp_${Date.now()}`,
               object: 'response',
-              created: chunk.event.created || Math.floor(Date.now() / 1000),
+              created_at: canonicalChunk.event.created || Math.floor(Date.now() / 1000),
               status: 'in_progress'
             }
           })}`);
           break;
 
         case 'content_delta':
-          if (chunk.event.part === 'text') {
+          if (canonicalChunk.event.part === 'text') {
             lines.push('event: response.output_text.delta');
             lines.push(`data: ${JSON.stringify({
               type: 'response.output_text.delta',
-              delta: chunk.event.value
+              delta: canonicalChunk.event.value || canonicalChunk.event.delta
             })}`);
           }
           break;
 
-        case 'tool_call':
+        case 'output_item_done':
+          lines.push('event: response.output_item.done');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.output_item.done',
+            output_index: canonicalChunk.event.output_index || 0,
+            item: canonicalChunk.event.item
+          })}`);
+          break;
+
+        case 'function_call':
           lines.push('event: response.function_call');
           lines.push(`data: ${JSON.stringify({
             type: 'response.function_call',
-            name: chunk.event.name,
-            arguments_json: chunk.event.arguments_json,
-            call_id: chunk.event.id
+            name: canonicalChunk.event.name,
+            arguments_json: canonicalChunk.event.arguments_json,
+            call_id: canonicalChunk.event.id || canonicalChunk.event.call_id
+          })}`);
+          break;
+
+        case 'tool_call':
+          lines.push('event: response.tool_call');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.tool_call',
+            name: canonicalChunk.event.name,
+            arguments_json: canonicalChunk.event.arguments_json,
+            call_id: canonicalChunk.event.id || canonicalChunk.event.call_id
           })}`);
           break;
 
@@ -168,10 +263,11 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
           lines.push('event: response.usage');
           lines.push(`data: ${JSON.stringify({
             type: 'response.usage',
-            usage: {
-              input_tokens: chunk.event.input_tokens,
-              output_tokens: chunk.event.output_tokens,
-              total_tokens: (chunk.event.input_tokens || 0) + (chunk.event.output_tokens || 0)
+            usage: canonicalChunk.event.usage || {
+              input_tokens: canonicalChunk.event.input_tokens,
+              output_tokens: canonicalChunk.event.output_tokens,
+              reasoning_tokens: canonicalChunk.event.reasoning_tokens,
+              total_tokens: (canonicalChunk.event.input_tokens || 0) + (canonicalChunk.event.output_tokens || 0)
             }
           })}`);
           break;
@@ -180,10 +276,40 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
           lines.push('event: response.completed');
           lines.push(`data: ${JSON.stringify({
             type: 'response.completed',
-            response: {
+            response: canonicalChunk.event.response || {
               status: 'completed',
-              finish_reason: chunk.event.finish_reason
+              finish_reason: canonicalChunk.event.finish_reason
             }
+          })}`);
+          break;
+
+        case 'file_search_call_in_progress':
+          lines.push('event: response.file_search_call.in_progress');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.file_search_call.in_progress',
+            call_id: canonicalChunk.event.call_id,
+            tool_call_id: canonicalChunk.event.tool_call_id,
+            file_search: canonicalChunk.event.file_search
+          })}`);
+          break;
+
+        case 'file_search_call_searching':
+          lines.push('event: response.file_search_call.searching');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.file_search_call.searching',
+            call_id: canonicalChunk.event.call_id,
+            tool_call_id: canonicalChunk.event.tool_call_id,
+            file_search: canonicalChunk.event.file_search
+          })}`);
+          break;
+
+        case 'file_search_call_completed':
+          lines.push('event: response.file_search_call.completed');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.file_search_call.completed',
+            call_id: canonicalChunk.event.call_id,
+            tool_call_id: canonicalChunk.event.tool_call_id,
+            file_search: canonicalChunk.event.file_search
           })}`);
           break;
 
@@ -192,22 +318,84 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
           lines.push(`data: ${JSON.stringify({
             type: 'error',
             error: {
-              code: chunk.event.code,
-              message: chunk.event.message
+              code: canonicalChunk.event.code,
+              message: canonicalChunk.event.message
             }
           })}`);
           break;
       }
     }
 
+    // Handle OpenAI streaming format (stream_type: 'openai')
+    if (canonicalChunk.stream_type === 'openai' && canonicalChunk.choices) {
+      for (const choice of canonicalChunk.choices) {
+        if (choice.delta?.function_call) {
+          const funcCall = choice.delta.function_call;
+          if (funcCall.name) {
+            lines.push('event: response.function_call');
+            lines.push(`data: ${JSON.stringify({
+              type: 'response.function_call',
+              name: funcCall.name,
+              call_id: choice.delta.tool_calls?.[0]?.id || `call_${Date.now()}`
+            })}`);
+          }
+          if (funcCall.arguments) {
+            lines.push('event: response.function_call.arguments.delta');
+            lines.push(`data: ${JSON.stringify({
+              type: 'response.function_call.arguments.delta',
+              call_id: choice.delta.tool_calls?.[0]?.id || `call_${Date.now()}`,
+              delta: funcCall.arguments
+            })}`);
+          }
+        }
+        if (choice.delta?.tool_calls) {
+          for (const call of choice.delta.tool_calls) {
+            if (call.function?.name) {
+              lines.push('event: response.function_call');
+              lines.push(`data: ${JSON.stringify({
+                type: 'response.function_call',
+                name: call.function.name,
+                call_id: call.id
+              })}`);
+            }
+            if (call.function?.arguments) {
+              lines.push('event: response.function_call.arguments.delta');
+              lines.push(`data: ${JSON.stringify({
+                type: 'response.function_call.arguments.delta',
+                call_id: call.id,
+                delta: call.function.arguments
+              })}`);
+            }
+          }
+        }
+        if (choice.delta?.content) {
+          lines.push('event: response.output_text.delta');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.output_text.delta',
+            delta: choice.delta.content
+          })}`);
+        }
+        if (choice.finish_reason) {
+          lines.push('event: response.completed');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.completed',
+            response: {
+              status: 'completed',
+              finish_reason: choice.finish_reason
+            }
+          })}`);
+        }
+      }
+    }
+
     // Legacy support: Handle old-style canonical chunks
-    if (chunk.delta?.content) {
-      const textDelta = chunk.delta.content
+    if (canonicalChunk.delta?.content) {
+    const textDelta = canonicalChunk.delta.content
         .filter((c: any) => c.type === 'text' || c.type === 'output_text')
         .map((c: any) => c.text)
         .join('');
-      
-      if (textDelta) {
+
+    if (textDelta) {
         lines.push('event: response.output_text.delta');
         lines.push(`data: ${JSON.stringify({
           type: 'response.output_text.delta',
@@ -216,9 +404,9 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
       }
     }
 
-    // Handle function calls in delta
-    if (chunk.delta?.tool_calls) {
-      for (const call of chunk.delta.tool_calls) {
+    // Handle function calls in delta (both tool_calls and function_call formats)
+    if (canonicalChunk.delta?.tool_calls) {
+      for (const call of canonicalChunk.delta.tool_calls) {
         if (call.created) {
           lines.push('event: response.function_call');
           lines.push(`data: ${JSON.stringify({
@@ -245,26 +433,45 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
       }
     }
 
+    // Handle legacy function_call format from streaming schema
+    if (canonicalChunk.delta?.function_call) {
+      const funcCall = canonicalChunk.delta.function_call;
+      if (funcCall.name) {
+        lines.push('event: response.function_call');
+        lines.push(`data: ${JSON.stringify({
+          type: 'response.function_call',
+          name: funcCall.name
+        })}`);
+      }
+      if (funcCall.arguments) {
+        lines.push('event: response.function_call.arguments.delta');
+        lines.push(`data: ${JSON.stringify({
+          type: 'response.function_call.arguments.delta',
+          delta: funcCall.arguments
+        })}`);
+      }
+    }
+
     // Handle function call outputs
-    if (chunk.delta?.function_call_output) {
+    if (canonicalChunk.delta?.function_call_output) {
       lines.push('event: response.function_call_output');
       lines.push(`data: ${JSON.stringify({
         type: 'response.function_call_output',
-        call_id: chunk.delta.function_call_output.call_id,
-        output: chunk.delta.function_call_output.output
+        call_id: canonicalChunk.delta.function_call_output.call_id,
+        output: canonicalChunk.delta.function_call_output.output
       })}`);
     }
 
     // Handle completion
-    if (chunk.finishReason) {
-      if (chunk.usage) {
+    if (canonicalChunk.finishReason) {
+      if (canonicalChunk.usage) {
         lines.push('event: response.usage');
         lines.push(`data: ${JSON.stringify({
           type: 'response.usage',
           usage: {
-            input_tokens: chunk.usage.input_tokens || chunk.usage.inputTokens || 0,
-            output_tokens: chunk.usage.output_tokens || chunk.usage.outputTokens || 0,
-            total_tokens: chunk.usage.total_tokens || chunk.usage.totalTokens || 0
+            input_tokens: canonicalChunk.usage.input_tokens || canonicalChunk.usage.inputTokens || 0,
+            output_tokens: canonicalChunk.usage.output_tokens || canonicalChunk.usage.outputTokens || 0,
+            total_tokens: canonicalChunk.usage.total_tokens || canonicalChunk.usage.totalTokens || 0
           }
         })}`);
       }
@@ -274,7 +481,7 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
         type: 'response.completed',
         response: {
           status: 'completed',
-          finish_reason: chunk.finishReason
+          finish_reason: canonicalChunk.finishReason
         }
       })}`);
     }

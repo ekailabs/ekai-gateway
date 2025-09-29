@@ -83,38 +83,7 @@ export abstract class BaseProvider implements AIProvider {
     return transformedResponse;
   }
 
-  async getStreamingResponse(request: CanonicalRequest): Promise<any> {
-    const transformedRequest = this.transformRequest(request);
-    
-    // Set stream: true for streaming requests
-    const streamingRequest = { ...transformedRequest, stream: true };
-    
-    if (!this.apiKey) {
-      throw new APIError(HTTP_STATUS.UNAUTHORIZED, `${this.name} API key not configured`);
-    }
-
-    const url = `${this.baseUrl}${this.getChatCompletionEndpoint()}`;
-    const headers = {
-      ...this.getHeaders(),
-      'Accept': 'text/event-stream',
-      'Cache-Control': 'no-cache'
-    };
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(streamingRequest)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new APIError(
-        response.status, 
-        `${this.name} streaming API error: ${response.status} - ${errorText}`
-      );
-    }
-
-    return response;
-  }
+  // Abstract method for streaming - providers should implement this
+  abstract getStreamingResponse(request: CanonicalRequest): Promise<any>;
 
 }

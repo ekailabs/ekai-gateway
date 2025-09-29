@@ -70,17 +70,89 @@ export class AnthropicProvider extends BaseProvider {
 
   async chatCompletion(request: CanonicalRequest): Promise<CanonicalResponse> {
     // For non-streaming, collect the stream and parse it
-    const streamResponse = await this.getStreamingResponse(request);
-    const text = await streamResponse.text();
-    return this.parseStreamToCanonical(text, request);
-  }
-
-  // Get raw streaming response  
-  async getStreamingResponse(request: CanonicalRequest): Promise<Response> {
     const transformedRequest = this.transformRequest(request);
     const url = `${this.baseUrl}${this.getChatCompletionEndpoint()}`;
     
-    return await this.makeRequest(url, transformedRequest, true);
+    const rawResponse = await this.makeRequest(url, transformedRequest, true);
+    const streamText = await rawResponse.text();
+    return this.parseStreamToCanonical(streamText, request);
+  }
+
+  // Get raw streaming response  
+  async getStreamingResponse(request: CanonicalRequest): Promise<any> {
+    const transformedRequest = this.transformRequest(request);
+    const url = `${this.baseUrl}${this.getChatCompletionEndpoint()}`;
+    
+    const rawResponse = await this.makeRequest(url, transformedRequest, true);
+    
+    // Only parse to canonical chunks if CANONICAL_MODE is enabled
+    const canonicalMode = ['true', '1', 'yes'].includes(String(process.env.CANONICAL_MODE || '').toLowerCase());
+    if (canonicalMode) {
+      const streamText = await rawResponse.text();
+      return this.parseSSEToCanonical(streamText);
+    }
+
+    // Return raw response for passthrough mode
+    return rawResponse;
+  }
+
+  // Parse raw SSE stream into canonical streaming chunks
+  private parseSSEToCanonical(streamText: string): any[] {
+    const chunks: any[] = [];
+    const lines = streamText.split('\n');
+    
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const dataStr = line.slice(6);
+        if (dataStr === '[DONE]') {
+          chunks.push({
+            stream_type: 'canonical',
+            event: {
+              type: 'complete',
+              finish_reason: 'stop'
+            }
+          });
+          break;
+        }
+        
+        try {
+          const data = JSON.parse(dataStr);
+          
+          if (data.type === 'content_block_delta' && data.delta?.text) {
+            chunks.push({
+              stream_type: 'canonical',
+              event: {
+                type: 'content_delta',
+                part: 'text',
+                value: data.delta.text
+              }
+            });
+          } else if (data.type === 'message_delta' && data.usage) {
+            chunks.push({
+              stream_type: 'canonical',
+              event: {
+                type: 'usage',
+                input_tokens: data.usage.input_tokens,
+                output_tokens: data.usage.output_tokens
+              }
+            });
+          } else if (data.type === 'message_start' && data.message?.usage) {
+            chunks.push({
+              stream_type: 'canonical',
+              event: {
+                type: 'usage',
+                input_tokens: data.message.usage.input_tokens,
+                output_tokens: data.message.usage.output_tokens
+              }
+            });
+          }
+        } catch (e) {
+          // Skip malformed JSON lines
+        }
+      }
+    }
+    
+    return chunks;
   }
 
   private parseStreamToCanonical(streamText: string, originalRequest: CanonicalRequest): CanonicalResponse {
@@ -148,18 +220,27 @@ export class AnthropicProvider extends BaseProvider {
     const messages: Array<{ role: 'user' | 'assistant'; content: string; }> = [];
 
     for (const message of request.messages) {
-      if (message.role === 'system') {
+      if ((message as any).role === 'system') {
         // Combine all text content for system message
-        systemPrompt = message.content
-          .filter(c => c.type === 'text')
-          .map(c => c.text)
-          .join('');
+        if (Array.isArray(message.content)) {
+          systemPrompt = message.content
+            .filter(c => c.type === 'text')
+            .map(c => c.text)
+            .join('');
+        } else {
+          systemPrompt = message.content;
+        }
       } else if (message.role === 'user' || message.role === 'assistant') {
         // Combine all text content for regular messages
-        const content = message.content
-          .filter(c => c.type === 'text')
-          .map(c => c.text)
-          .join('');
+        let content: string;
+        if (Array.isArray(message.content)) {
+          content = message.content
+            .filter(c => c.type === 'text')
+            .map(c => c.text)
+            .join('');
+        } else {
+          content = message.content;
+        }
         
         messages.push({
           role: message.role,
@@ -170,9 +251,9 @@ export class AnthropicProvider extends BaseProvider {
 
     const anthropicRequest: AnthropicRequest = {
       model: request.model,
-      max_tokens: request.maxTokens || DEFAULT_MAX_TOKENS,
+      max_tokens: (request as any).maxTokens || DEFAULT_MAX_TOKENS,
       messages,
-      temperature: request.temperature,
+      temperature: (request as any).temperature,
       stream: request.stream || false
     };
 

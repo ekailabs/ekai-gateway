@@ -2,34 +2,62 @@ import { FormatAdapter } from '../../canonical/format-adapter.js';
 import { Request as CanonicalRequest, Response as CanonicalResponse } from '../../canonical/types/index.js';
 import { ChatCompletionRequest, ChatCompletionResponse } from 'shared/types/types.js';
 
-export class OpenAIAdapter implements FormatAdapter<ChatCompletionRequest, ChatCompletionResponse> {
+export class OpenAIAdapter implements FormatAdapter<ChatCompletionRequest, ChatCompletionResponse, any, any> {
   
-  toCanonical(input: ChatCompletionRequest): CanonicalRequest {
-    const messages = input.messages.map(msg => ({ role: msg.role as any, content: msg.content }));
+  // Request path: Client → Canonical → Provider
+  encodeRequestToCanonical(clientRequest: ChatCompletionRequest): CanonicalRequest {
+    const messages = clientRequest.messages.map(msg => ({ role: msg.role as any, content: msg.content }));
     return {
       schema_version: '1.0.1',
-      model: input.model,
+      model: clientRequest.model,
       messages: messages as any,
-      stream: input.stream || false,
+      stream: clientRequest.stream || false,
       generation: {
-        max_tokens: input.max_tokens,
-        temperature: input.temperature,
-        top_p: (input as any).top_p,
-        stop: (input as any).stop
+        max_tokens: clientRequest.max_tokens,
+        temperature: clientRequest.temperature,
+        top_p: (clientRequest as any).top_p,
+        stop: (clientRequest as any).stop
       },
       provider_params: {
         openai: {
-          presence_penalty: (input as any).presence_penalty,
-          frequency_penalty: (input as any).frequency_penalty,
-          logit_bias: (input as any).logit_bias,
-          user: (input as any).user
+          presence_penalty: (clientRequest as any).presence_penalty,
+          frequency_penalty: (clientRequest as any).frequency_penalty,
+          logit_bias: (clientRequest as any).logit_bias,
+          user: (clientRequest as any).user
         }
       }
     } as any as CanonicalRequest;
   }
 
-  fromCanonical(response: CanonicalResponse): ChatCompletionResponse {
-    const resp: any = response as any;
+  decodeCanonicalRequest(canonicalRequest: CanonicalRequest): any {
+    // Convert canonical request to OpenAI Chat Completions API format
+    return {
+      model: canonicalRequest.model,
+      messages: canonicalRequest.messages.map((msg: any) => ({
+        role: msg.role,
+        content: msg.content
+      })),
+      stream: canonicalRequest.stream,
+      max_tokens: canonicalRequest.generation?.max_tokens,
+      temperature: canonicalRequest.generation?.temperature,
+      top_p: canonicalRequest.generation?.top_p,
+      stop: canonicalRequest.generation?.stop,
+      presence_penalty: canonicalRequest.provider_params?.openai?.presence_penalty,
+      frequency_penalty: canonicalRequest.provider_params?.openai?.frequency_penalty,
+      logit_bias: canonicalRequest.provider_params?.openai?.logit_bias,
+      user: canonicalRequest.provider_params?.openai?.user
+    };
+  }
+
+  // Response path: Provider → Canonical → Client
+  encodeResponseToCanonical(providerResponse: any): CanonicalResponse {
+    // This method will be implemented when we move provider logic here
+    // For now, return the provider response as-is
+    return providerResponse as CanonicalResponse;
+  }
+
+  decodeResponseToClient(canonicalResponse: CanonicalResponse): ChatCompletionResponse {
+    const resp: any = canonicalResponse as any;
     const choice = resp.choices?.[0];
     const text = choice?.message?.content?.map?.((p: any) => p?.type === 'text' ? (p.text || '') : '').join('') || '';
     return {

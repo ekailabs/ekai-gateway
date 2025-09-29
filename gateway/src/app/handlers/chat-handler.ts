@@ -48,15 +48,27 @@ export class ChatHandler {
 
       if (clientFormat === 'openai_responses') {
         // For responses, we always want to use OpenAI provider (responses API is OpenAI-specific)
-        // But we still need to check if passthrough should be used
         providerName = 'openai';
-        canonicalRequest = this.adapters[clientFormat].toCanonical(req.body);
+        
+        // Create canonical request only for logging purposes
+        const canonicalMode = ['true', '1', 'yes'].includes(String(process.env.CANONICAL_MODE || '').toLowerCase());
+        if (canonicalMode) {
+          canonicalRequest = this.adapters[clientFormat].encodeRequestToCanonical(req.body);
+        } else {
+          // Create minimal canonical request for compatibility
+          canonicalRequest = {
+            schema_version: '1.0.1',
+            model: req.body.model,
+            messages: [],
+            stream: req.body.stream || false
+          } as any;
+        }
 
         logger.debug('Processing OpenAI Responses request', {
           requestId: req.requestId,
           clientFormat,
-          model: canonicalRequest.model,
-          streaming: canonicalRequest.stream,
+          model: req.body.model,
+          streaming: req.body.stream,
           provider: providerName,
           module: 'chat-handler'
         });
@@ -69,7 +81,20 @@ export class ChatHandler {
         }
 
         providerName = result.provider;
-        canonicalRequest = this.adapters[clientFormat].toCanonical(req.body);
+        
+        // Create canonical request only for logging purposes
+        const canonicalMode = ['true', '1', 'yes'].includes(String(process.env.CANONICAL_MODE || '').toLowerCase());
+        if (canonicalMode) {
+          canonicalRequest = this.adapters[clientFormat].encodeRequestToCanonical(req.body);
+        } else {
+          // Create minimal canonical request for compatibility
+          canonicalRequest = {
+            schema_version: '1.0.1',
+            model: req.body.model,
+            messages: [],
+            stream: req.body.stream || false
+          } as any;
+        }
       }
 
       // Normalize model name, example: anthropic/claude-3-5-sonnet → claude-3-5-sonnet.
@@ -104,7 +129,7 @@ export class ChatHandler {
 
       // For non-passthrough cases, ensure we have canonical request
       if (clientFormat !== 'openai_responses') {
-        canonicalRequest = this.adapters[clientFormat].toCanonical(req.body);
+        canonicalRequest = this.adapters[clientFormat].encodeRequestToCanonical(req.body);
       }
 
 
@@ -122,40 +147,35 @@ export class ChatHandler {
 
 
   private async handleNonStreaming(canonicalRequest: CanonicalRequest, res: Response, clientFormat: ClientFormat, providerName?: ProviderName, originalRequest?: any, req?: Request): Promise<void> {
-    if (clientFormat === 'openai_responses') {
-      // Test mode: compare request transformation before making API call
-      const canonicalMode = ['true', '1', 'yes'].includes(String(process.env.CANONICAL_MODE || '').toLowerCase());
-      if (canonicalMode && providerName === 'openai') {
-        await this.compareRequestTransformation(originalRequest, canonicalRequest, req?.requestId);
-      }
+    const canonicalMode = ['true', '1', 'yes'].includes(String(process.env.CANONICAL_MODE || '').toLowerCase());
+    
+    // Always use passthrough for the actual response to user
+    const passthroughResponse = await this.makeDirectPassthroughRequest(originalRequest);
+    res.status(HTTP_STATUS.OK).json(passthroughResponse);
 
+    // Run canonical transformation in parallel for logging only (if enabled)
+    if (canonicalMode && providerName === 'openai') {
+      try {
+        // Compare request transformation
+        await this.compareRequestTransformation(originalRequest, canonicalRequest, req?.requestId, clientFormat);
+        
+        // Process canonical transformation for comparison logging
       const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, 'openai' as any, 'openai', originalRequest, req.requestId);
-      const clientResponse = this.adapters[clientFormat].fromCanonical(canonicalResponse);
-
-      // Test mode: compare response transformation with passthrough
-      if (canonicalMode && providerName === 'openai') {
-        await this.compareCanonicalTransformation(originalRequest, canonicalResponse, clientResponse, req?.requestId);
+        const clientResponse = this.adapters[clientFormat].decodeResponseToClient(canonicalResponse);
+        await this.compareCanonicalTransformation(originalRequest, canonicalResponse, clientResponse, req?.requestId, clientFormat);
+      } catch (error) {
+        // Log canonical transformation errors but don't affect user response
+        logger.error('Canonical transformation error (logging only)', {
+          error: error instanceof Error ? error.message : String(error),
+          requestId: req?.requestId,
+          module: 'chat-handler'
+        });
       }
-
-      res.status(HTTP_STATUS.OK).json(clientResponse);
-      return;
     }
-
-    const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, providerName as any, clientFormat, originalRequest, req.requestId);
-    const clientResponse = this.adapters[clientFormat].fromCanonical(canonicalResponse);
-
-    res.status(HTTP_STATUS.OK).json(clientResponse);
   }
 
   private async handleStreaming(canonicalRequest: CanonicalRequest, res: Response, clientFormat: ClientFormat, providerName?: ProviderName, originalRequest?: any, req?: Request): Promise<void> {
-    if (clientFormat === 'openai_responses') {
-      // Test mode: compare request transformation before making API call
-      const canonicalMode = ['true', '1', 'yes'].includes(String(process.env.CANONICAL_MODE || '').toLowerCase());
-      if (canonicalMode && providerName === 'openai') {
-        await this.compareRequestTransformation(originalRequest, canonicalRequest, req?.requestId);
-      }
-
-      const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest, 'openai' as any, 'openai', originalRequest, req.requestId);
+    const canonicalMode = ['true', '1', 'yes'].includes(String(process.env.CANONICAL_MODE || '').toLowerCase());
 
       res.writeHead(HTTP_STATUS.OK, {
         'Content-Type': CONTENT_TYPES.EVENT_STREAM,
@@ -164,74 +184,162 @@ export class ChatHandler {
         'Access-Control-Allow-Origin': '*',
       });
 
-      const compareStreaming = canonicalMode;
-
-      if (!streamResponse?.body) {
+    // Always use passthrough for the actual streaming response to user
+    if (clientFormat === 'openai_responses') {
+      const passthroughStream = await this.captureOpenAIResponsesPassthroughStream(originalRequest);
+      res.write(passthroughStream);
+      res.end();
+    } else {
+      // For other formats, use normal passthrough
+      const streamingResponse = await this.providerService.getStreamingChunks(canonicalRequest, providerName as any, req.requestId);
+      if (streamingResponse && 'body' in streamingResponse && streamingResponse.body) {
+        (streamingResponse.body as any).pipe(res);
+      } else {
         throw new Error('No stream body received from provider');
       }
-
-      if (!compareStreaming) {
-        streamResponse.body.pipe(res);
-        return;
-      }
-
-      // In compare mode: capture the raw stream and process it through both paths
-      const rawChunks: Buffer[] = [];
-      const adapterChunks: string[] = [];
-      
-      const streamDone = new Promise<void>((resolve, reject) => {
-        try {
-          streamResponse.body.on('data', (chunk: Buffer) => {
-            // Capture raw chunk for passthrough simulation
-            rawChunks.push(chunk);
-            
-            // Process through adapter and send to client
-            const text = chunk.toString();
-            adapterChunks.push(text);
-            res.write(chunk);
-          });
-          streamResponse.body.on('end', () => {
-            res.end();
-            resolve();
-          });
-          streamResponse.body.on('error', (err: unknown) => {
-            try { res.end(); } catch {}
-            reject(err);
-          });
-        } catch (e) {
-          try { res.end(); } catch {}
-          reject(e);
-        }
-      });
-
-      // Wait for stream to complete
-      await streamDone;
-
-      // Now simulate what passthrough would have returned with the SAME raw data
-      const passthroughData = this.simulatePassthroughFromRawStream(rawChunks);
-      const adapterData = adapterChunks.join('');
-      
-      // Compare the two processed outputs from the same raw stream
-      this.logSSEDifferences(passthroughData, adapterData, req?.requestId);
-      return;
     }
 
-    const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest, providerName as any, clientFormat, originalRequest, req.requestId);
-
-    this.setStreamingHeaders(res);
-
-    if (streamResponse?.body) {
-      streamResponse.body.pipe(res);
-    } else {
-      throw new Error('No stream body received from provider');
+    // Run canonical transformation in parallel for logging only (if enabled)
+    if (canonicalMode && providerName === 'openai') {
+      try {
+        // Compare request transformation
+        await this.compareRequestTransformation(originalRequest, canonicalRequest, req?.requestId, clientFormat);
+        
+        // Process canonical chunks for comparison logging
+        const streamingResponse = await this.providerService.getStreamingChunks(canonicalRequest, providerName as any, req.requestId);
+        const adapterChunks: string[] = [];
+        const passthroughChunks: string[] = [];
+        
+        const adapter = this.adapters[clientFormat];
+        
+        for (const chunk of streamingResponse) {
+          // Process through adapter for comparison
+          if ('decodeStreamToClient' in adapter && adapter.decodeStreamToClient) {
+            const clientChunk = adapter.decodeStreamToClient(chunk);
+            if (clientChunk) {
+              adapterChunks.push(clientChunk);
+            }
+          }
+          
+          // For comparison: convert canonical chunks back to raw SSE format
+          if (chunk.stream_type === 'canonical') {
+            const passthroughChunk = this.canonicalToSSE(chunk);
+            passthroughChunks.push(passthroughChunk);
+          }
+        }
+        
+        // Compare the outputs for logging only
+        const adapterData = adapterChunks.join('');
+        const passthroughData = passthroughChunks.join('');
+        this.logSSEDifferences(passthroughData, adapterData, req?.requestId, clientFormat);
+      } catch (error) {
+        // Log canonical transformation errors but don't affect user response
+        logger.error('Canonical streaming transformation error (logging only)', {
+          error: error instanceof Error ? error.message : String(error),
+          requestId: req?.requestId,
+          module: 'chat-handler'
+        });
+      }
     }
   }
 
-  // Simulate what passthrough would return from the same raw stream data
-  private simulatePassthroughFromRawStream(rawChunks: Buffer[]): string {
-    // For OpenAI Responses, passthrough would just return the raw stream as-is
-    // since it's already in the correct format
-    return rawChunks.map(chunk => chunk.toString()).join('');
+  // Convert OpenAI Responses chunk back to SSE format for passthrough comparison
+  private openaiResponsesToSSE(chunk: any): string {
+    if (chunk.stream_type === 'openai_responses' && chunk.event && chunk.data) {
+      const event = chunk.event;
+      const data = chunk.data;
+      
+      if (event === 'response.output_text.delta') {
+        return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+      } else if (event === 'response.function_call') {
+        return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+      } else if (event === 'response.tool_call') {
+        return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+      } else if (event === 'response.usage') {
+        return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+      } else if (event === 'response.completed') {
+        return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+      } else if (event === 'response.created') {
+        return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+      } else if (event === 'response.output_item.done') {
+        return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+      } else if (event === 'error') {
+        return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+      }
+    }
+    
+    return '';
+  }
+
+  // Convert canonical chunk back to SSE format for passthrough comparison
+  private canonicalToSSE(chunk: any): string {
+    if (chunk.stream_type === 'canonical' && chunk.event) {
+      const event = chunk.event;
+      
+      if (event.type === 'message_start') {
+        return `event: response.created\ndata: ${JSON.stringify({
+          type: 'response.created',
+          response: event.response || {
+            id: event.id || `resp_${Date.now()}`,
+            object: 'response',
+            created_at: event.created || Math.floor(Date.now() / 1000),
+            status: 'in_progress'
+          }
+        })}\n\n`;
+      } else if (event.type === 'content_delta') {
+        return `event: response.output_text.delta\ndata: ${JSON.stringify({
+          type: 'response.output_text.delta',
+          delta: event.value || event.delta
+        })}\n\n`;
+      } else if (event.type === 'output_item_done') {
+        return `event: response.output_item.done\ndata: ${JSON.stringify({
+          type: 'response.output_item.done',
+          output_index: event.output_index || 0,
+          item: event.item
+        })}\n\n`;
+      } else if (event.type === 'function_call') {
+        return `event: response.function_call\ndata: ${JSON.stringify({
+          type: 'response.function_call',
+          name: event.name,
+          arguments_json: event.arguments_json,
+          call_id: event.id || event.call_id
+        })}\n\n`;
+      } else if (event.type === 'tool_call') {
+        return `event: response.tool_call\ndata: ${JSON.stringify({
+          type: 'response.tool_call',
+          name: event.name,
+          arguments_json: event.arguments_json,
+          call_id: event.id || event.call_id
+        })}\n\n`;
+      } else if (event.type === 'usage') {
+        return `event: response.usage\ndata: ${JSON.stringify({
+          type: 'response.usage',
+          usage: event.usage || {
+            input_tokens: event.input_tokens,
+            output_tokens: event.output_tokens,
+            reasoning_tokens: event.reasoning_tokens
+          }
+        })}\n\n`;
+      } else if (event.type === 'complete') {
+        return `event: response.completed\ndata: ${JSON.stringify({
+          type: 'response.completed',
+          response: event.response || {
+            status: 'completed',
+            finish_reason: event.finish_reason
+          }
+        })}\n\n`;
+      } else if (event.type === 'error') {
+        return `event: error\ndata: ${JSON.stringify({
+          type: 'error',
+          error: event.error || {
+            code: event.code,
+            message: event.message
+          }
+        })}\n\n`;
+      }
+    }
+    
+    return '';
   }
 
   // Capture passthrough SSE by mocking an Express Response that buffers writes
@@ -254,9 +362,8 @@ export class ChatHandler {
             text = String(chunk);
           }
           chunks.push(text);
-          console.log('PASSTHROUGH STREAM:', text);
         } catch (e) {
-          console.log('PASSTHROUGH STREAM ERROR:', e, 'chunk type:', typeof chunk, 'chunk:', chunk);
+          // Silently handle chunk processing errors
         } 
         return true; 
       },
@@ -274,9 +381,8 @@ export class ChatHandler {
               text = String(chunk);
             }
             chunks.push(text);
-            console.log('PASSTHROUGH STREAM END:', text);
           } catch (e) {
-            console.log('PASSTHROUGH STREAM END ERROR:', e);
+            // Silently handle chunk processing errors
           } 
         } 
         return mockRes as any; 
@@ -288,7 +394,7 @@ export class ChatHandler {
   }
 
   // Compare request transformation: what gets sent to OpenAI API
-  private async compareRequestTransformation(originalRequest: any, canonicalRequest: CanonicalRequest, requestId?: string): Promise<void> {
+  private async compareRequestTransformation(originalRequest: any, canonicalRequest: CanonicalRequest, requestId?: string, clientFormat?: string): Promise<void> {
     try {
       // Import OpenAIProvider to build the request body that would be sent to OpenAI API
       const { OpenAIProvider } = await import('../../domain/providers/openai-provider.js');
@@ -306,22 +412,24 @@ export class ChatHandler {
         
         logger.error('Request transformation differences found', {
           requestId,
+          clientFormat,
           message: diffMessages.join(' | '),
           module: 'chat-handler'
         });
       } else {
         logger.info('Request transformation: NO differences found', {
           requestId,
+          clientFormat,
           module: 'chat-handler'
         });
       }
     } catch (e) {
-      logger.error('Request comparison failed', { error: (e as Error)?.message, requestId, module: 'chat-handler' });
+      logger.error('Request comparison failed', { error: (e as Error)?.message, requestId, clientFormat, module: 'chat-handler' });
     }
   }
 
   // Compare canonical transformation with passthrough ground truth
-  private async compareCanonicalTransformation(originalRequest: any, canonicalResponse: any, adapterResponse: any, requestId?: string): Promise<void> {
+  private async compareCanonicalTransformation(originalRequest: any, canonicalResponse: any, adapterResponse: any, requestId?: string, clientFormat?: string): Promise<void> {
     try {
       // Get what the passthrough would return by making the same request
       const passthroughResponse = await this.makeDirectPassthroughRequest(originalRequest);
@@ -336,17 +444,19 @@ export class ChatHandler {
         
         logger.info('Canonical transformation differences found', {
           requestId,
+          clientFormat,
           message: diffMessages.join(' | '),
           module: 'chat-handler'
         });
       } else {
         logger.info('Canonical transformation: NO differences found', {
           requestId,
+          clientFormat,
           module: 'chat-handler'
         });
       }
     } catch (e) {
-      logger.info('Canonical comparison failed', { error: (e as Error)?.message, requestId, module: 'chat-handler' });
+      logger.info('Canonical comparison failed', { error: (e as Error)?.message, requestId, clientFormat, module: 'chat-handler' });
     }
   }
 
@@ -381,7 +491,7 @@ export class ChatHandler {
         if (typeof val1 === 'object' && typeof val2 === 'object' && val1 !== null && val2 !== null) {
           const nestedDiffs = this.findObjectDifferences(val1, val2, currentPath);
           Object.assign(differences, nestedDiffs);
-        } else {
+    } else {
           differences[currentPath] = {
             passthrough: val1,
             adapter: val2
@@ -430,10 +540,14 @@ export class ChatHandler {
   }
 
   // Compare two SSE streams; log only differences with limited lines
-  private logSSEDifferences(passthrough: string, adapter: string, requestId?: string): void {
+  private logSSEDifferences(passthrough: string, adapter: string, requestId?: string, clientFormat?: string): void {
     try {
       if (passthrough === adapter) {
-        logger.info('Streaming response transformation: NO differences found', { requestId, module: 'chat-handler' });
+        logger.info('Streaming response transformation: NO differences found', { 
+          requestId, 
+          clientFormat,
+          module: 'chat-handler' 
+        });
         return;
       }
 
@@ -450,9 +564,19 @@ export class ChatHandler {
           diffs.push(`line ${i + 1}: passthrough="${trim(pl)}" vs adapter="${trim(al)}"`);
         }
       }
-      logger.info('Streaming response transformation differences:', { requestId, message: diffs.join(' | '), module: 'chat-handler' });
+      logger.info('Streaming response transformation differences:', { 
+        requestId, 
+        clientFormat,
+        message: diffs.join(' | '), 
+        module: 'chat-handler' 
+      });
     } catch (e) {
-      logger.warn('Streaming diff logging failed', { error: (e as Error)?.message, requestId, module: 'chat-handler' });
+      logger.warn('Streaming diff logging failed', { 
+        error: (e as Error)?.message, 
+        requestId, 
+        clientFormat,
+        module: 'chat-handler' 
+      });
     }
   }
 

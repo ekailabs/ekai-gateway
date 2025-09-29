@@ -2,35 +2,70 @@ import { FormatAdapter } from '../../canonical/format-adapter.js';
 import { Request as CanonicalRequest, Response as CanonicalResponse } from '../../canonical/types/index.js';
 import { AnthropicMessagesRequest, AnthropicMessagesResponse } from 'shared/types/types.js';
 
-export class AnthropicAdapter implements FormatAdapter<AnthropicMessagesRequest, AnthropicMessagesResponse> {
+export class AnthropicAdapter implements FormatAdapter<AnthropicMessagesRequest, AnthropicMessagesResponse, any, any> {
   
-  toCanonical(input: AnthropicMessagesRequest): CanonicalRequest {
+  // Request path: Client → Canonical → Provider
+  encodeRequestToCanonical(clientRequest: AnthropicMessagesRequest): CanonicalRequest {
     const messages: any[] = [];
 
     // Handle system message
-    if (input.system) {
-      const systemText = this.normalizeText(input.system as any);
+    if (clientRequest.system) {
+      const systemText = this.normalizeText(clientRequest.system as any);
       messages.push({ role: 'system', content: systemText });
     }
 
     // Handle regular messages
-    input.messages.forEach(msg => {
+    clientRequest.messages.forEach(msg => {
       messages.push({ role: msg.role as any, content: this.normalizeText(msg.content as any) });
     });
 
     return {
       schema_version: '1.0.1',
-      model: input.model,
+      model: clientRequest.model,
       messages: messages as any,
-      stream: input.stream || false,
+      stream: clientRequest.stream || false,
       system: undefined,
-      generation: { max_tokens: input.max_tokens, temperature: input.temperature },
-      provider_params: { anthropic: { ...(input as any) } }
+      generation: { max_tokens: clientRequest.max_tokens, temperature: clientRequest.temperature },
+      provider_params: { anthropic: { ...(clientRequest as any) } }
     } as any as CanonicalRequest;
   }
 
-  fromCanonical(response: CanonicalResponse): AnthropicMessagesResponse | string {
-    const resp: any = response as any;
+  decodeCanonicalRequest(canonicalRequest: CanonicalRequest): any {
+    // Convert canonical request to Anthropic Messages API format
+    const messages: any[] = [];
+    let system: string | undefined;
+
+    for (const message of canonicalRequest.messages || []) {
+      if ((message as any).role === 'system') {
+        system = this.normalizeText((message as any).content);
+      } else {
+        messages.push({
+          role: message.role,
+          content: this.normalizeText((message as any).content)
+        });
+      }
+    }
+
+    return {
+      model: canonicalRequest.model,
+      messages,
+      system,
+      stream: canonicalRequest.stream,
+      max_tokens: canonicalRequest.generation?.max_tokens,
+      temperature: canonicalRequest.generation?.temperature,
+      ...canonicalRequest.provider_params?.anthropic
+    };
+  }
+
+  // Response path: Provider → Canonical → Client
+  encodeResponseToCanonical(providerResponse: any): CanonicalResponse {
+    // This method will be implemented when we move provider logic here
+    // For now, return the provider response as-is
+    return providerResponse as CanonicalResponse;
+  }
+
+  decodeResponseToClient(canonicalResponse: CanonicalResponse): AnthropicMessagesResponse | string {
+    const resp: any = canonicalResponse as any;
     const choice = resp.choices?.[0];
     const text = choice?.message?.content?.map?.((p: any) => p?.type === 'text' ? (p.text || '') : '').join('') || '';
     return {
