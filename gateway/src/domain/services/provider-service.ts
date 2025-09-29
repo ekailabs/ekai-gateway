@@ -168,7 +168,7 @@ export class ProviderService {
     request: CanonicalRequest,
     providerName: Provider,
     requestId?: string
-  ): Promise<any[]> {
+  ): Promise<any> {
     const provider = this.getOrCreateProvider(providerName);
 
     // Ensure Anthropic models have required suffixes

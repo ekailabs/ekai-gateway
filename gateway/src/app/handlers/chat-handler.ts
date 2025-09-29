@@ -154,13 +154,13 @@ export class ChatHandler {
     res.status(HTTP_STATUS.OK).json(passthroughResponse);
 
     // Run canonical transformation in parallel for logging only (if enabled)
-    if (canonicalMode && providerName === 'openai') {
+    if (canonicalMode) {
       try {
         // Compare request transformation
         await this.compareRequestTransformation(originalRequest, canonicalRequest, req?.requestId, clientFormat);
         
         // Process canonical transformation for comparison logging
-      const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, 'openai' as any, 'openai', originalRequest, req.requestId);
+        const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, providerName as any, clientFormat, originalRequest, req.requestId);
         const clientResponse = this.adapters[clientFormat].decodeResponseToClient(canonicalResponse);
         await this.compareCanonicalTransformation(originalRequest, canonicalResponse, clientResponse, req?.requestId, clientFormat);
       } catch (error) {
@@ -200,7 +200,7 @@ export class ChatHandler {
     }
 
     // Run canonical transformation in parallel for logging only (if enabled)
-    if (canonicalMode && providerName === 'openai') {
+    if (canonicalMode) {
       try {
         // Compare request transformation
         await this.compareRequestTransformation(originalRequest, canonicalRequest, req?.requestId, clientFormat);
