@@ -1,5 +1,5 @@
 import fetch from 'node-fetch';
-import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
+import { Request as CanonicalRequest, Response as CanonicalResponse } from '../../canonical/types/index.js';
 import { APIError } from '../../infrastructure/utils/error-handler.js';
 import { usageTracker } from '../../infrastructure/utils/usage-tracker.js';
 import { AIProvider, ProviderRequest, ProviderResponse, HTTP_STATUS } from '../types/provider.js';

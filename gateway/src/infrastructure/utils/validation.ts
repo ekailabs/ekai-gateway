@@ -1,9 +1,9 @@
-import { ChatMessage, AnthropicMessagesRequest } from 'shared/types/index.js';
+import { AnthropicMessagesRequest } from 'shared/types/index.js';
 
 export const VALID_ROLES = ['system', 'user', 'assistant'] as const;
 export const VALID_ANTHROPIC_ROLES = ['user', 'assistant'] as const;
 
-export function validateMessage(msg: any): msg is ChatMessage {
+export function validateMessage(msg: any): msg is { role: string; content: string } {
   return msg && 
          typeof msg.role === 'string' && 
          VALID_ROLES.includes(msg.role as any) &&

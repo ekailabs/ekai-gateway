@@ -1,16 +1,7 @@
 // Minimal adapter for OpenAI Responses API request/response shapes
-// Converts between Responses API and canonical format used internally.
-import {
-  CanonicalRequest,
-  CanonicalResponse,
-  CanonicalStreamChunk,
-  CanonicalContent,
-  CanonicalMessage,
-  CanonicalInputItem,
-  CanonicalInputMessage,
-  CanonicalReasoningMessage,
-  FormatAdapter
-} from 'shared/types/canonical.js';
+// Converts between Responses API and canonical schema format used internally.
+import { FormatAdapter } from '../../canonical/format-adapter.js';
+import { Request as CanonicalRequest, Response as CanonicalResponse } from '../../canonical/types/index.js';
 
 type ResponsesInput =
   | string
@@ -38,226 +29,260 @@ interface OpenAIResponsesResponse {
 
 export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequest, OpenAIResponsesResponse> {
   toCanonical(input: OpenAIResponsesRequest): CanonicalRequest {
-    const messages: CanonicalMessage[] = [];
-    let canonicalInput: string | CanonicalInputItem[] | undefined = undefined;
-    let thinking: any = undefined;
-
-    // 1) Map instructions -> system field
     const instructions = (input as any).instructions;
-    let systemPrompt: string | undefined;
-    if (instructions) {
-      systemPrompt = typeof instructions === 'string' ? instructions : String(instructions);
-    }
+    const systemPrompt = instructions ? (typeof instructions === 'string' ? instructions : String(instructions)) : undefined;
 
-    // 2) Process input - map to canonical input structure
-    if (typeof input.input === 'string') {
-      // Simple string input
-      canonicalInput = input.input;
-      // Also create a message for backward compatibility
-      messages.push({
-        role: 'user',
-        content: [{ type: 'text', text: input.input }] as CanonicalContent[],
-      });
-    } else if (Array.isArray(input.input)) {
-      // Complex input array - map to canonical input items
-      const inputItems: CanonicalInputItem[] = [];
-      
-      for (const item of input.input) {
-        const itemType = (item as any).type;
-        
-        if (itemType === 'message') {
-          // Convert to canonical input message
-          const role = ((item as any).role as 'system' | 'user' | 'assistant') ?? 'user';
-          const content = this.normalizeContent((item as any).content || []);
-          
-          const canonicalInputMessage: CanonicalInputMessage = {
-            type: 'message',
-            role,
-            content
-          };
-          inputItems.push(canonicalInputMessage);
-          
-          // Also add to messages array for backward compatibility
+    // Map OpenAI Responses input to canonical messages
+    const messages: any[] = [];
+    const inputData = (input as any).input;
+    
+    if (typeof inputData === 'string') {
+      messages.push({ role: 'user', content: inputData });
+    } else if (Array.isArray(inputData)) {
+      for (const item of inputData) {
+        if (item?.type === 'message') {
+          const role = item.role || 'user';
+          // Map content array preserving all types (input_text, output_text, etc.)
+          const content = Array.isArray(item.content) 
+            ? item.content.map((c: any) => ({
+                type: c.type === 'input_text' ? 'text' : c.type, // Normalize input_text to text
+                text: c.text || ''
+              }))
+            : [{ type: 'text', text: '' }];
           messages.push({ role, content });
-          
-        } else if (itemType === 'reasoning') {
-          // Convert to canonical reasoning message
-          const canonicalReasoningMessage: CanonicalReasoningMessage = {
-            type: 'reasoning',
-            summary: (item as any).summary,
-            content: (item as any).content,
-            encrypted_content: (item as any).encrypted_content,
-            role: undefined
-          };
-          inputItems.push(canonicalReasoningMessage);
-          
-          // Also set thinking field
-          thinking = {
-            enabled: true,
-            summary: (item as any).summary,
-            content: (item as any).content,
-            encrypted_content: (item as any).encrypted_content
-          };
+        } else if (item?.type === 'reasoning') {
+          // Map reasoning to a special message type that can be reconstructed
+          messages.push({
+            role: 'system', // Use system role to distinguish reasoning
+            content: [{
+              type: 'reasoning',
+              summary: item.summary,
+              content: item.content,
+              encrypted_content: item.encrypted_content
+            }]
+          });
         }
       }
-      
-      canonicalInput = inputItems;
     }
 
-    // 3) Generation controls & other knobs
-    const maxTokens = (input as any).max_output_tokens ?? (input as any).max_tokens;
-    const temperature = (input as any).temperature;
-    const topP = (input as any).top_p;
-
-    // Stop sequences can be string or string[] in some clients
-    let stopSequences: string[] | undefined = undefined;
-    const stopAny = (input as any).stop ?? (input as any).stop_sequences;
-    if (Array.isArray(stopAny)) stopSequences = stopAny;
-    else if (typeof stopAny === 'string') stopSequences = [stopAny];
-
-    // 4) Map Responses-specific fields to canonical
-    const store = (input as any).store;
-    const parallelToolCalls = (input as any).parallel_tool_calls;
-    const reasoning = (input as any).reasoning;
-    const reasoningEffort = (input as any).reasoning_effort;
-    const promptCacheKey = (input as any).prompt_cache_key;
-    const tools = (input as any).tools;
-    const toolChoice = (input as any).tool_choice;
-    const responseFormat = (input as any).response_format;
-    const include = (input as any).include as string[] | undefined;
-    const modalities = (input as any).modalities;
-    const audio = (input as any).audio;
-    const seed = (input as any).seed;
-
-    // 5) Preserve any other unknown fields in metadata
-    const metadata: Record<string, any> = {
-      useResponsesAPI: true,
-      // Map prompt_cache_key to cache_ref for canonical compatibility
-      cache_ref: promptCacheKey,
-      // Preserve any other unknown fields
-      ...Object.fromEntries(
-        Object.entries(input).filter(([key]) =>
-          ![
-            'model',
-            'input',
-            'instructions',
-            'stream',
-            'temperature',
-            'max_output_tokens',
-            'max_tokens',
-            'top_p',
-            'stop',
-            'stop_sequences',
-            'store',
-            'parallel_tool_calls',
-            'reasoning',
-            'reasoning_effort',
-            'prompt_cache_key',
-            'tools',
-            'tool_choice',
-            'response_format',
-            'include',
-            'modalities',
-            'audio',
-            'seed',
-          ].includes(key)
-        )
-      )
+    const canonical: any = {
+      schema_version: '1.0.1',
+      model: (input as any).model,
+      messages: (messages.length ? messages : [{ role: 'user', content: '' }]),
+      system: systemPrompt,
+      stream: Boolean((input as any).stream),
+      tools: (input as any).tools,
+      tool_choice: (input as any).tool_choice,
+      parallel_tool_calls: (input as any).parallel_tool_calls,
+      response_format: (input as any).response_format,
+      include: (input as any).include,
+      store: (input as any).store,
+      reasoning_effort: (input as any).reasoning_effort ?? (input as any).reasoning?.effort,
+      modalities: (input as any).modalities,
+      audio: (input as any).audio,
+      thinking: (input as any).reasoning ? {
+        budget: (input as any).reasoning.budget,
+        summary: (input as any).reasoning.summary,
+        content: (input as any).reasoning.content,
+        encrypted_content: (input as any).reasoning.encrypted_content
+      } : undefined,
+      generation: {
+        max_tokens: (input as any).max_output_tokens ?? (input as any).max_tokens,
+        temperature: (input as any).temperature,
+        top_p: (input as any).top_p,
+        stop: (input as any).stop,
+        stop_sequences: (input as any).stop_sequences,
+        seed: (input as any).seed
+      },
+      provider_params: { openai: { use_responses_api: true, prompt_cache_key: (input as any).prompt_cache_key } }
     };
 
-    return {
-      model: (input as any).model,
-      messages,
-      input: canonicalInput,
-      system: systemPrompt,
-      maxTokens,
-      temperature,
-      topP,
-      stopSequences,
-      stream: !!input.stream,
-      store,
-      parallelToolCalls,
-      reasoning: reasoning, // Keep the top-level reasoning field as-is
-      reasoningEffort,
-      tools,
-      toolChoice,
-      responseFormat,
-      include: include as any,
-      modalities,
-      audio,
-      seed,
-      promptCacheKey,
-      metadata
-    } as unknown as CanonicalRequest;
+    return canonical as CanonicalRequest;
   }
 
   fromCanonical(response: CanonicalResponse): OpenAIResponsesResponse {
-    const textContent = response.message.content
-      .filter(c => c.type === 'text')
-      .map(c => c.text)
+    const firstChoice: any = (response as any).choices?.[0] || {};
+    const parts: any[] = firstChoice?.message?.content || [];
+    const text = parts
+      .filter(p => p?.type === 'text')
+      .map(p => p.text || '')
       .join('');
-
-    // Populate output blocks in addition to output_text for better compatibility
-    const outputBlocks = response.message.content.map(c => {
-      if (c.type === 'text') {
-        return { type: 'text', text: c.text };
-      }
-      // Fallback: unknown types rendered as empty text to keep structure valid
-      return { type: 'text', text: '' };
-    });
-
     return {
-      id: response.id,
+      id: (response as any).id,
       object: 'response',
-      created: response.created,
-      model: response.model,
-      output_text: textContent,
-      output: [{ content: outputBlocks }],
+      created: (response as any).created,
+      model: (response as any).model,
+      output_text: text,
+      output: [{ content: parts.map(p => p?.type === 'text' ? { type: 'text', text: p.text || '' } : { type: 'text', text: '' }) }],
       usage: {
-        input_tokens: response.usage.inputTokens,
-        output_tokens: response.usage.outputTokens,
-        total_tokens: response.usage.totalTokens
+        input_tokens: (response as any).usage?.input_tokens ?? (response as any).usage?.prompt_tokens,
+        output_tokens: (response as any).usage?.output_tokens ?? (response as any).usage?.completion_tokens,
+        total_tokens: (response as any).usage?.total_tokens
       }
     } as OpenAIResponsesResponse;
   }
 
-  fromCanonicalStream(chunk: CanonicalStreamChunk): string {
-    // Map canonical text deltas to Responses API stream-like event lines
-    const textDelta = chunk.delta.content
-      ?.filter(c => c.type === 'text')
-      ?.map(c => c.text)
-      ?.join('') || '';
-
+  fromCanonicalStream?(chunk: any): string {
+    // Convert canonical streaming chunk to OpenAI Responses SSE format
     const lines: string[] = [];
+    
+    // Handle different streaming event types from canonical chunk
+    if (chunk.event) {
+      const eventType = chunk.event.type;
+      
+      switch (eventType) {
+        case 'message_start':
+          lines.push('event: response.created');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.created',
+            response: {
+              id: chunk.event.id || chunk.id,
+              object: 'response',
+              created: chunk.event.created || Math.floor(Date.now() / 1000),
+              status: 'in_progress'
+            }
+          })}`);
+          break;
 
-    if (textDelta) {
-      // Responses API uses SSE events; this is a best-effort mapping
-      const evt = { type: 'response.output_text.delta', delta: textDelta } as const;
-      lines.push(`data: ${JSON.stringify(evt)}\n\n`);
+        case 'content_delta':
+          if (chunk.event.part === 'text') {
+            lines.push('event: response.output_text.delta');
+            lines.push(`data: ${JSON.stringify({
+              type: 'response.output_text.delta',
+              delta: chunk.event.value
+            })}`);
+          }
+          break;
+
+        case 'tool_call':
+          lines.push('event: response.function_call');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.function_call',
+            name: chunk.event.name,
+            arguments_json: chunk.event.arguments_json,
+            call_id: chunk.event.id
+          })}`);
+          break;
+
+        case 'usage':
+          lines.push('event: response.usage');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.usage',
+            usage: {
+              input_tokens: chunk.event.input_tokens,
+              output_tokens: chunk.event.output_tokens,
+              total_tokens: (chunk.event.input_tokens || 0) + (chunk.event.output_tokens || 0)
+            }
+          })}`);
+          break;
+
+        case 'complete':
+          lines.push('event: response.completed');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.completed',
+            response: {
+              status: 'completed',
+              finish_reason: chunk.event.finish_reason
+            }
+          })}`);
+          break;
+
+        case 'error':
+          lines.push('event: error');
+          lines.push(`data: ${JSON.stringify({
+            type: 'error',
+            error: {
+              code: chunk.event.code,
+              message: chunk.event.message
+            }
+          })}`);
+          break;
+      }
     }
 
+    // Legacy support: Handle old-style canonical chunks
+    if (chunk.delta?.content) {
+      const textDelta = chunk.delta.content
+        .filter((c: any) => c.type === 'text' || c.type === 'output_text')
+        .map((c: any) => c.text)
+        .join('');
+      
+      if (textDelta) {
+        lines.push('event: response.output_text.delta');
+        lines.push(`data: ${JSON.stringify({
+          type: 'response.output_text.delta',
+          delta: textDelta
+        })}`);
+      }
+    }
+
+    // Handle function calls in delta
+    if (chunk.delta?.tool_calls) {
+      for (const call of chunk.delta.tool_calls) {
+        if (call.created) {
+          lines.push('event: response.function_call');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.function_call',
+            name: call.name,
+            call_id: call.id
+          })}`);
+        }
+        if (call.arguments_delta) {
+          lines.push('event: response.function_call.arguments.delta');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.function_call.arguments.delta',
+            call_id: call.id,
+            delta: call.arguments_delta
+          })}`);
+        }
+        if (call.done) {
+          lines.push('event: response.function_call.done');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.function_call.done',
+            call_id: call.id
+          })}`);
+        }
+      }
+    }
+
+    // Handle function call outputs
+    if (chunk.delta?.function_call_output) {
+      lines.push('event: response.function_call_output');
+      lines.push(`data: ${JSON.stringify({
+        type: 'response.function_call_output',
+        call_id: chunk.delta.function_call_output.call_id,
+        output: chunk.delta.function_call_output.output
+      })}`);
+    }
+
+    // Handle completion
     if (chunk.finishReason) {
-      // Emit usage info when we finalize
       if (chunk.usage) {
-        const usageEvt = {
+        lines.push('event: response.usage');
+        lines.push(`data: ${JSON.stringify({
           type: 'response.usage',
           usage: {
-            input_tokens: chunk.usage.inputTokens || 0,
-            output_tokens: chunk.usage.outputTokens || 0,
-            total_tokens: (chunk.usage.inputTokens || 0) + (chunk.usage.outputTokens || 0)
+            input_tokens: chunk.usage.input_tokens || chunk.usage.inputTokens || 0,
+            output_tokens: chunk.usage.output_tokens || chunk.usage.outputTokens || 0,
+            total_tokens: chunk.usage.total_tokens || chunk.usage.totalTokens || 0
           }
-        } as const;
-        lines.push(`data: ${JSON.stringify(usageEvt)}\n\n`);
+        })}`);
       }
-
-      const done = { type: 'response.completed', finish_reason: chunk.finishReason } as const;
-      lines.push(`data: ${JSON.stringify(done)}\n\n`);
+      
+      lines.push('event: response.completed');
+      lines.push(`data: ${JSON.stringify({
+        type: 'response.completed',
+        response: {
+          status: 'completed',
+          finish_reason: chunk.finishReason
+        }
+      })}`);
     }
 
-    return lines.join('');
+    return lines.map(line => line + '\n').join('') + '\n';
   }
 
-  private normalizeContent(content: unknown): CanonicalContent[] {
+  private normalizeContent(content: unknown): Array<{ type: 'text' | 'output_text'; text: string }> {
     // Accept string or array of blocks with { type, text? }
     if (typeof content === 'string') {
       return [{ type: 'text', text: content }];
@@ -265,7 +290,7 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
     if (Array.isArray(content)) {
       return (content as Array<{ type: string; text?: string }>).flatMap(part => {
         if (part?.type === 'input_text' || part?.type === 'text' || part?.type === 'output_text') {
-          return [{ type: part.type === 'output_text' ? 'output_text' : 'text', text: part.text || '' } as CanonicalContent];
+          return [{ type: part.type === 'output_text' ? 'output_text' : 'text', text: part.text || '' }];
         }
         return [];
       });

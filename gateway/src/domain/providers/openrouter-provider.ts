@@ -1,5 +1,5 @@
 import { BaseProvider } from './base-provider.js';
-import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
+import { Request as CanonicalRequest, Response as CanonicalResponse } from '../../canonical/types/index.js';
 import { pricingLoader } from '../../infrastructure/utils/pricing-loader.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
 

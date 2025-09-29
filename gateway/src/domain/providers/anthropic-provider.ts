@@ -1,5 +1,5 @@
 import { BaseProvider } from './base-provider.js';
-import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
+import { Request as CanonicalRequest, Response as CanonicalResponse } from '../../canonical/types/index.js';
 import { APIError } from '../../infrastructure/utils/error-handler.js';
 import fetch, { Response } from 'node-fetch';
 
@@ -90,15 +90,13 @@ export class AnthropicProvider extends BaseProvider {
       output_tokens: 0, 
       cache_creation_input_tokens: 0,
       cache_read_input_tokens: 0
-    };
+    } as any;
 
-    // Parse Server-Sent Events format
     const lines = streamText.split('\n');
     for (const line of lines) {
       if (line.startsWith('data: ')) {
         const dataStr = line.slice(6);
         if (dataStr === '[DONE]') break;
-        
         try {
           const data = JSON.parse(dataStr);
           if (data.type === 'content_block_delta' && data.delta?.text) {
@@ -108,35 +106,27 @@ export class AnthropicProvider extends BaseProvider {
           } else if (data.type === 'message_start' && data.message?.usage) {
             usage = { ...usage, ...data.message.usage };
           }
-        } catch (e) {
-          // Skip malformed JSON lines
-        }
+        } catch {}
       }
     }
 
-    // Note: Usage tracking is now handled by BaseProvider
-
-    // Return canonical response
-    return {
+    const canonical: any = {
+      schema_version: '1.0.1',
       id: `msg-${Date.now()}`,
-      model: originalRequest.model,
+      model: (originalRequest as any).model,
       created: Math.floor(Date.now() / 1000),
-      message: {
-        role: 'assistant',
-        content: [{
-          type: 'text',
-          text: finalMessage
-        }]
-      },
-      finishReason: 'stop',
+      choices: [{
+        index: 0,
+        message: { role: 'assistant', content: [{ type: 'text', text: finalMessage }] },
+        finish_reason: 'stop'
+      }],
       usage: {
-        inputTokens: usage.input_tokens,
-        cacheWriteInputTokens: usage.cache_creation_input_tokens,
-        cacheReadInputTokens: usage.cache_read_input_tokens,
-        outputTokens: usage.output_tokens,
-        totalTokens: usage.input_tokens + (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0) + usage.output_tokens
+        input_tokens: usage.input_tokens,
+        output_tokens: usage.output_tokens,
+        total_tokens: (usage.input_tokens || 0) + (usage.output_tokens || 0)
       }
     };
+    return canonical as CanonicalResponse;
   }
 
   protected getHeaders(): Record<string, string> {
@@ -194,31 +184,24 @@ export class AnthropicProvider extends BaseProvider {
   }
 
   protected transformResponse(response: AnthropicResponse): CanonicalResponse {
-    const content = response.content
-      .filter(item => item.type === 'text')
-      .map(item => item.text)
-      .join('');
-
-    return {
+    const content = response.content.filter(i => i.type === 'text').map(i => i.text).join('');
+    const canonical: any = {
+      schema_version: '1.0.1',
       id: response.id,
       model: response.model,
       created: Math.floor(Date.now() / 1000),
-      message: {
-        role: 'assistant',
-        content: [{
-          type: 'text',
-          text: content
-        }]
-      },
-      finishReason: this.mapFinishReason(response.stop_reason),
+      choices: [{
+        index: 0,
+        message: { role: 'assistant', content: [{ type: 'text', text: content }] },
+        finish_reason: this.mapFinishReason(response.stop_reason)
+      }],
       usage: {
-        inputTokens: response.usage.input_tokens,
-        cacheWriteInputTokens: response.usage.cache_creation_input_tokens,
-        cacheReadInputTokens: response.usage.cache_read_input_tokens,
-        outputTokens: response.usage.output_tokens,
-        totalTokens: response.usage.input_tokens + (response.usage.cache_creation_input_tokens || 0) + (response.usage.cache_read_input_tokens || 0) + response.usage.output_tokens
+        input_tokens: response.usage.input_tokens,
+        output_tokens: response.usage.output_tokens,
+        total_tokens: response.usage.input_tokens + response.usage.output_tokens
       }
     };
+    return canonical as CanonicalResponse;
   }
 
   private mapFinishReason(stopReason: string): 'stop' | 'length' | 'tool_calls' | 'error' {

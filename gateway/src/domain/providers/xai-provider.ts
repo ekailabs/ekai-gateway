@@ -1,5 +1,5 @@
 import { BaseProvider } from './base-provider.js';
-import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
+import { Request as CanonicalRequest, Response as CanonicalResponse } from '../../canonical/types/index.js';
 
 interface GrokRequest {
   model: string;
@@ -33,45 +33,44 @@ export class XAIProvider extends BaseProvider {
   protected readonly apiKey = process.env.XAI_API_KEY;
 
   protected transformRequest(request: CanonicalRequest): GrokRequest {
-    const messages = request.messages.map(msg => ({
+    const anyReq = request as any;
+    const messages = (anyReq.messages || []).map((msg: any) => ({
       role: msg.role,
-      content: msg.content
-        .filter(c => c.type === 'text')
-        .map(c => c.text)
-        .join('')
+      content: Array.isArray(msg.content)
+        ? (msg.content as any[]).filter(p => p?.type === 'text').map(p => p.text || '').join('')
+        : String(msg.content ?? '')
     }));
 
+    const gen = anyReq.generation || {};
     return {
-      model: request.model,
+      model: anyReq.model,
       messages,
-      max_tokens: request.maxTokens,
-      temperature: request.temperature,
-      stream: request.stream || false,
-      stop: request.stopSequences
-    };
+      max_tokens: gen.max_tokens,
+      temperature: gen.temperature,
+      stream: Boolean(anyReq.stream),
+      stop: gen.stop ?? gen.stop_sequences
+    } as GrokRequest;
   }
 
   protected transformResponse(response: GrokResponse): CanonicalResponse {
     const choice = response.choices[0];
-
-    return {
+    const canonical: any = {
+      schema_version: '1.0.1',
       id: response.id,
       model: response.model,
       created: response.created,
-      message: {
-        role: 'assistant',
-        content: [{
-          type: 'text',
-          text: choice.message.content
-        }]
-      },
-      finishReason: this.mapFinishReason(choice.finish_reason),
+      choices: [{
+        index: 0,
+        message: { role: 'assistant', content: [{ type: 'text', text: choice.message.content }] },
+        finish_reason: choice.finish_reason
+      }],
       usage: {
-        inputTokens: response.usage.prompt_tokens,
-        outputTokens: response.usage.completion_tokens,
-        totalTokens: response.usage.total_tokens
+        prompt_tokens: response.usage.prompt_tokens,
+        completion_tokens: response.usage.completion_tokens,
+        total_tokens: response.usage.total_tokens
       }
     };
+    return canonical as CanonicalResponse;
   }
 
   private mapFinishReason(reason: string): 'stop' | 'length' | 'tool_calls' | 'error' {

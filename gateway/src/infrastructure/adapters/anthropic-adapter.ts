@@ -1,131 +1,56 @@
-import { 
-  CanonicalRequest, 
-  CanonicalResponse, 
-  CanonicalStreamChunk,
-  CanonicalContent,
-  CanonicalMessage,
-  FormatAdapter
-} from 'shared/types/canonical.js';
+import { FormatAdapter } from '../../canonical/format-adapter.js';
+import { Request as CanonicalRequest, Response as CanonicalResponse } from '../../canonical/types/index.js';
 import { AnthropicMessagesRequest, AnthropicMessagesResponse } from 'shared/types/types.js';
 
 export class AnthropicAdapter implements FormatAdapter<AnthropicMessagesRequest, AnthropicMessagesResponse> {
   
   toCanonical(input: AnthropicMessagesRequest): CanonicalRequest {
-    const messages: CanonicalMessage[] = [];
+    const messages: any[] = [];
 
     // Handle system message
     if (input.system) {
-      const systemContent = this.normalizeContent(input.system);
-      messages.push({
-        role: 'system',
-        content: systemContent
-      });
+      const systemText = this.normalizeText(input.system as any);
+      messages.push({ role: 'system', content: systemText });
     }
 
     // Handle regular messages
     input.messages.forEach(msg => {
-      messages.push({
-        role: msg.role,
-        content: this.normalizeContent(msg.content)
-      });
+      messages.push({ role: msg.role as any, content: this.normalizeText(msg.content as any) });
     });
 
     return {
+      schema_version: '1.0.1',
       model: input.model,
-      messages,
-      maxTokens: input.max_tokens,
-      temperature: input.temperature,
+      messages: messages as any,
       stream: input.stream || false,
-      
-      // Anthropic-specific features in metadata
-      metadata: {
-        promptCaching: input.metadata?.promptCaching,
-        // Preserve any other fields
-        ...Object.fromEntries(
-          Object.entries(input).filter(([key]) => 
-            !['model', 'messages', 'max_tokens', 'system', 'temperature', 'stream'].includes(key)
-          )
-        )
-      }
-    };
+      system: undefined,
+      generation: { max_tokens: input.max_tokens, temperature: input.temperature },
+      provider_params: { anthropic: { ...(input as any) } }
+    } as any as CanonicalRequest;
   }
 
-  fromCanonical(response: CanonicalResponse): AnthropicMessagesResponse {
-    // Convert canonical content back to Anthropic format
-    const content = response.message.content.map(c => {
-      if (c.type === 'text') {
-        return { type: 'text', text: c.text || '' };
-      }
-      // Handle other content types as needed
-      return { type: 'text', text: '' };
-    });
-
+  fromCanonical(response: CanonicalResponse): AnthropicMessagesResponse | string {
+    const resp: any = response as any;
+    const choice = resp.choices?.[0];
+    const text = choice?.message?.content?.map?.((p: any) => p?.type === 'text' ? (p.text || '') : '').join('') || '';
     return {
-      id: response.id,
+      id: resp.id,
       type: 'message',
       role: 'assistant',
-      content: content as Array<{ type: "text"; text: string; }>,
-      model: response.model,
-      stop_reason: this.mapFinishReason(response.finishReason),
+      content: [{ type: 'text', text }],
+      model: resp.model,
+      stop_reason: (resp.stop_reason as any) || 'end_turn',
       usage: {
-        input_tokens: response.usage.inputTokens,
-        output_tokens: response.usage.outputTokens
+        input_tokens: resp.usage?.input_tokens ?? resp.usage?.prompt_tokens,
+        output_tokens: resp.usage?.output_tokens ?? resp.usage?.completion_tokens
       }
-    };
+    } as AnthropicMessagesResponse;
   }
 
-  fromCanonicalStream(chunk: CanonicalStreamChunk): string {
-    // Convert to Anthropic streaming format
-    if (chunk.delta.content && chunk.delta.content.length > 0) {
-      const textContent = chunk.delta.content
-        .filter(c => c.type === 'text')
-        .map(c => c.text)
-        .join('');
-
-      if (textContent) {
-        const anthropicChunk = {
-          type: 'content_block_delta',
-          index: 0,
-          delta: {
-            type: 'text_delta',
-            text: textContent
-          }
-        };
-        return `data: ${JSON.stringify(anthropicChunk)}\n\n`;
-      }
-    }
-
-    // Handle final chunk with usage
-    if (chunk.finishReason && chunk.usage) {
-      const finalChunk = {
-        type: 'message_delta',
-        delta: {},
-        usage: {
-          output_tokens: chunk.usage.outputTokens || 0
-        }
-      };
-      return `data: ${JSON.stringify(finalChunk)}\n\n`;
-    }
-
-    return '';
-  }
-
-  private normalizeContent(content: string | Array<{ type: string; text: string }>): CanonicalContent[] {
-    if (typeof content === 'string') {
-      return [{
-        type: 'text',
-        text: content
-      }];
-    }
-    
-    if (Array.isArray(content)) {
-      return content.map(item => ({
-        type: 'text',
-        text: item.text
-      }));
-    }
-    
-    return [{ type: 'text', text: String(content) }];
+  private normalizeText(content: string | Array<{ type: string; text: string }>): string {
+    if (typeof content === 'string') return content;
+    if (Array.isArray(content)) return content.filter(i => i?.type === 'text').map(i => i.text).join('');
+    return String(content ?? '');
   }
 
   private mapFinishReason(reason: string): 'end_turn' | 'max_tokens' | 'stop_sequence' | 'tool_use' {

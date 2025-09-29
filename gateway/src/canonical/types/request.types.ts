@@ -102,7 +102,7 @@ export interface CanonicalAIRequestSchema {
   };
   store?: boolean;
   service_tier?: 'auto' | 'default' | 'scale' | 'flex' | 'priority' | null;
-  reasoning_effort?: 'low' | 'medium' | 'high';
+  reasoning_effort?: 'low' | 'medium' | 'high' | 'minimal';
   modalities?: ('text' | 'audio')[];
   audio?: {
     voice?: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';

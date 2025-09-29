@@ -1,4 +1,4 @@
-import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
+import { Request as CanonicalRequest, Response as CanonicalResponse } from '../../canonical/types/index.js';
 import { Response as NodeFetchResponse } from 'node-fetch';
 
 // Proper interface with all required methods

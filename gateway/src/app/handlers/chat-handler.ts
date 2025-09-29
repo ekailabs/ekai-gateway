@@ -7,7 +7,7 @@ import { handleError, APIError } from '../../infrastructure/utils/error-handler.
 import { logger } from '../../infrastructure/utils/logger.js';
 import { HTTP_STATUS, CONTENT_TYPES } from '../../domain/types/provider.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
-import { CanonicalRequest } from 'shared/types/index.js';
+import { Request as CanonicalRequest } from '../../canonical/types/index.js';
 import { anthropicPassthrough } from '../../infrastructure/passthrough/anthropic-passthrough.js';
 import { xaiPassthrough } from '../../infrastructure/passthrough/xai-passthrough.js';
 import { openaiResponsesPassthrough } from '../../infrastructure/passthrough/openai-responses-passthrough.js';
@@ -83,7 +83,7 @@ export class ChatHandler {
       let passThrough = this.shouldUsePassThrough(clientFormat, providerName);
 
       // In canonical transformation test mode, force adapter path to enable comparison
-      const canonicalMode = ['true', '1', 'yes'].includes(String(process.env.CANONICAL_CANONICAL_MODE || '').toLowerCase());
+      const canonicalMode = ['true', '1', 'yes'].includes(String(process.env.CANONICAL_MODE || '').toLowerCase());
       if (canonicalMode && clientFormat === 'openai_responses') {
         passThrough = false;
       }
@@ -175,18 +175,22 @@ export class ChatHandler {
         return;
       }
 
-      // In compare mode: stream adapter output to client while capturing it, and
-      // concurrently capture a passthrough stream to compare after completion.
+      // In compare mode: capture the raw stream and process it through both paths
+      const rawChunks: Buffer[] = [];
       const adapterChunks: string[] = [];
-      const adapterDone = new Promise<void>((resolve, reject) => {
+      
+      const streamDone = new Promise<void>((resolve, reject) => {
         try {
           streamResponse.body.on('data', (chunk: Buffer) => {
+            // Capture raw chunk for passthrough simulation
+            rawChunks.push(chunk);
+            
+            // Process through adapter and send to client
             const text = chunk.toString();
             adapterChunks.push(text);
             res.write(chunk);
           });
           streamResponse.body.on('end', () => {
-            // Ensure the client stream is closed
             res.end();
             resolve();
           });
@@ -200,25 +204,14 @@ export class ChatHandler {
         }
       });
 
-      const passthroughDone = this.captureOpenAIResponsesPassthroughStream(originalRequest).catch((e) => {
-        logger.warn('Passthrough stream capture failed', { error: (e as Error)?.message, requestId: req?.requestId, module: 'chat-handler' });
-        return '';
-      });
+      // Wait for stream to complete
+      await streamDone;
 
-      // Wait for adapter stream to complete (client has received the stream already)
-      await adapterDone;
-
-      // Give passthrough a brief grace period to complete as well
-      let passthroughData = '';
-      try {
-        passthroughData = await Promise.race([
-          passthroughDone,
-          new Promise<string>((resolve) => setTimeout(() => resolve(''), 5000))
-        ]);
-      } catch {}
-
-      // Compare collected streams and log concise differences
+      // Now simulate what passthrough would have returned with the SAME raw data
+      const passthroughData = this.simulatePassthroughFromRawStream(rawChunks);
       const adapterData = adapterChunks.join('');
+      
+      // Compare the two processed outputs from the same raw stream
       this.logSSEDifferences(passthroughData, adapterData, req?.requestId);
       return;
     }
@@ -234,6 +227,13 @@ export class ChatHandler {
     }
   }
 
+  // Simulate what passthrough would return from the same raw stream data
+  private simulatePassthroughFromRawStream(rawChunks: Buffer[]): string {
+    // For OpenAI Responses, passthrough would just return the raw stream as-is
+    // since it's already in the correct format
+    return rawChunks.map(chunk => chunk.toString()).join('');
+  }
+
   // Capture passthrough SSE by mocking an Express Response that buffers writes
   private async captureOpenAIResponsesPassthroughStream(originalRequest: any): Promise<string> {
     const chunks: string[] = [];
@@ -241,8 +241,46 @@ export class ChatHandler {
       writeHead: () => mockRes as any,
       setHeader: () => {},
       status: () => mockRes as any,
-      write: (chunk: any) => { try { chunks.push(Buffer.isBuffer(chunk) ? chunk.toString() : String(chunk)); } catch {} return true; },
-      end: (chunk?: any) => { if (chunk) { try { chunks.push(Buffer.isBuffer(chunk) ? chunk.toString() : String(chunk)); } catch {} } return mockRes as any; }
+      write: (chunk: any) => { 
+        try { 
+          let text: string;
+          if (Buffer.isBuffer(chunk)) {
+            text = chunk.toString('utf8');
+          } else if (chunk instanceof Uint8Array) {
+            text = new TextDecoder('utf-8').decode(chunk);
+          } else if (Array.isArray(chunk)) {
+            text = new TextDecoder('utf-8').decode(new Uint8Array(chunk));
+          } else {
+            text = String(chunk);
+          }
+          chunks.push(text);
+          console.log('PASSTHROUGH STREAM:', text);
+        } catch (e) {
+          console.log('PASSTHROUGH STREAM ERROR:', e, 'chunk type:', typeof chunk, 'chunk:', chunk);
+        } 
+        return true; 
+      },
+      end: (chunk?: any) => { 
+        if (chunk) { 
+          try { 
+            let text: string;
+            if (Buffer.isBuffer(chunk)) {
+              text = chunk.toString('utf8');
+            } else if (chunk instanceof Uint8Array) {
+              text = new TextDecoder('utf-8').decode(chunk);
+            } else if (Array.isArray(chunk)) {
+              text = new TextDecoder('utf-8').decode(new Uint8Array(chunk));
+            } else {
+              text = String(chunk);
+            }
+            chunks.push(text);
+            console.log('PASSTHROUGH STREAM END:', text);
+          } catch (e) {
+            console.log('PASSTHROUGH STREAM END ERROR:', e);
+          } 
+        } 
+        return mockRes as any; 
+      }
     } as any;
 
     await openaiResponsesPassthrough.handleDirectRequest(originalRequest, mockRes as Response);
@@ -330,24 +368,52 @@ export class ChatHandler {
   private findObjectDifferences(obj1: any, obj2: any, path: string = ''): Record<string, any> {
     const differences: Record<string, any> = {};
 
-    const keys = new Set([...Object.keys(obj1 || {}), ...Object.keys(obj2 || {})]);
+    // Handle arrays
+    if (Array.isArray(obj1) && Array.isArray(obj2)) {
+      const maxLength = Math.max(obj1.length, obj2.length);
+      for (let i = 0; i < maxLength; i++) {
+        const currentPath = path ? `${path}[${i}]` : `[${i}]`;
+        const val1 = obj1[i];
+        const val2 = obj2[i];
 
-    for (const key of keys) {
-      const currentPath = path ? `${path}.${key}` : key;
-      const val1 = obj1?.[key];
-      const val2 = obj2?.[key];
+        if (val1 === val2) continue;
 
-      if (val1 === val2) continue;
+        if (typeof val1 === 'object' && typeof val2 === 'object' && val1 !== null && val2 !== null) {
+          const nestedDiffs = this.findObjectDifferences(val1, val2, currentPath);
+          Object.assign(differences, nestedDiffs);
+        } else {
+          differences[currentPath] = {
+            passthrough: val1,
+            adapter: val2
+          };
+        }
+      }
+      return differences;
+    }
 
-      if (typeof val1 === 'object' && typeof val2 === 'object' && val1 !== null && val2 !== null && !Array.isArray(val1) && !Array.isArray(val2)) {
+    // Handle objects
+    if (typeof obj1 === 'object' && typeof obj2 === 'object' && obj1 !== null && obj2 !== null && !Array.isArray(obj1) && !Array.isArray(obj2)) {
+      const keys = new Set([...Object.keys(obj1 || {}), ...Object.keys(obj2 || {})]);
+
+      for (const key of keys) {
+        const currentPath = path ? `${path}.${key}` : key;
+        const val1 = obj1?.[key];
+        const val2 = obj2?.[key];
+
+        if (val1 === val2) continue;
+
         const nestedDiffs = this.findObjectDifferences(val1, val2, currentPath);
         Object.assign(differences, nestedDiffs);
-      } else {
-        differences[currentPath] = {
-          passthrough: val1,
-          adapter: val2
-        };
       }
+      return differences;
+    }
+
+    // Handle primitives
+    if (obj1 !== obj2) {
+      differences[path || 'root'] = {
+        passthrough: obj1,
+        adapter: obj2
+      };
     }
 
     return differences;

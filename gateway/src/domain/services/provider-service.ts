@@ -1,4 +1,4 @@
-import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
+import { Request as CanonicalRequest, Response as CanonicalResponse } from '../../canonical/types/index.js';
 import { AIProvider } from '../types/provider.js';
 import { AnthropicProvider } from '../providers/anthropic-provider.js';
 import { OpenAIProvider } from '../providers/openai-provider.js';
