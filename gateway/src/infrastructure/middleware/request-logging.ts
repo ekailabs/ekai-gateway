@@ -11,7 +11,7 @@ export const requestLogging = (req: any, res: Response, next: NextFunction): voi
     url: req.url,
     userAgent: req.get('User-Agent'),
     requestId: req.requestId,
-    ip: req.ip || req.socket.remoteAddress,
+    ip: req.clientIp || req.ip || req.socket.remoteAddress,
     module: 'http-middleware'
   });
 
@@ -27,6 +27,7 @@ export const requestLogging = (req: any, res: Response, next: NextFunction): voi
       statusCode: res.statusCode,
       duration,
       requestId: req.requestId,
+      ip: req.clientIp || req.ip || req.socket.remoteAddress,
       contentLength: res.get('Content-Length'),
       module: 'http-middleware'
     });

@@ -36,6 +36,7 @@ import { requestLogging } from './infrastructure/middleware/request-logging.js';
 const app = express();
 const PORT = process.env.PORT || 3001;
 // Middleware
+app.set('trust proxy', true);
 app.use(cors());
 app.use(requestContext);
 app.use(requestLogging);

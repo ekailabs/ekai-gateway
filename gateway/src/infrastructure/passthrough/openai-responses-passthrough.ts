@@ -40,7 +40,7 @@ export class OpenAIResponsesPassthrough {
     return response;
   }
 
-  private trackUsage(text: string, model: string): void {
+  private trackUsage(text: string, model: string, clientIp?: string): void {
     try {
       // Add to buffer to handle multi-chunk events
       this.eventBuffer += text;
@@ -106,7 +106,8 @@ export class OpenAIResponsesPassthrough {
                 nonCachedInputTokens, // Send non-cached input tokens for correct pricing
                 outputTokens,
                 cachedTokens,         // Send cached tokens separately for correct pricing
-                0 // cache read tokens
+                0, // cache read tokens
+                clientIp
               );
             }).catch((error) => {
               logger.error('Usage tracking failed', error, { provider: 'openai', operation: 'passthrough', module: 'openai-responses-passthrough' });
@@ -127,7 +128,7 @@ export class OpenAIResponsesPassthrough {
     }
   }
 
-  async handleDirectRequest(request: any, res: ExpressResponse): Promise<void> {
+  async handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string): Promise<void> {
     // Reset usage tracking for new request
     this.usage = null;
     this.eventBuffer = '';
@@ -150,7 +151,7 @@ export class OpenAIResponsesPassthrough {
         if (done) break;
         
         const text = new TextDecoder().decode(value);
-        setImmediate(() => this.trackUsage(text, request.model));
+        setImmediate(() => this.trackUsage(text, request.model, clientIp));
         
         res.write(value);
       }
@@ -181,7 +182,7 @@ export class OpenAIResponsesPassthrough {
         });
 
         import('../utils/usage-tracker.js').then(({ usageTracker }) => {
-          usageTracker.trackUsage(request.model, 'openai', nonCachedInputTokens, outputTokens, cachedTokens, 0);
+          usageTracker.trackUsage(request.model, 'openai', nonCachedInputTokens, outputTokens, cachedTokens, 0, clientIp);
         }).catch(() => {});
       }
 

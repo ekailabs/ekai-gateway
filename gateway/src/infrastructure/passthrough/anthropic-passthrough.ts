@@ -39,7 +39,7 @@ export class AnthropicPassthrough {
     return response;
   }
 
-  private trackUsage(text: string, model: string): void {
+  private trackUsage(text: string, model: string, clientIp?: string): void {
     try {
       // Handle message_start event (initial usage data)
       if (text.includes('message_start')) {
@@ -87,7 +87,8 @@ export class AnthropicPassthrough {
                 this.initialUsage!.inputTokens,
                 outputTokens,
                 this.initialUsage!.cacheCreationTokens,
-                this.initialUsage!.cacheReadTokens
+                this.initialUsage!.cacheReadTokens,
+                clientIp
               );
             }).catch(() => {});
 
@@ -112,7 +113,7 @@ export class AnthropicPassthrough {
             });
 
             import('../utils/usage-tracker.js').then(({ usageTracker }) => {
-              usageTracker.trackUsage(model, 'anthropic', inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens);
+              usageTracker.trackUsage(model, 'anthropic', inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, clientIp);
             }).catch(() => {});
           }
         }
@@ -122,7 +123,7 @@ export class AnthropicPassthrough {
     }
   }
 
-  async handleDirectRequest(request: any, res: ExpressResponse): Promise<void> {
+  async handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string): Promise<void> {
     // Reset usage tracking for new request
     this.initialUsage = null;
 
@@ -146,7 +147,7 @@ export class AnthropicPassthrough {
         if (done) break;
         
         const text = new TextDecoder().decode(value);
-        setImmediate(() => this.trackUsage(text, request.model));
+        setImmediate(() => this.trackUsage(text, request.model, clientIp));
         
         res.write(value);
       }
@@ -173,7 +174,7 @@ export class AnthropicPassthrough {
         });
 
         import('../utils/usage-tracker.js').then(({ usageTracker }) => {
-          usageTracker.trackUsage(request.model, 'anthropic', inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens);
+          usageTracker.trackUsage(request.model, 'anthropic', inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, clientIp);
         }).catch(() => {});
       }
 
