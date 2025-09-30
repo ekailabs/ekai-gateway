@@ -230,6 +230,17 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
           }
           break;
 
+        case 'thinking_signature_delta':
+          // Anthropic-specific event - map to a generic signature event for OpenAI
+          lines.push('event: thinking.signature.delta');
+          lines.push(`data: ${JSON.stringify({
+            type: 'thinking.signature.delta',
+            index: canonicalChunk.event.index,
+            delta: canonicalChunk.event.delta,
+            signature: canonicalChunk.event.signature
+          })}`);
+          break;
+
         case 'output_text_done':
           lines.push('event: response.output_text.done');
           lines.push(`data: ${JSON.stringify({
@@ -282,6 +293,53 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
             type: 'response.function_call_output',
             call_id: canonicalChunk.event.call_id,
             output: canonicalChunk.event.output
+          })}`);
+          break;
+
+        case 'mcp_call_arguments_delta':
+          lines.push('event: response.mcp_call.arguments.delta');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.mcp_call.arguments.delta',
+            call_id: canonicalChunk.event.call_id,
+            delta: canonicalChunk.event.delta,
+            arguments: canonicalChunk.event.arguments
+          })}`);
+          break;
+
+        case 'mcp_call_arguments_done':
+          lines.push('event: response.mcp_call.arguments.done');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.mcp_call.arguments.done',
+            call_id: canonicalChunk.event.call_id,
+            arguments: canonicalChunk.event.arguments
+          })}`);
+          break;
+
+        case 'code_interpreter_call_code_delta':
+          lines.push('event: response.code_interpreter_call.code.delta');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.code_interpreter_call.code.delta',
+            call_id: canonicalChunk.event.call_id,
+            delta: canonicalChunk.event.delta,
+            code: canonicalChunk.event.code
+          })}`);
+          break;
+
+        case 'code_interpreter_call_code_done':
+          lines.push('event: response.code_interpreter_call.code.done');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.code_interpreter_call.code.done',
+            call_id: canonicalChunk.event.call_id,
+            code: canonicalChunk.event.code
+          })}`);
+          break;
+
+        case 'output_text_annotation_added':
+          lines.push('event: response.output_text.annotation.added');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.output_text.annotation.added',
+            annotation: canonicalChunk.event.annotation,
+            text: canonicalChunk.event.text
           })}`);
           break;
 
@@ -424,6 +482,36 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
             call_id: canonicalChunk.event.call_id,
             tool_call_id: canonicalChunk.event.tool_call_id,
             file_search: canonicalChunk.event.file_search
+          })}`);
+          break;
+
+        case 'web_search_start':
+          lines.push('event: response.web_search_call.in_progress');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.web_search_call.in_progress',
+            call_id: canonicalChunk.event.call_id,
+            tool_call_id: canonicalChunk.event.tool_call_id,
+            web_search: canonicalChunk.event.web_search
+          })}`);
+          break;
+
+        case 'web_search_progress':
+          lines.push('event: response.web_search_call.searching');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.web_search_call.searching',
+            call_id: canonicalChunk.event.call_id,
+            tool_call_id: canonicalChunk.event.tool_call_id,
+            web_search: canonicalChunk.event.web_search
+          })}`);
+          break;
+
+        case 'web_search_done':
+          lines.push('event: response.web_search_call.completed');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.web_search_call.completed',
+            call_id: canonicalChunk.event.call_id,
+            tool_call_id: canonicalChunk.event.tool_call_id,
+            web_search: canonicalChunk.event.web_search
           })}`);
           break;
 
