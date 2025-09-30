@@ -207,7 +207,7 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
       const eventType = canonicalChunk.event.type;
       
       switch (eventType) {
-        case 'message_start':
+        case 'response_created':
           lines.push('event: response.created');
           lines.push(`data: ${JSON.stringify({
             type: 'response.created',
@@ -230,6 +230,105 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
           }
           break;
 
+        case 'output_text_done':
+          lines.push('event: response.output_text.done');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.output_text.done',
+            text: canonicalChunk.event.text,
+            annotations: canonicalChunk.event.annotations,
+            logprobs: canonicalChunk.event.logprobs
+          })}`);
+          break;
+
+        case 'refusal_delta':
+          lines.push('event: response.refusal.delta');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.refusal.delta',
+            delta: canonicalChunk.event.delta,
+            refusal: canonicalChunk.event.refusal
+          })}`);
+          break;
+
+        case 'refusal_done':
+          lines.push('event: response.refusal.done');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.refusal.done',
+            refusal: canonicalChunk.event.refusal
+          })}`);
+          break;
+
+        case 'function_call_arguments_delta':
+          lines.push('event: response.function_call.arguments.delta');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.function_call.arguments.delta',
+            call_id: canonicalChunk.event.call_id,
+            delta: canonicalChunk.event.delta,
+            arguments: canonicalChunk.event.arguments
+          })}`);
+          break;
+
+        case 'function_call_arguments_done':
+          lines.push('event: response.function_call.arguments.done');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.function_call.arguments.done',
+            call_id: canonicalChunk.event.call_id,
+            arguments: canonicalChunk.event.arguments
+          })}`);
+          break;
+
+        case 'function_call_output':
+          lines.push('event: response.function_call_output');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.function_call_output',
+            call_id: canonicalChunk.event.call_id,
+            output: canonicalChunk.event.output
+          })}`);
+          break;
+
+        case 'reasoning_summary_text_delta':
+          lines.push('event: response.reasoning_summary_text.delta');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.reasoning_summary_text.delta',
+            delta: canonicalChunk.event.delta,
+            summary: canonicalChunk.event.summary
+          })}`);
+          break;
+
+        case 'reasoning_summary_text_done':
+          lines.push('event: response.reasoning_summary_text.done');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.reasoning_summary_text.done',
+            summary: canonicalChunk.event.summary
+          })}`);
+          break;
+
+        case 'content_part_start':
+          lines.push('event: response.content_part.added');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.content_part.added',
+            index: canonicalChunk.event.index,
+            content_block: canonicalChunk.event.content_block
+          })}`);
+          break;
+
+        case 'content_part_done':
+          lines.push('event: response.content_part.done');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.content_part.done',
+            index: canonicalChunk.event.index
+          })}`);
+          break;
+
+        case 'output_item_added':
+          lines.push('event: response.output_item.added');
+          lines.push(`data: ${JSON.stringify({
+            type: 'response.output_item.added',
+            output_index: canonicalChunk.event.output_index || 0,
+            item: canonicalChunk.event.item,
+            sequence_number: canonicalChunk.event.sequence_number
+          })}`);
+          break;
+
         case 'output_item_done':
           lines.push('event: response.output_item.done');
           lines.push(`data: ${JSON.stringify({
@@ -239,7 +338,7 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
           })}`);
           break;
 
-        case 'function_call':
+        case 'function_call_start':
           lines.push('event: response.function_call');
           lines.push(`data: ${JSON.stringify({
             type: 'response.function_call',
@@ -249,7 +348,7 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
           })}`);
           break;
 
-        case 'tool_call':
+        case 'tool_call_start':
           lines.push('event: response.tool_call');
           lines.push(`data: ${JSON.stringify({
             type: 'response.tool_call',
@@ -272,7 +371,22 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
           })}`);
           break;
 
-        case 'complete':
+        case 'message_delta':
+          lines.push('event: message.delta');
+          lines.push(`data: ${JSON.stringify({
+            type: 'message.delta',
+            delta: canonicalChunk.event.delta
+          })}`);
+          break;
+
+        case 'message_done':
+          lines.push('event: message.done');
+          lines.push(`data: ${JSON.stringify({
+            type: 'message.done'
+          })}`);
+          break;
+
+        case 'response_completed':
           lines.push('event: response.completed');
           lines.push(`data: ${JSON.stringify({
             type: 'response.completed',
@@ -283,7 +397,7 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
           })}`);
           break;
 
-        case 'file_search_call_in_progress':
+        case 'file_search_start':
           lines.push('event: response.file_search_call.in_progress');
           lines.push(`data: ${JSON.stringify({
             type: 'response.file_search_call.in_progress',
@@ -293,7 +407,7 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
           })}`);
           break;
 
-        case 'file_search_call_searching':
+        case 'file_search_progress':
           lines.push('event: response.file_search_call.searching');
           lines.push(`data: ${JSON.stringify({
             type: 'response.file_search_call.searching',
@@ -303,7 +417,7 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
           })}`);
           break;
 
-        case 'file_search_call_completed':
+        case 'file_search_done':
           lines.push('event: response.file_search_call.completed');
           lines.push(`data: ${JSON.stringify({
             type: 'response.file_search_call.completed',
