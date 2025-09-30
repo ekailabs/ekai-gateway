@@ -99,10 +99,15 @@ export class UsageTracker {
           module: 'usage-tracker'
         });
 
-        // Record telemetry event for total token usage
+        // Record telemetry event for total token usage with context
         const totalTokens = inputTokens + cacheWriteTokens + cacheReadTokens + outputTokens;
         try {
-          recordUsage(totalTokens);
+          recordUsage({
+            totalTokens,
+            model,
+            provider: provider.toLowerCase(),
+            requestId
+          });
         } catch (telemetryError) {
           // Non-blocking: log warning but don't fail the request
           logger.warn('Failed to record telemetry', { 

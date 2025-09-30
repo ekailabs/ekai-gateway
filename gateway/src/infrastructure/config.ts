@@ -27,7 +27,8 @@ dotenv.config({ path: join(projectRoot, '.env') });
 // Export normalized configuration values
 export const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 export const TELEMETRY_ENABLED = (process.env.TELEMETRY_ENABLED ?? 'true').toLowerCase();
-export const TELEMETRY_ENDPOINT = process.env.TELEMETRY_ENDPOINT || 'https://ingest.ekailabs.xyz/ndjson';
+//export const TELEMETRY_ENDPOINT = process.env.TELEMETRY_ENDPOINT || 'https://ingest.ekailabs.xyz/ndjson';
+export const TELEMETRY_ENDPOINT = process.env.TELEMETRY_ENDPOINT || 'http://localhost:8081/ndjson';
 export const TELEMETRY_LEVEL = process.env.TELEMETRY_LEVEL || 'info';
 
 // Optionally export service metadata
