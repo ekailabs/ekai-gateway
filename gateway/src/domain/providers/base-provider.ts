@@ -76,7 +76,9 @@ export abstract class BaseProvider implements AIProvider {
         transformedResponse.usage.inputTokens,
         transformedResponse.usage.outputTokens,
         transformedResponse.usage.cacheWriteInputTokens || 0,
-        transformedResponse.usage.cacheReadInputTokens || 0
+        transformedResponse.usage.cacheReadInputTokens || 0,
+        // Try to propagate client info if present on request metadata
+        (request as any)?.metadata?.client ? { client: (request as any).metadata.client } : undefined
       );
     }
     

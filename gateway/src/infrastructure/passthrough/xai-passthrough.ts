@@ -37,7 +37,7 @@ export class XAIPassthrough {
     return response;
   }
 
-  private trackUsage(text: string, model: string): void {
+  private trackUsage(text: string, model: string, client?: string): void {
     try {
       // Handle message_start event (initial usage data)
       if (text.includes('message_start')) {
@@ -79,7 +79,8 @@ export class XAIPassthrough {
                 inputTokens,
                 outputTokens,
                 cacheCreationTokens,
-                cacheReadTokens
+                cacheReadTokens,
+                client ? { client } : undefined
               );
             }).catch((error) => {
               logger.error('Usage tracking failed', error, { provider: 'xai', operation: 'passthrough', module: 'xai-passthrough' });
@@ -97,7 +98,7 @@ export class XAIPassthrough {
             // Using fallback usage tracking (message_start missed)
 
             import('../utils/usage-tracker.js').then(({ usageTracker }) => {
-              usageTracker.trackUsage(model, 'xAI', inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens);
+              usageTracker.trackUsage(model, 'xAI', inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, client ? { client } : undefined);
             }).catch(() => {});
           }
         }
@@ -107,7 +108,7 @@ export class XAIPassthrough {
     }
   }
 
-  async handleDirectRequest(request: any, res: ExpressResponse): Promise<void> {
+  async handleDirectRequest(request: any, res: ExpressResponse, client?: string): Promise<void> {
     // Reset usage tracking for new request
     this.initialUsage = null;
 
@@ -128,7 +129,7 @@ export class XAIPassthrough {
         if (done) break;
 
         const text = new TextDecoder().decode(value);
-        setImmediate(() => this.trackUsage(text, request.model));
+        setImmediate(() => this.trackUsage(text, request.model, client));
 
         res.write(value);
       }

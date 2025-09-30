@@ -52,6 +52,12 @@ export class ChatHandler {
         providerName = 'openai';
         canonicalRequest = this.adapters[clientFormat].toCanonical(req.body);
 
+        // Attach client user-agent to canonical metadata for telemetry
+        (canonicalRequest as any).metadata = {
+          ...(canonicalRequest as any).metadata,
+          client: req.get('User-Agent')
+        };
+
         logger.debug('Processing OpenAI Responses request', {
           requestId: req.requestId,
           clientFormat,
@@ -70,6 +76,11 @@ export class ChatHandler {
 
         providerName = result.provider;
         canonicalRequest = this.adapters[clientFormat].toCanonical(req.body);
+        // Attach client user-agent to canonical metadata for telemetry
+        (canonicalRequest as any).metadata = {
+          ...(canonicalRequest as any).metadata,
+          client: req.get('User-Agent')
+        };
       }
 
       // Normalize model name, example: anthropic/claude-3-5-sonnet → claude-3-5-sonnet.
@@ -92,13 +103,20 @@ export class ChatHandler {
       });
 
       if (passThrough) {
-        await this.handlePassThrough(originalRequest, res, clientFormat, providerName);
+        // Forward client user-agent to passthrough so it can be included in telemetry
+        const clientUA = req.get('User-Agent');
+        await this.handlePassThrough(originalRequest, res, clientFormat, providerName, clientUA);
         return;
       }
 
       // For non-passthrough cases, ensure we have canonical request
       if (clientFormat !== 'openai_responses') {
         canonicalRequest = this.adapters[clientFormat].toCanonical(req.body);
+        // Attach client user-agent to canonical metadata for telemetry
+        (canonicalRequest as any).metadata = {
+          ...(canonicalRequest as any).metadata,
+          client: req.get('User-Agent')
+        };
       }
 
       if (canonicalRequest.stream) {
@@ -189,14 +207,14 @@ export class ChatHandler {
     res.writeHead(HTTP_STATUS.OK, headers);
   }
 
-  private async handlePassThrough(originalRequest: any, res: Response, clientFormat: ClientFormat, providerName: ProviderName): Promise<void> {
+  private async handlePassThrough(originalRequest: any, res: Response, clientFormat: ClientFormat, providerName: ProviderName, client?: string): Promise<void> {
     if (providerName === 'xAI') {
-      await xaiPassthrough.handleDirectRequest(originalRequest, res);
+      await xaiPassthrough.handleDirectRequest(originalRequest, res, client);
     } else if (clientFormat === 'openai_responses' && providerName === 'openai') {
-      await openaiResponsesPassthrough.handleDirectRequest(originalRequest, res);
+      await openaiResponsesPassthrough.handleDirectRequest(originalRequest, res, client);
     } else {
       // Default to Anthropic passthrough for backward compatibility
-      await anthropicPassthrough.handleDirectRequest(originalRequest, res);
+      await anthropicPassthrough.handleDirectRequest(originalRequest, res, client);
     }
   }
 

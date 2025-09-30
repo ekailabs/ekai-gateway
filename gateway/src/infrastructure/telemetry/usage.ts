@@ -12,6 +12,7 @@ export interface UsageEvent {
   model: string;
   provider: string;
   request_id: string;
+  client?: string;
   [key: string]: unknown; // Add index signature to match LogContext
 }
 
@@ -21,8 +22,8 @@ export interface UsageEvent {
  * 
  * @param totalTokens - Total number of tokens used in the request
  */
-export function recordUsage(params: { totalTokens: number; model: string; provider: string; requestId: string }): void {
-  const { totalTokens, model, provider, requestId } = params;
+export function recordUsage(params: { totalTokens: number; model: string; provider: string; requestId: string; client?: string }): void {
+  const { totalTokens, model, provider, requestId, client } = params;
 
   if (!Number.isFinite(totalTokens) || totalTokens <= 0) {
     return; // Skip invalid token counts
@@ -36,7 +37,8 @@ export function recordUsage(params: { totalTokens: number; model: string; provid
     tokens_total: totalTokens,
     model,
     provider,
-    request_id: requestId
+    request_id: requestId,
+    ...(client ? { client } : {})
   };
 
   // Log the usage event - this will be picked up by the telemetry transport
