@@ -8,19 +8,6 @@ export function buildCanonicalChunk(event: Record<string, any>): CanonicalStream
   } as CanonicalStreamingResponse;
 }
 
-export function attachProviderRaw(
-  chunk: CanonicalStreamingResponse,
-  raw: { event?: string; data?: any; raw_event?: string; raw_data?: string }
-): CanonicalStreamingResponse {
-  (chunk as any).provider_raw = {
-    event: raw.event,
-    data: raw.data,
-    raw_event: raw.raw_event,
-    raw_data: raw.raw_data
-  };
-  return chunk;
-}
-
 export function normalizeProviderStream(stream: any): string {
   if (typeof stream === 'string') return stream;
   if (stream instanceof Uint8Array) return new TextDecoder('utf-8').decode(stream);
@@ -33,4 +20,3 @@ export function mapFinishReasonFromResponsesStatus(status?: string): any {
   if (status === 'incomplete') return 'length';
   return undefined;
 }
-

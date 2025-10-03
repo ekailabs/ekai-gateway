@@ -94,6 +94,11 @@ export const providerToCanonical: Record<string, (data: any) => CanonicalStreami
     annotations: data.annotations,
     logprobs: data.logprobs
   }),
+  'response.output_text.annotation.added': (data: any) => buildCanonicalChunk({
+    type: 'output_text_annotation_added',
+    annotation: data.annotation,
+    text: data.text
+  }),
   'response.output_item.added': (data: any) => handleOutputItemAdded(data),
   'response.content_part.added': (data: any) => handleContentPartAdded(data),
   'response.content_part.done': (data: any) => buildCanonicalChunk({
@@ -188,6 +193,23 @@ export const providerToCanonical: Record<string, (data: any) => CanonicalStreami
     call_id: data.call_id,
     arguments: data.arguments
   }),
+  // Code Interpreter
+  'response.code_interpreter_call.code.delta': (data: any) => buildCanonicalChunk({
+    type: 'code_interpreter_call_code_delta',
+    call_id: data.call_id,
+    delta: data.delta,
+    code: data.code
+  }),
+  'response.code_interpreter_call.code.done': (data: any) => buildCanonicalChunk({
+    type: 'code_interpreter_call_code_done',
+    call_id: data.call_id,
+    code: data.code
+  }),
+  'response.code_interpreter_call.outputs': (data: any) => buildCanonicalChunk({
+    type: 'function_call_output',
+    call_id: data.call_id,
+    output: typeof data.outputs === 'string' ? data.outputs : JSON.stringify(data.outputs || data.output || '')
+  }),
   // Refusals
   'response.refusal.delta': (data: any) => buildCanonicalChunk({
     type: 'refusal_delta',
@@ -259,6 +281,14 @@ export const canonicalToProvider: Record<string, (event: Record<string, any>) =>
       logprobs: event.logprobs
     }
   }),
+  output_text_annotation_added: (event: Record<string, any>) => ({
+    event: 'response.output_text.annotation.added',
+    data: {
+      type: 'response.output_text.annotation.added',
+      annotation: event.annotation,
+      text: event.text
+    }
+  }),
   output_item_added: (event: Record<string, any>) => ({
     event: 'response.output_item.added',
     data: {
@@ -321,6 +351,38 @@ export const canonicalToProvider: Record<string, (event: Record<string, any>) =>
       type: 'response.function_call.arguments.done',
       call_id: event.call_id,
       arguments: event.arguments
+    }
+  }),
+  // Code Interpreter
+  code_interpreter_call_code_delta: (event: Record<string, any>) => ({
+    event: 'response.code_interpreter_call.code.delta',
+    data: {
+      type: 'response.code_interpreter_call.code.delta',
+      call_id: event.call_id,
+      delta: event.delta,
+      code: event.code
+    }
+  }),
+  code_interpreter_call_code_done: (event: Record<string, any>) => ({
+    event: 'response.code_interpreter_call.code.done',
+    data: {
+      type: 'response.code_interpreter_call.code.done',
+      call_id: event.call_id,
+      code: event.code
+    }
+  }),
+  function_call_output: (event: Record<string, any>) => ({
+    event: 'response.code_interpreter_call.outputs',
+    data: {
+      type: 'response.code_interpreter_call.outputs',
+      call_id: event.call_id,
+      outputs: (() => {
+        try {
+          return event.output ? JSON.parse(event.output) : undefined;
+        } catch {
+          return event.output;
+        }
+      })()
     }
   }),
   // Refusals

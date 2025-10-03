@@ -155,29 +155,16 @@ export class ChatHandler {
 
     // Run canonical transformation in parallel for logging only (if enabled)
     if (canonicalMode) {
-      try {
-        // Compare request transformation
-        await this.compareRequestTransformation(originalRequest, canonicalRequest, req?.requestId, clientFormat);
-        
-        // Process canonical transformation for comparison logging
-        const providerClientType = clientFormat === 'anthropic' ? 'anthropic' : 'openai';
-        const canonicalResponse = await this.providerService.processChatCompletion(
+      // Fire-and-forget background diff so we don't impact response latency
+      setImmediate(() => {
+        void this.runNonStreamingCanonicalDiff(
+          originalRequest,
           canonicalRequest,
           providerName as any,
-          providerClientType,
-          originalRequest,
-          req.requestId
+          clientFormat,
+          req?.requestId
         );
-        const clientResponse = this.adapters[clientFormat].decodeResponseToClient(canonicalResponse);
-        await this.compareCanonicalTransformation(originalRequest, canonicalResponse, clientResponse, req?.requestId, clientFormat);
-      } catch (error) {
-        // Log canonical transformation errors but don't affect user response
-        logger.error('Canonical transformation error (logging only)', {
-          error: error instanceof Error ? error.message : String(error),
-          requestId: req?.requestId,
-          module: 'chat-handler'
-        });
-      }
+      });
     }
   }
 
@@ -210,34 +197,17 @@ export class ChatHandler {
 
     // Run canonical transformation in parallel for logging only (if enabled)
     if (canonicalMode && clientFormat === 'openai_responses') {
-      try {
-        // Compare request transformation
-        await this.compareRequestTransformation(originalRequest, canonicalRequest, req?.requestId, clientFormat);
-        
-        const adapter = this.adapters[clientFormat];
-        // Use the captured passthrough stream instead of making a second API call
-        const rawStream = (req as any)._capturedOpenAIResponsesRaw || '';
-        const canonicalResult = adapter.encodeStreamToCanonical?.(rawStream);
-        const canonicalChunks = Array.isArray(canonicalResult)
-          ? canonicalResult
-          : canonicalResult
-            ? [canonicalResult]
-            : [];
-
-        const adapterData = canonicalChunks
-          .map(chunk => adapter.decodeStreamToClient?.(chunk) || '')
-          .filter(Boolean)
-          .join('');
-
-        this.logSSEDifferences(rawStream, adapterData, req?.requestId, clientFormat);
-      } catch (error) {
-        // Log canonical transformation errors but don't affect user response
-        logger.error('Canonical streaming transformation error (logging only)', {
-          error: error instanceof Error ? error.message : String(error),
-          requestId: req?.requestId,
-          module: 'chat-handler'
-        });
-      }
+      const rawStream = (req as any)._capturedOpenAIResponsesRaw || '';
+      setImmediate(() => {
+        void this.runStreamingCanonicalDiff(
+          originalRequest,
+          canonicalRequest,
+          providerName as any,
+          clientFormat,
+          rawStream,
+          req?.requestId
+        );
+      });
     }
   }
 
@@ -405,6 +375,7 @@ export class ChatHandler {
       const aLines = adapter.split(/\r?\n/);
       const max = Math.max(pLines.length, aLines.length);
       const diffs: string[] = [];
+      let diffCount = 0;
       for (let i = 0; i < max && diffs.length < 20; i++) {
         const pl = pLines[i] ?? '';
         const al = aLines[i] ?? '';
@@ -412,12 +383,15 @@ export class ChatHandler {
           // Trim long lines for readability
           const trim = (s: string) => (s.length > 300 ? s.slice(0, 300) + '…' : s);
           diffs.push(`line ${i + 1}: passthrough="${trim(pl)}" vs adapter="${trim(al)}"`);
+          diffCount++;
         }
       }
       logger.error('Streaming response transformation differences:', { 
         requestId, 
         clientFormat,
-        message: diffs.join(' | '), 
+        message: diffs.join(' | '),
+        total_lines: max,
+        diff_lines: diffCount,
         module: 'chat-handler' 
       });
     } catch (e) {
@@ -428,6 +402,85 @@ export class ChatHandler {
         module: 'chat-handler' 
       });
     }
+  }
+
+  // Fire-and-forget background task: non-streaming compare/diff
+  private async runNonStreamingCanonicalDiff(
+    originalRequest: any,
+    canonicalRequest: CanonicalRequest,
+    providerName: ProviderName,
+    clientFormat: ClientFormat,
+    requestId?: string
+  ): Promise<void> {
+    const MAX_MS = Number(process.env.CANONICAL_BG_TIMEOUT_MS || 15000);
+    const run = async () => {
+      try {
+        await this.compareRequestTransformation(originalRequest, canonicalRequest, requestId, clientFormat);
+        const providerClientType = clientFormat === 'anthropic' ? 'anthropic' : 'openai';
+        const canonicalResponse = await this.providerService.processChatCompletion(
+          canonicalRequest,
+          providerName as any,
+          providerClientType,
+          originalRequest,
+          requestId
+        );
+        const clientResponse = this.adapters[clientFormat].decodeResponseToClient(canonicalResponse);
+        await this.compareCanonicalTransformation(originalRequest, canonicalResponse, clientResponse, requestId, clientFormat);
+      } catch (error) {
+        logger.error('Canonical transformation error (background/logging only)', {
+          error: error instanceof Error ? error.message : String(error),
+          requestId,
+          module: 'chat-handler'
+        });
+      }
+    };
+
+    await Promise.race([
+      run(),
+      new Promise<void>(resolve => setTimeout(resolve, MAX_MS))
+    ]);
+  }
+
+  // Fire-and-forget background task: streaming compare/diff using captured passthrough raw SSE
+  private async runStreamingCanonicalDiff(
+    originalRequest: any,
+    canonicalRequest: CanonicalRequest,
+    providerName: ProviderName,
+    clientFormat: ClientFormat,
+    rawStream: string,
+    requestId?: string
+  ): Promise<void> {
+    const MAX_MS = Number(process.env.CANONICAL_BG_TIMEOUT_MS || 15000);
+    const run = async () => {
+      try {
+        await this.compareRequestTransformation(originalRequest, canonicalRequest, requestId, clientFormat);
+        const adapter = this.adapters[clientFormat];
+        const canonicalResult = adapter.encodeStreamToCanonical?.(rawStream);
+        const canonicalChunks = Array.isArray(canonicalResult)
+          ? canonicalResult
+          : canonicalResult
+            ? [canonicalResult]
+            : [];
+
+        const adapterData = canonicalChunks
+          .map(chunk => adapter.decodeStreamToClient?.(chunk) || '')
+          .filter(Boolean)
+          .join('');
+
+        this.logSSEDifferences(rawStream, adapterData, requestId, clientFormat);
+      } catch (error) {
+        logger.error('Canonical streaming transformation error (background/logging only)', {
+          error: error instanceof Error ? error.message : String(error),
+          requestId,
+          module: 'chat-handler'
+        });
+      }
+    };
+
+    await Promise.race([
+      run(),
+      new Promise<void>(resolve => setTimeout(resolve, MAX_MS))
+    ]);
   }
 
   // Pass-through scenarios: where clientFormat and providerFormat are the same, we want to take a quick route
@@ -449,16 +502,6 @@ export class ChatHandler {
     }
 
     return false;
-  }
-
-  private setStreamingHeaders(res: Response): void {
-    const headers = {
-      'Content-Type': CONTENT_TYPES.TEXT_PLAIN,
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
-    };
-    res.writeHead(HTTP_STATUS.OK, headers);
   }
 
   private async handlePassThrough(originalRequest: any, res: Response, clientFormat: ClientFormat, providerName: ProviderName): Promise<void> {
