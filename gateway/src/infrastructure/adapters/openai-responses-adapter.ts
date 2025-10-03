@@ -56,8 +56,18 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
       logprobs: data.logprobs,
       obfuscation: data.obfuscation
     }),
+    'response.output_text.done': (data: any) => this.buildCanonicalChunk({
+      type: 'output_text_done',
+      text: data.text,
+      annotations: data.annotations,
+      logprobs: data.logprobs
+    }),
     'response.output_item.added': (data: any) => this.handleOutputItemAdded(data),
     'response.content_part.added': (data: any) => this.handleContentPartAdded(data),
+    'response.content_part.done': (data: any) => this.buildCanonicalChunk({
+      type: 'content_part_done',
+      index: data.content_index
+    }),
     'response.output_item.done': (data: any) => this.buildCanonicalChunk({
       type: 'output_item_done',
       output_index: data.output_index,
@@ -86,21 +96,96 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
       reasoning_tokens: data.usage?.reasoning_tokens,
       usage: data.usage
     }),
+    // File search → canonical
     'response.file_search_call.in_progress': (data: any) => this.buildCanonicalChunk({
-      type: 'file_search_call_in_progress',
+      type: 'file_search_start',
       call_id: data.call_id,
       tool_call_id: data.tool_call_id,
-      file_search: data.file_search
+      file_search: {
+        status: 'in_progress',
+        query: data.file_search?.query
+      }
     }),
     'response.file_search_call.searching': (data: any) => this.buildCanonicalChunk({
-      type: 'file_search_call_searching',
+      type: 'file_search_progress',
       call_id: data.call_id,
       tool_call_id: data.tool_call_id,
-      file_search: data.file_search
+      file_search: {
+        status: 'searching',
+        query: data.file_search?.query,
+        results: data.file_search?.results
+      }
+    }),
+    'response.file_search_call.completed': (data: any) => this.buildCanonicalChunk({
+      type: 'file_search_done',
+      call_id: data.call_id,
+      tool_call_id: data.tool_call_id,
+      file_search: {
+        status: 'completed',
+        query: data.file_search?.query,
+        results: data.file_search?.results
+      }
+    }),
+    // Web search → canonical
+    'response.web_search_call.in_progress': (data: any) => this.buildCanonicalChunk({
+      type: 'web_search_start',
+      call_id: data.call_id,
+      tool_call_id: data.tool_call_id,
+      web_search: {
+        status: 'in_progress',
+        query: data.web_search?.query
+      }
+    }),
+    'response.web_search_call.searching': (data: any) => this.buildCanonicalChunk({
+      type: 'web_search_progress',
+      call_id: data.call_id,
+      tool_call_id: data.tool_call_id,
+      web_search: {
+        status: 'searching',
+        query: data.web_search?.query,
+        results: data.web_search?.results
+      }
+    }),
+    'response.web_search_call.completed': (data: any) => this.buildCanonicalChunk({
+      type: 'web_search_done',
+      call_id: data.call_id,
+      tool_call_id: data.tool_call_id,
+      web_search: {
+        status: 'completed',
+        query: data.web_search?.query,
+        results: data.web_search?.results
+      }
+    }),
+    // Reasoning summaries → canonical
+    'response.reasoning.summary.delta': (data: any) => this.buildCanonicalChunk({
+      type: 'reasoning_summary_text_delta',
+      delta: data.delta,
+      summary: data.summary
+    }),
+    'response.reasoning.summary.done': (data: any) => this.buildCanonicalChunk({
+      type: 'reasoning_summary_text_done',
+      summary: data.summary
+    }),
+    // Function call arguments → canonical
+    'response.function_call.arguments.delta': (data: any) => this.buildCanonicalChunk({
+      type: 'function_call_arguments_delta',
+      call_id: data.call_id,
+      delta: data.delta,
+      arguments: data.arguments
+    }),
+    'response.function_call.arguments.done': (data: any) => this.buildCanonicalChunk({
+      type: 'function_call_arguments_done',
+      call_id: data.call_id,
+      arguments: data.arguments
     }),
     'response.completed': (data: any) => this.buildCanonicalChunk({
       type: 'response_completed',
-      finish_reason: data.response?.status || 'completed',
+      finish_reason: ((): any => {
+        const status = data?.response?.status;
+        if (status === 'completed') return 'stop';
+        if (status === 'incomplete') return 'length';
+        return undefined;
+      })(),
       response: data.response
     }),
     'response.error': (data: any) => this.buildCanonicalChunk({
@@ -154,6 +239,15 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
         }
       };
     },
+    output_text_done: (event: Record<string, any>) => ({
+      event: 'response.output_text.done',
+      data: {
+        type: 'response.output_text.done',
+        text: event.text,
+        annotations: event.annotations,
+        logprobs: event.logprobs
+      }
+    }),
     content_part_start: (event: Record<string, any>) => ({
       event: 'response.content_part.added',
       data: {
@@ -163,6 +257,13 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
         content_index: event.index,
         item_id: event.item_id,
         part: event.content_block
+      }
+    }),
+    content_part_done: (event: Record<string, any>) => ({
+      event: 'response.content_part.done',
+      data: {
+        type: 'response.content_part.done',
+        content_index: event.index
       }
     }),
     output_item_added: (event: Record<string, any>) => ({
@@ -194,6 +295,23 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
         call_id: event.call_id || event.id
       }
     }),
+    function_call_arguments_delta: (event: Record<string, any>) => ({
+      event: 'response.function_call.arguments.delta',
+      data: {
+        type: 'response.function_call.arguments.delta',
+        call_id: event.call_id,
+        delta: event.delta,
+        arguments: event.arguments
+      }
+    }),
+    function_call_arguments_done: (event: Record<string, any>) => ({
+      event: 'response.function_call.arguments.done',
+      data: {
+        type: 'response.function_call.arguments.done',
+        call_id: event.call_id,
+        arguments: event.arguments
+      }
+    }),
     tool_call: (event: Record<string, any>) => ({
       event: 'response.tool_call',
       data: {
@@ -223,6 +341,21 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
         }
       }
     }),
+    reasoning_summary_text_delta: (event: Record<string, any>) => ({
+      event: 'response.reasoning.summary.delta',
+      data: {
+        type: 'response.reasoning.summary.delta',
+        delta: event.delta,
+        summary: event.summary
+      }
+    }),
+    reasoning_summary_text_done: (event: Record<string, any>) => ({
+      event: 'response.reasoning.summary.done',
+      data: {
+        type: 'response.reasoning.summary.done',
+        summary: event.summary
+      }
+    }),
     error: (event: Record<string, any>) => ({
       event: 'error',
       data: {
@@ -233,7 +366,8 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
         }
       }
     }),
-    file_search_call_in_progress: (event: Record<string, any>) => ({
+    // File search canonical → provider
+    file_search_start: (event: Record<string, any>) => ({
       event: 'response.file_search_call.in_progress',
       data: {
         type: 'response.file_search_call.in_progress',
@@ -242,13 +376,50 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
         file_search: event.file_search
       }
     }),
-    file_search_call_searching: (event: Record<string, any>) => ({
+    file_search_progress: (event: Record<string, any>) => ({
       event: 'response.file_search_call.searching',
       data: {
         type: 'response.file_search_call.searching',
         call_id: event.call_id,
         tool_call_id: event.tool_call_id,
         file_search: event.file_search
+      }
+    }),
+    file_search_done: (event: Record<string, any>) => ({
+      event: 'response.file_search_call.completed',
+      data: {
+        type: 'response.file_search_call.completed',
+        call_id: event.call_id,
+        tool_call_id: event.tool_call_id,
+        file_search: event.file_search
+      }
+    }),
+    // Web search canonical → provider
+    web_search_start: (event: Record<string, any>) => ({
+      event: 'response.web_search_call.in_progress',
+      data: {
+        type: 'response.web_search_call.in_progress',
+        call_id: event.call_id,
+        tool_call_id: event.tool_call_id,
+        web_search: event.web_search
+      }
+    }),
+    web_search_progress: (event: Record<string, any>) => ({
+      event: 'response.web_search_call.searching',
+      data: {
+        type: 'response.web_search_call.searching',
+        call_id: event.call_id,
+        tool_call_id: event.tool_call_id,
+        web_search: event.web_search
+      }
+    }),
+    web_search_done: (event: Record<string, any>) => ({
+      event: 'response.web_search_call.completed',
+      data: {
+        type: 'response.web_search_call.completed',
+        call_id: event.call_id,
+        tool_call_id: event.tool_call_id,
+        web_search: event.web_search
       }
     })
   };
