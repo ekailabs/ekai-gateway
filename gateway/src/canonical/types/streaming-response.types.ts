@@ -20,8 +20,9 @@ export type CanonicalAIStreamingResponseSchema = {
     // LIFECYCLE (OpenAI: response.created/response.completed/response.error,
     //            Anthropic: message_start/message_stop)
     // ────────────────────────────────────────────────────────────────────────────
-        | {
+    | {
         type: 'response_created';
+        sequence_number?: number;
             id?: string;
             model?: string;
         created?: number;
@@ -70,6 +71,39 @@ export type CanonicalAIStreamingResponseSchema = {
         };
       };
     }
+  | {
+        type: 'response_in_progress';
+        sequence_number?: number;
+        response?: {
+          id: string;
+          object: 'response';
+          created_at: number;
+          status: 'in_progress';
+          background?: boolean;
+          error?: null;
+          incomplete_details?: null;
+          instructions?: string | null;
+          max_output_tokens?: number | null;
+          max_tool_calls?: number | null;
+          model?: string;
+          output?: unknown[];
+          parallel_tool_calls?: boolean;
+          previous_response_id?: string | null;
+          precompute_cache_key?: string | null;
+          reasoning?: {
+            effort?: 'low' | 'medium' | 'high';
+            summary?: string | null;
+          } | null;
+          safety_identifier?: string | null;
+          service_tier?: string | null;
+          store?: boolean;
+          usage?: {
+            input_tokens?: number;
+            output_tokens?: number;
+            reasoning_tokens?: number;
+          } | null;
+        };
+      }
   | {
         type: 'response_completed';
         finish_reason?:
@@ -168,6 +202,13 @@ export type CanonicalAIStreamingResponseSchema = {
         value: string;
         delta?: string;
         index?: number;
+        sequence_number?: number;
+        item_id?: string;
+        output_index?: number;
+        content_index?: number;
+        annotations?: unknown[];
+        logprobs?: unknown[];
+        obfuscation?: string;
         content_block?:
           | {
               type: 'text';
@@ -204,10 +245,19 @@ export type CanonicalAIStreamingResponseSchema = {
         /** OpenAI: content_part.added (Anthropic: content_block_start) */
         type: 'content_part_start';
       index: number;
+      sequence_number?: number;
+      item_id?: string;
+      output_index?: number;
       content_block:
         | {
             type: 'text';
             text: string;
+          }
+        | {
+            type: 'output_text';
+            text?: string;
+            annotations?: unknown[];
+            logprobs?: unknown[];
           }
         | {
             type: 'tool_use';
@@ -231,8 +281,10 @@ export type CanonicalAIStreamingResponseSchema = {
           type: 'message' | 'reasoning';
           role?: 'assistant';
           content: unknown[];
+          encrypted_content?: string;
         };
         sequence_number?: number;
+        item_id?: string;
       }
     | {
         /** OpenAI: output_item.done */
@@ -249,7 +301,10 @@ export type CanonicalAIStreamingResponseSchema = {
             text: string;
           }[];
           role: 'assistant';
+          encrypted_content?: string;
         };
+        sequence_number?: number;
+        item_id?: string;
       }
 
     // ────────────────────────────────────────────────────────────────────────────

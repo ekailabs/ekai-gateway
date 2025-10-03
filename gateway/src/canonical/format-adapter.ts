@@ -10,7 +10,7 @@ export interface FormatAdapter<ClientRequest, ClientResponse, ProviderRequest = 
   decodeResponseToClient(canonicalResponse: Response): ClientResponse;
   
   // Streaming response path: Provider → Canonical → Client
-  encodeStreamToCanonical?(providerChunk: any): StreamingResponse;
+  encodeStreamToCanonical?(providerChunk: any): StreamingResponse | StreamingResponse[];
   decodeStreamToClient?(canonicalChunk: StreamingResponse): string;
 }
 

@@ -1,4 +1,5 @@
 import { Request as CanonicalRequest, Response as CanonicalResponse } from '../../canonical/types/index.js';
+import { Response as NodeFetchResponse } from 'node-fetch';
 import { AIProvider } from '../types/provider.js';
 import { AnthropicProvider } from '../providers/anthropic-provider.js';
 import { OpenAIProvider } from '../providers/openai-provider.js';
@@ -163,12 +164,12 @@ export class ProviderService {
     return provider.getStreamingResponse(request);
   }
 
-  // New method to get canonical streaming chunks
-  async getStreamingChunks(
+  // Returns the raw provider streaming response; canonicalization happens in adapters when needed
+  async getStreamingResponse(
     request: CanonicalRequest,
     providerName: Provider,
     requestId?: string
-  ): Promise<any> {
+  ): Promise<NodeFetchResponse> {
     const provider = this.getOrCreateProvider(providerName);
 
     // Ensure Anthropic models have required suffixes

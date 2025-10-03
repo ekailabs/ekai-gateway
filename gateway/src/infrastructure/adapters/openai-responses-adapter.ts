@@ -1,7 +1,7 @@
 // Minimal adapter for OpenAI Responses API request/response shapes
 // Converts between Responses API and canonical schema format used internally.
 import { FormatAdapter } from '../../canonical/format-adapter.js';
-import { Request as CanonicalRequest, Response as CanonicalResponse } from '../../canonical/types/index.js';
+import { Request as CanonicalRequest, Response as CanonicalResponse, StreamingResponse as CanonicalStreamingResponse } from '../../canonical/types/index.js';
 
 type ResponsesInput =
   | string
@@ -28,6 +28,230 @@ interface OpenAIResponsesResponse {
 }
 
 export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequest, OpenAIResponsesResponse, any, any> {
+  private readonly providerEventHandlers: Record<string, (data: any) => CanonicalStreamingResponse | CanonicalStreamingResponse[] | null> = {
+    'response.created': (data: any) => this.buildCanonicalChunk({
+      type: 'response_created',
+      id: data.response?.id,
+      model: data.response?.model,
+      created: data.response?.created_at,
+      sequence_number: data.sequence_number,
+      response: data.response
+    }),
+    'response.in_progress': (data: any) => this.buildCanonicalChunk({
+      type: 'response_in_progress',
+      sequence_number: data.sequence_number,
+      response: data.response
+    }),
+    'response.output_text.delta': (data: any) => this.buildCanonicalChunk({
+      type: 'content_delta',
+      part: 'text',
+      value: data.delta,
+      delta: data.delta,
+      index: data.content_index,
+      sequence_number: data.sequence_number,
+      item_id: data.item_id,
+      output_index: data.output_index,
+      content_index: data.content_index,
+      annotations: data.annotations,
+      logprobs: data.logprobs,
+      obfuscation: data.obfuscation
+    }),
+    'response.output_item.added': (data: any) => this.handleOutputItemAdded(data),
+    'response.content_part.added': (data: any) => this.handleContentPartAdded(data),
+    'response.output_item.done': (data: any) => this.buildCanonicalChunk({
+      type: 'output_item_done',
+      output_index: data.output_index,
+      item: data.item,
+      sequence_number: data.sequence_number,
+      item_id: data.item?.id ?? data.item_id
+    }),
+    'response.function_call': (data: any) => this.buildCanonicalChunk({
+      type: 'function_call',
+      name: data.name,
+      arguments_json: data.arguments_json || '',
+      id: data.call_id,
+      call_id: data.call_id
+    }),
+    'response.tool_call': (data: any) => this.buildCanonicalChunk({
+      type: 'tool_call',
+      name: data.name,
+      arguments_json: data.arguments_json || '',
+      id: data.call_id,
+      call_id: data.call_id
+    }),
+    'response.usage': (data: any) => this.buildCanonicalChunk({
+      type: 'usage',
+      input_tokens: data.usage?.input_tokens,
+      output_tokens: data.usage?.output_tokens,
+      reasoning_tokens: data.usage?.reasoning_tokens,
+      usage: data.usage
+    }),
+    'response.file_search_call.in_progress': (data: any) => this.buildCanonicalChunk({
+      type: 'file_search_call_in_progress',
+      call_id: data.call_id,
+      tool_call_id: data.tool_call_id,
+      file_search: data.file_search
+    }),
+    'response.file_search_call.searching': (data: any) => this.buildCanonicalChunk({
+      type: 'file_search_call_searching',
+      call_id: data.call_id,
+      tool_call_id: data.tool_call_id,
+      file_search: data.file_search
+    }),
+    'response.completed': (data: any) => this.buildCanonicalChunk({
+      type: 'response_completed',
+      finish_reason: data.response?.status || 'completed',
+      response: data.response
+    }),
+    'response.error': (data: any) => this.buildCanonicalChunk({
+      type: 'error',
+      error: data.error || data
+    }),
+    error: (data: any) => this.buildCanonicalChunk({
+      type: 'error',
+      error: data.error || data
+    })
+  };
+
+  private readonly canonicalEventHandlers: Record<string, (event: Record<string, any>) => { event: string; data: Record<string, any> } | null> = {
+    response_created: (event: Record<string, any>) => ({
+      event: 'response.created',
+      data: {
+        type: 'response.created',
+        sequence_number: event.sequence_number,
+        response: event.response || {
+          id: event.id,
+          model: event.model,
+          created_at: event.created,
+          status: 'in_progress'
+        }
+      }
+    }),
+    response_in_progress: (event: Record<string, any>) => ({
+      event: 'response.in_progress',
+      data: {
+        type: 'response.in_progress',
+        sequence_number: event.sequence_number,
+        response: event.response
+      }
+    }),
+    content_delta: (event: Record<string, any>) => {
+      if (event.part !== 'text') {
+        return null;
+      }
+      return {
+        event: 'response.output_text.delta',
+        data: {
+          type: 'response.output_text.delta',
+          delta: event.value ?? event.delta ?? '',
+          sequence_number: event.sequence_number,
+          item_id: event.item_id,
+          content_index: event.content_index ?? event.index,
+          output_index: event.output_index,
+          logprobs: event.logprobs,
+          annotations: event.annotations,
+          obfuscation: event.obfuscation
+        }
+      };
+    },
+    content_part_start: (event: Record<string, any>) => ({
+      event: 'response.content_part.added',
+      data: {
+        type: 'response.content_part.added',
+        sequence_number: event.sequence_number,
+        output_index: event.output_index,
+        content_index: event.index,
+        item_id: event.item_id,
+        part: event.content_block
+      }
+    }),
+    output_item_added: (event: Record<string, any>) => ({
+      event: 'response.output_item.added',
+      data: {
+        type: 'response.output_item.added',
+        sequence_number: event.sequence_number,
+        output_index: event.output_index,
+        item: event.item,
+        item_id: event.item_id
+      }
+    }),
+    output_item_done: (event: Record<string, any>) => ({
+      event: 'response.output_item.done',
+      data: {
+        type: 'response.output_item.done',
+        sequence_number: event.sequence_number,
+        output_index: event.output_index,
+        item: event.item,
+        item_id: event.item_id
+      }
+    }),
+    function_call: (event: Record<string, any>) => ({
+      event: 'response.function_call',
+      data: {
+        type: 'response.function_call',
+        name: event.name,
+        arguments_json: event.arguments_json,
+        call_id: event.call_id || event.id
+      }
+    }),
+    tool_call: (event: Record<string, any>) => ({
+      event: 'response.tool_call',
+      data: {
+        type: 'response.tool_call',
+        name: event.name,
+        arguments_json: event.arguments_json,
+        call_id: event.call_id || event.id
+      }
+    }),
+    usage: (event: Record<string, any>) => ({
+      event: 'response.usage',
+      data: {
+        type: 'response.usage',
+        usage: event.usage || {
+          input_tokens: event.input_tokens,
+          output_tokens: event.output_tokens,
+          reasoning_tokens: event.reasoning_tokens
+        }
+      }
+    }),
+    response_completed: (event: Record<string, any>) => ({
+      event: 'response.completed',
+      data: {
+        type: 'response.completed',
+        response: event.response || {
+          status: event.finish_reason || 'completed'
+        }
+      }
+    }),
+    error: (event: Record<string, any>) => ({
+      event: 'error',
+      data: {
+        type: 'error',
+        error: event.error || {
+          code: event.code,
+          message: event.message
+        }
+      }
+    }),
+    file_search_call_in_progress: (event: Record<string, any>) => ({
+      event: 'response.file_search_call.in_progress',
+      data: {
+        type: 'response.file_search_call.in_progress',
+        call_id: event.call_id,
+        tool_call_id: event.tool_call_id,
+        file_search: event.file_search
+      }
+    }),
+    file_search_call_searching: (event: Record<string, any>) => ({
+      event: 'response.file_search_call.searching',
+      data: {
+        type: 'response.file_search_call.searching',
+        call_id: event.call_id,
+        tool_call_id: event.tool_call_id,
+        file_search: event.file_search
+      }
+    })
+  };
   // Request path: Client → Canonical → Provider
   encodeRequestToCanonical(clientRequest: OpenAIResponsesRequest): CanonicalRequest {
     const instructions = (clientRequest as any).instructions;
@@ -192,518 +416,188 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
   }
 
   // Streaming response path: Provider → Canonical → Client
-  encodeStreamToCanonical?(providerChunk: any): any {
-    // This method will be implemented when we move provider logic here
-    // For now, return the provider chunk as-is
-    return providerChunk;
+  encodeStreamToCanonical?(providerStream: any): CanonicalStreamingResponse[] {
+    const text = this.normalizeProviderStream(providerStream);
+    if (!text) {
+      return [];
+    }
+
+    const chunks: CanonicalStreamingResponse[] = [];
+    const lines = text.split(/\r?\n/);
+    let currentEvent = '';
+
+    for (const rawLine of lines) {
+      const line = rawLine.trimEnd();
+
+      if (line.startsWith('event: ')) {
+        currentEvent = line.slice(7).trim();
+        continue;
+      }
+
+      if (!line.startsWith('data: ')) {
+        continue;
+      }
+
+      const dataStr = line.slice(6);
+      if (dataStr === '[DONE]') {
+        chunks.push(this.buildCanonicalChunk({
+          type: 'response_completed',
+          finish_reason: 'stop'
+        }));
+        break;
+      }
+
+      try {
+        const data = JSON.parse(dataStr);
+        const eventType = data?.type || currentEvent;
+        if (!eventType) {
+          continue;
+        }
+
+        const handler = this.providerEventHandlers[eventType];
+        if (!handler) {
+          continue;
+        }
+
+        const result = handler(data);
+        const canonicalChunks = Array.isArray(result)
+          ? result.filter(Boolean) as CanonicalStreamingResponse[]
+          : result
+            ? [result as CanonicalStreamingResponse]
+            : [];
+
+        for (const chunk of canonicalChunks) {
+          if (!chunk) continue;
+          (chunk as any).provider_raw = {
+            event: eventType,
+            data,
+            raw_event: currentEvent ? `event: ${currentEvent}` : undefined,
+            raw_data: `data: ${dataStr}`
+          };
+          chunks.push(chunk);
+        }
+      } catch (_error) {
+        // ignore malformed JSON lines
+      }
+    }
+
+    return chunks;
   }
 
-  decodeStreamToClient?(canonicalChunk: any): string {
-    // Convert streaming chunk to OpenAI Responses SSE format
-    const lines: string[] = [];
-    
-    // Handle canonical streaming schema (stream_type: 'canonical')
-    if (canonicalChunk.stream_type === 'canonical' && canonicalChunk.event) {
-      const eventType = canonicalChunk.event.type;
-      
-      switch (eventType) {
-        case 'response_created':
-          lines.push('event: response.created');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.created',
-            response: canonicalChunk.event.response || {
-              id: canonicalChunk.event.id || `resp_${Date.now()}`,
-              object: 'response',
-              created_at: canonicalChunk.event.created || Math.floor(Date.now() / 1000),
-              status: 'in_progress'
-            }
-          })}`);
-          break;
-
-        case 'content_delta':
-          if (canonicalChunk.event.part === 'text') {
-            lines.push('event: response.output_text.delta');
-            lines.push(`data: ${JSON.stringify({
-              type: 'response.output_text.delta',
-              delta: canonicalChunk.event.value || canonicalChunk.event.delta
-            })}`);
-          }
-          break;
-
-        case 'thinking_signature_delta':
-          // Anthropic-specific event - map to a generic signature event for OpenAI
-          lines.push('event: thinking.signature.delta');
-          lines.push(`data: ${JSON.stringify({
-            type: 'thinking.signature.delta',
-            index: canonicalChunk.event.index,
-            delta: canonicalChunk.event.delta,
-            signature: canonicalChunk.event.signature
-          })}`);
-          break;
-
-        case 'output_text_done':
-          lines.push('event: response.output_text.done');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.output_text.done',
-            text: canonicalChunk.event.text,
-            annotations: canonicalChunk.event.annotations,
-            logprobs: canonicalChunk.event.logprobs
-          })}`);
-          break;
-
-        case 'refusal_delta':
-          lines.push('event: response.refusal.delta');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.refusal.delta',
-            delta: canonicalChunk.event.delta,
-            refusal: canonicalChunk.event.refusal
-          })}`);
-          break;
-
-        case 'refusal_done':
-          lines.push('event: response.refusal.done');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.refusal.done',
-            refusal: canonicalChunk.event.refusal
-          })}`);
-          break;
-
-        case 'function_call_arguments_delta':
-          lines.push('event: response.function_call.arguments.delta');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.function_call.arguments.delta',
-            call_id: canonicalChunk.event.call_id,
-            delta: canonicalChunk.event.delta,
-            arguments: canonicalChunk.event.arguments
-          })}`);
-          break;
-
-        case 'function_call_arguments_done':
-          lines.push('event: response.function_call.arguments.done');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.function_call.arguments.done',
-            call_id: canonicalChunk.event.call_id,
-            arguments: canonicalChunk.event.arguments
-          })}`);
-          break;
-
-        case 'function_call_output':
-          lines.push('event: response.function_call_output');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.function_call_output',
-            call_id: canonicalChunk.event.call_id,
-            output: canonicalChunk.event.output
-          })}`);
-          break;
-
-        case 'mcp_call_arguments_delta':
-          lines.push('event: response.mcp_call.arguments.delta');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.mcp_call.arguments.delta',
-            call_id: canonicalChunk.event.call_id,
-            delta: canonicalChunk.event.delta,
-            arguments: canonicalChunk.event.arguments
-          })}`);
-          break;
-
-        case 'mcp_call_arguments_done':
-          lines.push('event: response.mcp_call.arguments.done');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.mcp_call.arguments.done',
-            call_id: canonicalChunk.event.call_id,
-            arguments: canonicalChunk.event.arguments
-          })}`);
-          break;
-
-        case 'code_interpreter_call_code_delta':
-          lines.push('event: response.code_interpreter_call.code.delta');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.code_interpreter_call.code.delta',
-            call_id: canonicalChunk.event.call_id,
-            delta: canonicalChunk.event.delta,
-            code: canonicalChunk.event.code
-          })}`);
-          break;
-
-        case 'code_interpreter_call_code_done':
-          lines.push('event: response.code_interpreter_call.code.done');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.code_interpreter_call.code.done',
-            call_id: canonicalChunk.event.call_id,
-            code: canonicalChunk.event.code
-          })}`);
-          break;
-
-        case 'output_text_annotation_added':
-          lines.push('event: response.output_text.annotation.added');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.output_text.annotation.added',
-            annotation: canonicalChunk.event.annotation,
-            text: canonicalChunk.event.text
-          })}`);
-          break;
-
-        case 'reasoning_summary_text_delta':
-          lines.push('event: response.reasoning_summary_text.delta');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.reasoning_summary_text.delta',
-            delta: canonicalChunk.event.delta,
-            summary: canonicalChunk.event.summary
-          })}`);
-          break;
-
-        case 'reasoning_summary_text_done':
-          lines.push('event: response.reasoning_summary_text.done');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.reasoning_summary_text.done',
-            summary: canonicalChunk.event.summary
-          })}`);
-          break;
-
-        case 'content_part_start':
-          lines.push('event: response.content_part.added');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.content_part.added',
-            index: canonicalChunk.event.index,
-            content_block: canonicalChunk.event.content_block
-          })}`);
-          break;
-
-        case 'content_part_done':
-          lines.push('event: response.content_part.done');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.content_part.done',
-            index: canonicalChunk.event.index
-          })}`);
-          break;
-
-        case 'output_item_added':
-          lines.push('event: response.output_item.added');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.output_item.added',
-            output_index: canonicalChunk.event.output_index || 0,
-            item: canonicalChunk.event.item,
-            sequence_number: canonicalChunk.event.sequence_number
-          })}`);
-          break;
-
-        case 'output_item_done':
-          lines.push('event: response.output_item.done');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.output_item.done',
-            output_index: canonicalChunk.event.output_index || 0,
-            item: canonicalChunk.event.item
-          })}`);
-          break;
-
-        case 'function_call_start':
-          lines.push('event: response.function_call');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.function_call',
-            name: canonicalChunk.event.name,
-            arguments_json: canonicalChunk.event.arguments_json,
-            call_id: canonicalChunk.event.id || canonicalChunk.event.call_id
-          })}`);
-          break;
-
-        case 'tool_call_start':
-          lines.push('event: response.tool_call');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.tool_call',
-            name: canonicalChunk.event.name,
-            arguments_json: canonicalChunk.event.arguments_json,
-            call_id: canonicalChunk.event.id || canonicalChunk.event.call_id
-          })}`);
-          break;
-
-        case 'usage':
-          lines.push('event: response.usage');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.usage',
-            usage: canonicalChunk.event.usage || {
-              input_tokens: canonicalChunk.event.input_tokens,
-              output_tokens: canonicalChunk.event.output_tokens,
-              reasoning_tokens: canonicalChunk.event.reasoning_tokens,
-              total_tokens: (canonicalChunk.event.input_tokens || 0) + (canonicalChunk.event.output_tokens || 0)
-            }
-          })}`);
-          break;
-
-        case 'message_delta':
-          lines.push('event: message.delta');
-          lines.push(`data: ${JSON.stringify({
-            type: 'message.delta',
-            delta: canonicalChunk.event.delta
-          })}`);
-          break;
-
-        case 'message_done':
-          lines.push('event: message.done');
-          lines.push(`data: ${JSON.stringify({
-            type: 'message.done'
-          })}`);
-          break;
-
-        case 'response_completed':
-          lines.push('event: response.completed');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.completed',
-            response: canonicalChunk.event.response || {
-              status: 'completed',
-              finish_reason: canonicalChunk.event.finish_reason
-            }
-          })}`);
-          break;
-
-        case 'file_search_start':
-          lines.push('event: response.file_search_call.in_progress');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.file_search_call.in_progress',
-            call_id: canonicalChunk.event.call_id,
-            tool_call_id: canonicalChunk.event.tool_call_id,
-            file_search: canonicalChunk.event.file_search
-          })}`);
-          break;
-
-        case 'file_search_progress':
-          lines.push('event: response.file_search_call.searching');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.file_search_call.searching',
-            call_id: canonicalChunk.event.call_id,
-            tool_call_id: canonicalChunk.event.tool_call_id,
-            file_search: canonicalChunk.event.file_search
-          })}`);
-          break;
-
-        case 'file_search_done':
-          lines.push('event: response.file_search_call.completed');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.file_search_call.completed',
-            call_id: canonicalChunk.event.call_id,
-            tool_call_id: canonicalChunk.event.tool_call_id,
-            file_search: canonicalChunk.event.file_search
-          })}`);
-          break;
-
-        case 'web_search_start':
-          lines.push('event: response.web_search_call.in_progress');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.web_search_call.in_progress',
-            call_id: canonicalChunk.event.call_id,
-            tool_call_id: canonicalChunk.event.tool_call_id,
-            web_search: canonicalChunk.event.web_search
-          })}`);
-          break;
-
-        case 'web_search_progress':
-          lines.push('event: response.web_search_call.searching');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.web_search_call.searching',
-            call_id: canonicalChunk.event.call_id,
-            tool_call_id: canonicalChunk.event.tool_call_id,
-            web_search: canonicalChunk.event.web_search
-          })}`);
-          break;
-
-        case 'web_search_done':
-          lines.push('event: response.web_search_call.completed');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.web_search_call.completed',
-            call_id: canonicalChunk.event.call_id,
-            tool_call_id: canonicalChunk.event.tool_call_id,
-            web_search: canonicalChunk.event.web_search
-          })}`);
-          break;
-
-        case 'error':
-          lines.push('event: error');
-          lines.push(`data: ${JSON.stringify({
-            type: 'error',
-            error: {
-              code: canonicalChunk.event.code,
-              message: canonicalChunk.event.message
-            }
-          })}`);
-          break;
-      }
+  decodeStreamToClient?(canonicalChunk: CanonicalStreamingResponse): string {
+    if (!canonicalChunk || (canonicalChunk as any).stream_type !== 'canonical') {
+      return '';
     }
 
-    // Handle OpenAI streaming format (stream_type: 'openai')
-    if (canonicalChunk.stream_type === 'openai' && canonicalChunk.choices) {
-      for (const choice of canonicalChunk.choices) {
-        if (choice.delta?.function_call) {
-          const funcCall = choice.delta.function_call;
-          if (funcCall.name) {
-            lines.push('event: response.function_call');
-            lines.push(`data: ${JSON.stringify({
-              type: 'response.function_call',
-              name: funcCall.name,
-              call_id: choice.delta.tool_calls?.[0]?.id || `call_${Date.now()}`
-            })}`);
-          }
-          if (funcCall.arguments) {
-            lines.push('event: response.function_call.arguments.delta');
-            lines.push(`data: ${JSON.stringify({
-              type: 'response.function_call.arguments.delta',
-              call_id: choice.delta.tool_calls?.[0]?.id || `call_${Date.now()}`,
-              delta: funcCall.arguments
-            })}`);
-          }
-        }
-        if (choice.delta?.tool_calls) {
-          for (const call of choice.delta.tool_calls) {
-            if (call.function?.name) {
-              lines.push('event: response.function_call');
-              lines.push(`data: ${JSON.stringify({
-                type: 'response.function_call',
-                name: call.function.name,
-                call_id: call.id
-              })}`);
-            }
-            if (call.function?.arguments) {
-              lines.push('event: response.function_call.arguments.delta');
-              lines.push(`data: ${JSON.stringify({
-                type: 'response.function_call.arguments.delta',
-                call_id: call.id,
-                delta: call.function.arguments
-              })}`);
-            }
-          }
-        }
-        if (choice.delta?.content) {
-          lines.push('event: response.output_text.delta');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.output_text.delta',
-            delta: choice.delta.content
-          })}`);
-        }
-        if (choice.finish_reason) {
-          lines.push('event: response.completed');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.completed',
-            response: {
-              status: 'completed',
-              finish_reason: choice.finish_reason
-            }
-          })}`);
-        }
-      }
+    const providerRaw = (canonicalChunk as any).provider_raw;
+    if (providerRaw?.raw_data || providerRaw?.raw_event) {
+      const eventLine = providerRaw.raw_event
+        ?? (providerRaw.event ? `event: ${providerRaw.event}` : undefined);
+      const dataLine = providerRaw.raw_data
+        ?? (providerRaw.data ? `data: ${JSON.stringify(providerRaw.data)}` : undefined);
+
+      const pieces = [] as string[];
+      if (eventLine) pieces.push(eventLine);
+      if (dataLine) pieces.push(dataLine);
+      return pieces.join('\n') + '\n\n';
     }
 
-    // Legacy support: Handle old-style canonical chunks
-    if (canonicalChunk.delta?.content) {
-    const textDelta = canonicalChunk.delta.content
-        .filter((c: any) => c.type === 'text' || c.type === 'output_text')
-        .map((c: any) => c.text)
-        .join('');
-
-    if (textDelta) {
-        lines.push('event: response.output_text.delta');
-        lines.push(`data: ${JSON.stringify({
-          type: 'response.output_text.delta',
-          delta: textDelta
-        })}`);
-      }
+    if (providerRaw?.event && providerRaw?.data) {
+      return `event: ${providerRaw.event}\ndata: ${JSON.stringify(providerRaw.data)}\n\n`;
     }
 
-    // Handle function calls in delta (both tool_calls and function_call formats)
-    if (canonicalChunk.delta?.tool_calls) {
-      for (const call of canonicalChunk.delta.tool_calls) {
-        if (call.created) {
-          lines.push('event: response.function_call');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.function_call',
-            name: call.name,
-            call_id: call.id
-          })}`);
-        }
-        if (call.arguments_delta) {
-          lines.push('event: response.function_call.arguments.delta');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.function_call.arguments.delta',
-            call_id: call.id,
-            delta: call.arguments_delta
-          })}`);
-        }
-        if (call.done) {
-          lines.push('event: response.function_call.done');
-          lines.push(`data: ${JSON.stringify({
-            type: 'response.function_call.done',
-            call_id: call.id
-          })}`);
-        }
-      }
+    const event = (canonicalChunk as any).event;
+    if (!event?.type) {
+      return '';
     }
 
-    // Handle legacy function_call format from streaming schema
-    if (canonicalChunk.delta?.function_call) {
-      const funcCall = canonicalChunk.delta.function_call;
-      if (funcCall.name) {
-        lines.push('event: response.function_call');
-        lines.push(`data: ${JSON.stringify({
-          type: 'response.function_call',
-          name: funcCall.name
-        })}`);
-      }
-      if (funcCall.arguments) {
-        lines.push('event: response.function_call.arguments.delta');
-        lines.push(`data: ${JSON.stringify({
-          type: 'response.function_call.arguments.delta',
-          delta: funcCall.arguments
-        })}`);
-      }
+    const handler = this.canonicalEventHandlers[event.type];
+    const payload = handler ? handler(event) : null;
+    if (!payload) {
+      return '';
     }
 
-    // Handle function call outputs
-    if (canonicalChunk.delta?.function_call_output) {
-      lines.push('event: response.function_call_output');
-      lines.push(`data: ${JSON.stringify({
-        type: 'response.function_call_output',
-        call_id: canonicalChunk.delta.function_call_output.call_id,
-        output: canonicalChunk.delta.function_call_output.output
-      })}`);
-    }
-
-    // Handle completion
-    if (canonicalChunk.finishReason) {
-      if (canonicalChunk.usage) {
-        lines.push('event: response.usage');
-        lines.push(`data: ${JSON.stringify({
-          type: 'response.usage',
-          usage: {
-            input_tokens: canonicalChunk.usage.input_tokens || canonicalChunk.usage.inputTokens || 0,
-            output_tokens: canonicalChunk.usage.output_tokens || canonicalChunk.usage.outputTokens || 0,
-            total_tokens: canonicalChunk.usage.total_tokens || canonicalChunk.usage.totalTokens || 0
-          }
-        })}`);
-      }
-      
-      lines.push('event: response.completed');
-      lines.push(`data: ${JSON.stringify({
-        type: 'response.completed',
-        response: {
-          status: 'completed',
-          finish_reason: canonicalChunk.finishReason
-        }
-      })}`);
-    }
-
-    return lines.map(line => line + '\n').join('') + '\n';
+    return `event: ${payload.event}\ndata: ${JSON.stringify(payload.data)}\n\n`;
   }
 
-  private normalizeContent(content: unknown): Array<{ type: 'text' | 'output_text'; text: string }> {
-    // Accept string or array of blocks with { type, text? }
-    if (typeof content === 'string') {
-      return [{ type: 'text', text: content }];
+  private normalizeProviderStream(stream: any): string {
+    if (typeof stream === 'string') {
+      return stream;
     }
-    if (Array.isArray(content)) {
-      return (content as Array<{ type: string; text?: string }>).flatMap(part => {
-        if (part?.type === 'input_text' || part?.type === 'text' || part?.type === 'output_text') {
-          return [{ type: part.type === 'output_text' ? 'output_text' : 'text', text: part.text || '' }];
-        }
-        return [];
-      });
+    if (stream instanceof Uint8Array) {
+      return new TextDecoder('utf-8').decode(stream);
     }
-    return [];
+    if (Array.isArray(stream)) {
+      return new TextDecoder('utf-8').decode(new Uint8Array(stream));
+    }
+    return stream && typeof stream === 'object' && 'toString' in stream ? String(stream) : '';
+  }
+
+  private buildCanonicalChunk(event: Record<string, any>): CanonicalStreamingResponse {
+    return {
+      schema_version: '1.0.1',
+      stream_type: 'canonical',
+      event
+    } as CanonicalStreamingResponse;
+  }
+
+  private handleOutputItemAdded(data: any): CanonicalStreamingResponse {
+    const item = data.item;
+    const functionCall = this.extractFunctionOrToolUse(item?.content);
+    if (functionCall) {
+      return this.buildCanonicalChunk({
+        type: 'function_call',
+        name: functionCall.name || functionCall.function?.name,
+        arguments_json: functionCall.arguments_json || functionCall.arguments || functionCall.function?.arguments || '',
+        id: functionCall.id,
+        call_id: functionCall.id
+      }, 'response.output_item.added', data);
+    }
+
+    const canonicalItem = {
+      id: item?.id ?? data.item_id ?? '',
+      status: item?.status ?? 'in_progress',
+      type: item?.type ?? 'message',
+      role: item?.role,
+      content: Array.isArray(item?.content) ? item.content : [],
+      encrypted_content: item?.encrypted_content
+    } as any;
+
+    return this.buildCanonicalChunk({
+      type: 'output_item_added',
+      output_index: data.output_index ?? 0,
+      item: canonicalItem,
+      sequence_number: data.sequence_number,
+      item_id: data.item_id ?? canonicalItem.id
+    }, 'response.output_item.added', data);
+  }
+
+  private handleContentPartAdded(data: any): CanonicalStreamingResponse {
+    const part = data.part;
+    if (part?.type === 'function_call' || part?.type === 'tool_use') {
+      return this.buildCanonicalChunk({
+        type: 'function_call',
+        name: part.name || part.function?.name,
+        arguments_json: part.arguments_json || part.arguments || part.function?.arguments || '',
+        id: part.id,
+        call_id: part.id
+      }, 'response.content_part.added', data);
+    }
+
+    return this.buildCanonicalChunk({
+      type: 'content_part_start',
+      index: data.content_index ?? 0,
+      sequence_number: data.sequence_number,
+      item_id: data.item_id,
+      output_index: data.output_index,
+      content_block: part
+    }, 'response.content_part.added', data);
+  }
+
+  private extractFunctionOrToolUse(content: any): any | null {
+    if (!Array.isArray(content)) {
+      return null;
+    }
+    return content.find((segment: any) => segment?.type === 'function_call' || segment?.type === 'tool_use') || null;
   }
 }
