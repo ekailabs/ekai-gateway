@@ -132,7 +132,7 @@ export class OpenAIResponsesPassthrough {
     }
   }
 
-  async handleDirectRequest(request: any, res: ExpressResponse): Promise<void> {
+  async handleDirectRequest(request: any, res: ExpressResponse, opts?: { captureRaw?: boolean }): Promise<{ raw?: string } | void> {
     // Reset usage tracking for new request
     this.usage = null;
     this.eventBuffer = '';
@@ -149,6 +149,12 @@ export class OpenAIResponsesPassthrough {
 
       // Manual stream processing like Anthropic for usage tracking
       const reader = response.body!.getReader();
+      let captured = '';
+      const captureLimit = (() => {
+        const val = process.env.CANONICAL_CAPTURE_LIMIT_BYTES;
+        const n = val ? parseInt(val, 10) : 10 * 1024 * 1024; // 10MB default
+        return Number.isFinite(n) && n > 0 ? n : 10 * 1024 * 1024;
+      })();
       
       while (true) {
         const { done, value } = await reader.read();
@@ -156,10 +162,19 @@ export class OpenAIResponsesPassthrough {
         
         const text = new TextDecoder().decode(value);
         setImmediate(() => this.trackUsage(text, request.model));
+        if (opts?.captureRaw) {
+          if (captured.length < captureLimit) {
+            const remaining = captureLimit - captured.length;
+            captured += remaining >= text.length ? text : text.slice(0, remaining);
+          }
+        }
         
         res.write(value);
       }
       res.end();
+      if (opts?.captureRaw) {
+        return { raw: captured };
+      }
     } else {
       const response = await this.makeRequest(request, false);
       const json = await response.json();
@@ -191,6 +206,9 @@ export class OpenAIResponsesPassthrough {
       }
 
       res.json(json);
+      if (opts?.captureRaw) {
+        return { raw: JSON.stringify(json) };
+      }
     }
   }
 }

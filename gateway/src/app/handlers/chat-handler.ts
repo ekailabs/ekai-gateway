@@ -184,20 +184,22 @@ export class ChatHandler {
   private async handleStreaming(canonicalRequest: CanonicalRequest, res: Response, clientFormat: ClientFormat, providerName?: ProviderName, originalRequest?: any, req?: Request): Promise<void> {
     const canonicalMode = ['true', '1', 'yes'].includes(String(process.env.CANONICAL_MODE || '').toLowerCase());
 
+    // Always use passthrough for the actual streaming response to user
+    if (clientFormat === 'openai_responses') {
+      // Let the passthrough set headers and stream chunks directly to the client.
+      // If in canonical mode, also capture the raw SSE for post-stream diffing.
+      const capture = canonicalMode ? { captureRaw: true } : undefined;
+      const result: any = await openaiResponsesPassthrough.handleDirectRequest(originalRequest, res, capture as any);
+      // Stash captured raw stream for later diffing
+      (req as any)._capturedOpenAIResponsesRaw = result?.raw;
+    } else {
+      // For other formats, set SSE headers and pipe provider stream directly
       res.writeHead(HTTP_STATUS.OK, {
         'Content-Type': CONTENT_TYPES.EVENT_STREAM,
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
         'Access-Control-Allow-Origin': '*',
       });
-
-    // Always use passthrough for the actual streaming response to user
-    if (clientFormat === 'openai_responses') {
-      const passthroughStream = await this.captureOpenAIResponsesPassthroughStream(originalRequest);
-      res.write(passthroughStream);
-      res.end();
-    } else {
-      // For other formats, use normal passthrough
       const streamingResponse = await this.providerService.getStreamingResponse(canonicalRequest, providerName as any, req.requestId);
       if (streamingResponse && 'body' in streamingResponse && streamingResponse.body) {
         (streamingResponse.body as any).pipe(res);
@@ -213,8 +215,8 @@ export class ChatHandler {
         await this.compareRequestTransformation(originalRequest, canonicalRequest, req?.requestId, clientFormat);
         
         const adapter = this.adapters[clientFormat];
-        const streamingResponse = await this.providerService.getStreamingResponse(canonicalRequest, providerName as any, req.requestId);
-        const rawStream = await streamingResponse.text();
+        // Use the captured passthrough stream instead of making a second API call
+        const rawStream = (req as any)._capturedOpenAIResponsesRaw || '';
         const canonicalResult = adapter.encodeStreamToCanonical?.(rawStream);
         const canonicalChunks = Array.isArray(canonicalResult)
           ? canonicalResult
@@ -239,56 +241,7 @@ export class ChatHandler {
     }
   }
 
-  // Capture passthrough SSE by mocking an Express Response that buffers writes
-  private async captureOpenAIResponsesPassthroughStream(originalRequest: any): Promise<string> {
-    const chunks: string[] = [];
-    const mockRes: Partial<Response> = {
-      writeHead: () => mockRes as any,
-      setHeader: () => {},
-      status: () => mockRes as any,
-      write: (chunk: any) => { 
-        try { 
-          let text: string;
-          if (Buffer.isBuffer(chunk)) {
-            text = chunk.toString('utf8');
-          } else if (chunk instanceof Uint8Array) {
-            text = new TextDecoder('utf-8').decode(chunk);
-          } else if (Array.isArray(chunk)) {
-            text = new TextDecoder('utf-8').decode(new Uint8Array(chunk));
-          } else {
-            text = String(chunk);
-          }
-          chunks.push(text);
-        } catch (e) {
-          // Silently handle chunk processing errors
-        } 
-        return true; 
-      },
-      end: (chunk?: any) => { 
-        if (chunk) { 
-          try { 
-            let text: string;
-            if (Buffer.isBuffer(chunk)) {
-              text = chunk.toString('utf8');
-            } else if (chunk instanceof Uint8Array) {
-              text = new TextDecoder('utf-8').decode(chunk);
-            } else if (Array.isArray(chunk)) {
-              text = new TextDecoder('utf-8').decode(new Uint8Array(chunk));
-            } else {
-              text = String(chunk);
-            }
-            chunks.push(text);
-          } catch (e) {
-            // Silently handle chunk processing errors
-          } 
-        } 
-        return mockRes as any; 
-      }
-    } as any;
-
-    await openaiResponsesPassthrough.handleDirectRequest(originalRequest, mockRes as Response);
-    return chunks.join('');
-  }
+  // (removed) captureOpenAIResponsesPassthroughStream: obsolete after tee-based capture in passthrough
 
   // Compare request transformation: what gets sent to OpenAI API
   private async compareRequestTransformation(originalRequest: any, canonicalRequest: CanonicalRequest, requestId?: string, clientFormat?: string): Promise<void> {

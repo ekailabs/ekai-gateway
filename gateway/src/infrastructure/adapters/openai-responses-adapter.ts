@@ -2,6 +2,9 @@
 // Converts between Responses API and canonical schema format used internally.
 import { FormatAdapter } from '../../canonical/format-adapter.js';
 import { Request as CanonicalRequest, Response as CanonicalResponse, StreamingResponse as CanonicalStreamingResponse } from '../../canonical/types/index.js';
+import { providerToCanonical, canonicalToProvider } from './openai-responses/stream.map.js';
+import { normalizeProviderStream, buildCanonicalChunk } from './openai-responses/stream.helpers.js';
+import { encodeRequestToCanonical as mapReqToCanonical, decodeCanonicalRequest as mapCanonicalToReq } from './openai-responses/requests.map.js';
 
 type ResponsesInput =
   | string
@@ -28,533 +31,13 @@ interface OpenAIResponsesResponse {
 }
 
 export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequest, OpenAIResponsesResponse, any, any> {
-  private readonly providerEventHandlers: Record<string, (data: any) => CanonicalStreamingResponse | CanonicalStreamingResponse[] | null> = {
-    'response.created': (data: any) => this.buildCanonicalChunk({
-      type: 'response_created',
-      id: data.response?.id,
-      model: data.response?.model,
-      created: data.response?.created_at,
-      sequence_number: data.sequence_number,
-      response: data.response
-    }),
-    'response.in_progress': (data: any) => this.buildCanonicalChunk({
-      type: 'response_in_progress',
-      sequence_number: data.sequence_number,
-      response: data.response
-    }),
-    'response.output_text.delta': (data: any) => this.buildCanonicalChunk({
-      type: 'content_delta',
-      part: 'text',
-      value: data.delta,
-      delta: data.delta,
-      index: data.content_index,
-      sequence_number: data.sequence_number,
-      item_id: data.item_id,
-      output_index: data.output_index,
-      content_index: data.content_index,
-      annotations: data.annotations,
-      logprobs: data.logprobs,
-      obfuscation: data.obfuscation
-    }),
-    'response.output_text.done': (data: any) => this.buildCanonicalChunk({
-      type: 'output_text_done',
-      text: data.text,
-      annotations: data.annotations,
-      logprobs: data.logprobs
-    }),
-    'response.output_item.added': (data: any) => this.handleOutputItemAdded(data),
-    'response.content_part.added': (data: any) => this.handleContentPartAdded(data),
-    'response.content_part.done': (data: any) => this.buildCanonicalChunk({
-      type: 'content_part_done',
-      index: data.content_index
-    }),
-    'response.output_item.done': (data: any) => this.buildCanonicalChunk({
-      type: 'output_item_done',
-      output_index: data.output_index,
-      item: data.item,
-      sequence_number: data.sequence_number,
-      item_id: data.item?.id ?? data.item_id
-    }),
-    'response.function_call': (data: any) => this.buildCanonicalChunk({
-      type: 'function_call',
-      name: data.name,
-      arguments_json: data.arguments_json || '',
-      id: data.call_id,
-      call_id: data.call_id
-    }),
-    'response.tool_call': (data: any) => this.buildCanonicalChunk({
-      type: 'tool_call',
-      name: data.name,
-      arguments_json: data.arguments_json || '',
-      id: data.call_id,
-      call_id: data.call_id
-    }),
-    'response.usage': (data: any) => this.buildCanonicalChunk({
-      type: 'usage',
-      input_tokens: data.usage?.input_tokens,
-      output_tokens: data.usage?.output_tokens,
-      reasoning_tokens: data.usage?.reasoning_tokens,
-      usage: data.usage
-    }),
-    // File search → canonical
-    'response.file_search_call.in_progress': (data: any) => this.buildCanonicalChunk({
-      type: 'file_search_start',
-      call_id: data.call_id,
-      tool_call_id: data.tool_call_id,
-      file_search: {
-        status: 'in_progress',
-        query: data.file_search?.query
-      }
-    }),
-    'response.file_search_call.searching': (data: any) => this.buildCanonicalChunk({
-      type: 'file_search_progress',
-      call_id: data.call_id,
-      tool_call_id: data.tool_call_id,
-      file_search: {
-        status: 'searching',
-        query: data.file_search?.query,
-        results: data.file_search?.results
-      }
-    }),
-    'response.file_search_call.completed': (data: any) => this.buildCanonicalChunk({
-      type: 'file_search_done',
-      call_id: data.call_id,
-      tool_call_id: data.tool_call_id,
-      file_search: {
-        status: 'completed',
-        query: data.file_search?.query,
-        results: data.file_search?.results
-      }
-    }),
-    // Web search → canonical
-    'response.web_search_call.in_progress': (data: any) => this.buildCanonicalChunk({
-      type: 'web_search_start',
-      call_id: data.call_id,
-      tool_call_id: data.tool_call_id,
-      web_search: {
-        status: 'in_progress',
-        query: data.web_search?.query
-      }
-    }),
-    'response.web_search_call.searching': (data: any) => this.buildCanonicalChunk({
-      type: 'web_search_progress',
-      call_id: data.call_id,
-      tool_call_id: data.tool_call_id,
-      web_search: {
-        status: 'searching',
-        query: data.web_search?.query,
-        results: data.web_search?.results
-      }
-    }),
-    'response.web_search_call.completed': (data: any) => this.buildCanonicalChunk({
-      type: 'web_search_done',
-      call_id: data.call_id,
-      tool_call_id: data.tool_call_id,
-      web_search: {
-        status: 'completed',
-        query: data.web_search?.query,
-        results: data.web_search?.results
-      }
-    }),
-    // Reasoning summaries → canonical
-    'response.reasoning.summary.delta': (data: any) => this.buildCanonicalChunk({
-      type: 'reasoning_summary_text_delta',
-      delta: data.delta,
-      summary: data.summary
-    }),
-    'response.reasoning.summary.done': (data: any) => this.buildCanonicalChunk({
-      type: 'reasoning_summary_text_done',
-      summary: data.summary
-    }),
-    // Function call arguments → canonical
-    'response.function_call.arguments.delta': (data: any) => this.buildCanonicalChunk({
-      type: 'function_call_arguments_delta',
-      call_id: data.call_id,
-      delta: data.delta,
-      arguments: data.arguments
-    }),
-    'response.function_call.arguments.done': (data: any) => this.buildCanonicalChunk({
-      type: 'function_call_arguments_done',
-      call_id: data.call_id,
-      arguments: data.arguments
-    }),
-    'response.completed': (data: any) => this.buildCanonicalChunk({
-      type: 'response_completed',
-      finish_reason: ((): any => {
-        const status = data?.response?.status;
-        if (status === 'completed') return 'stop';
-        if (status === 'incomplete') return 'length';
-        return undefined;
-      })(),
-      response: data.response
-    }),
-    'response.error': (data: any) => this.buildCanonicalChunk({
-      type: 'error',
-      error: data.error || data
-    }),
-    error: (data: any) => this.buildCanonicalChunk({
-      type: 'error',
-      error: data.error || data
-    })
-  };
-
-  private readonly canonicalEventHandlers: Record<string, (event: Record<string, any>) => { event: string; data: Record<string, any> } | null> = {
-    response_created: (event: Record<string, any>) => ({
-      event: 'response.created',
-      data: {
-        type: 'response.created',
-        sequence_number: event.sequence_number,
-        response: event.response || {
-          id: event.id,
-          model: event.model,
-          created_at: event.created,
-          status: 'in_progress'
-        }
-      }
-    }),
-    response_in_progress: (event: Record<string, any>) => ({
-      event: 'response.in_progress',
-      data: {
-        type: 'response.in_progress',
-        sequence_number: event.sequence_number,
-        response: event.response
-      }
-    }),
-    content_delta: (event: Record<string, any>) => {
-      if (event.part !== 'text') {
-        return null;
-      }
-      return {
-        event: 'response.output_text.delta',
-        data: {
-          type: 'response.output_text.delta',
-          delta: event.value ?? event.delta ?? '',
-          sequence_number: event.sequence_number,
-          item_id: event.item_id,
-          content_index: event.content_index ?? event.index,
-          output_index: event.output_index,
-          logprobs: event.logprobs,
-          annotations: event.annotations,
-          obfuscation: event.obfuscation
-        }
-      };
-    },
-    output_text_done: (event: Record<string, any>) => ({
-      event: 'response.output_text.done',
-      data: {
-        type: 'response.output_text.done',
-        text: event.text,
-        annotations: event.annotations,
-        logprobs: event.logprobs
-      }
-    }),
-    content_part_start: (event: Record<string, any>) => ({
-      event: 'response.content_part.added',
-      data: {
-        type: 'response.content_part.added',
-        sequence_number: event.sequence_number,
-        output_index: event.output_index,
-        content_index: event.index,
-        item_id: event.item_id,
-        part: event.content_block
-      }
-    }),
-    content_part_done: (event: Record<string, any>) => ({
-      event: 'response.content_part.done',
-      data: {
-        type: 'response.content_part.done',
-        content_index: event.index
-      }
-    }),
-    output_item_added: (event: Record<string, any>) => ({
-      event: 'response.output_item.added',
-      data: {
-        type: 'response.output_item.added',
-        sequence_number: event.sequence_number,
-        output_index: event.output_index,
-        item: event.item,
-        item_id: event.item_id
-      }
-    }),
-    output_item_done: (event: Record<string, any>) => ({
-      event: 'response.output_item.done',
-      data: {
-        type: 'response.output_item.done',
-        sequence_number: event.sequence_number,
-        output_index: event.output_index,
-        item: event.item,
-        item_id: event.item_id
-      }
-    }),
-    function_call: (event: Record<string, any>) => ({
-      event: 'response.function_call',
-      data: {
-        type: 'response.function_call',
-        name: event.name,
-        arguments_json: event.arguments_json,
-        call_id: event.call_id || event.id
-      }
-    }),
-    function_call_arguments_delta: (event: Record<string, any>) => ({
-      event: 'response.function_call.arguments.delta',
-      data: {
-        type: 'response.function_call.arguments.delta',
-        call_id: event.call_id,
-        delta: event.delta,
-        arguments: event.arguments
-      }
-    }),
-    function_call_arguments_done: (event: Record<string, any>) => ({
-      event: 'response.function_call.arguments.done',
-      data: {
-        type: 'response.function_call.arguments.done',
-        call_id: event.call_id,
-        arguments: event.arguments
-      }
-    }),
-    tool_call: (event: Record<string, any>) => ({
-      event: 'response.tool_call',
-      data: {
-        type: 'response.tool_call',
-        name: event.name,
-        arguments_json: event.arguments_json,
-        call_id: event.call_id || event.id
-      }
-    }),
-    usage: (event: Record<string, any>) => ({
-      event: 'response.usage',
-      data: {
-        type: 'response.usage',
-        usage: event.usage || {
-          input_tokens: event.input_tokens,
-          output_tokens: event.output_tokens,
-          reasoning_tokens: event.reasoning_tokens
-        }
-      }
-    }),
-    response_completed: (event: Record<string, any>) => ({
-      event: 'response.completed',
-      data: {
-        type: 'response.completed',
-        response: event.response || {
-          status: event.finish_reason || 'completed'
-        }
-      }
-    }),
-    reasoning_summary_text_delta: (event: Record<string, any>) => ({
-      event: 'response.reasoning.summary.delta',
-      data: {
-        type: 'response.reasoning.summary.delta',
-        delta: event.delta,
-        summary: event.summary
-      }
-    }),
-    reasoning_summary_text_done: (event: Record<string, any>) => ({
-      event: 'response.reasoning.summary.done',
-      data: {
-        type: 'response.reasoning.summary.done',
-        summary: event.summary
-      }
-    }),
-    error: (event: Record<string, any>) => ({
-      event: 'error',
-      data: {
-        type: 'error',
-        error: event.error || {
-          code: event.code,
-          message: event.message
-        }
-      }
-    }),
-    // File search canonical → provider
-    file_search_start: (event: Record<string, any>) => ({
-      event: 'response.file_search_call.in_progress',
-      data: {
-        type: 'response.file_search_call.in_progress',
-        call_id: event.call_id,
-        tool_call_id: event.tool_call_id,
-        file_search: event.file_search
-      }
-    }),
-    file_search_progress: (event: Record<string, any>) => ({
-      event: 'response.file_search_call.searching',
-      data: {
-        type: 'response.file_search_call.searching',
-        call_id: event.call_id,
-        tool_call_id: event.tool_call_id,
-        file_search: event.file_search
-      }
-    }),
-    file_search_done: (event: Record<string, any>) => ({
-      event: 'response.file_search_call.completed',
-      data: {
-        type: 'response.file_search_call.completed',
-        call_id: event.call_id,
-        tool_call_id: event.tool_call_id,
-        file_search: event.file_search
-      }
-    }),
-    // Web search canonical → provider
-    web_search_start: (event: Record<string, any>) => ({
-      event: 'response.web_search_call.in_progress',
-      data: {
-        type: 'response.web_search_call.in_progress',
-        call_id: event.call_id,
-        tool_call_id: event.tool_call_id,
-        web_search: event.web_search
-      }
-    }),
-    web_search_progress: (event: Record<string, any>) => ({
-      event: 'response.web_search_call.searching',
-      data: {
-        type: 'response.web_search_call.searching',
-        call_id: event.call_id,
-        tool_call_id: event.tool_call_id,
-        web_search: event.web_search
-      }
-    }),
-    web_search_done: (event: Record<string, any>) => ({
-      event: 'response.web_search_call.completed',
-      data: {
-        type: 'response.web_search_call.completed',
-        call_id: event.call_id,
-        tool_call_id: event.tool_call_id,
-        web_search: event.web_search
-      }
-    })
-  };
   // Request path: Client → Canonical → Provider
   encodeRequestToCanonical(clientRequest: OpenAIResponsesRequest): CanonicalRequest {
-    const instructions = (clientRequest as any).instructions;
-    const systemPrompt = instructions ? (typeof instructions === 'string' ? instructions : String(instructions)) : undefined;
-
-    // Map OpenAI Responses input to canonical messages
-    const messages: any[] = [];
-    const inputData = (clientRequest as any).input;
-    
-    if (typeof inputData === 'string') {
-      messages.push({ role: 'user', content: inputData });
-    } else if (Array.isArray(inputData)) {
-      for (const item of inputData) {
-        if (item?.type === 'message') {
-          const role = item.role || 'user';
-          // Map content array preserving all types (input_text, output_text, etc.)
-          const content = Array.isArray(item.content) 
-            ? item.content.map((c: any) => ({
-                type: c.type === 'input_text' ? 'text' : c.type, // Normalize input_text to text
-                text: c.text || ''
-              }))
-            : [{ type: 'text', text: '' }];
-          messages.push({ role, content });
-        } else if (item?.type === 'reasoning') {
-          // Map reasoning to a special message type that can be reconstructed
-      messages.push({
-            role: 'system', // Use system role to distinguish reasoning
-            content: [{
-              type: 'reasoning',
-              summary: item.summary,
-              content: item.content,
-              encrypted_content: item.encrypted_content
-            }]
-          });
-        }
-      }
-    }
-
-    const canonical: any = {
-      schema_version: '1.0.1',
-      model: (clientRequest as any).model,
-      messages: (messages.length ? messages : [{ role: 'user', content: '' }]),
-      system: systemPrompt,
-      stream: Boolean((clientRequest as any).stream),
-      tools: (clientRequest as any).tools,
-      tool_choice: (clientRequest as any).tool_choice,
-      parallel_tool_calls: (clientRequest as any).parallel_tool_calls,
-      response_format: (clientRequest as any).response_format,
-      include: (clientRequest as any).include,
-      store: (clientRequest as any).store,
-      reasoning_effort: (clientRequest as any).reasoning_effort ?? (clientRequest as any).reasoning?.effort,
-      modalities: (clientRequest as any).modalities,
-      audio: (clientRequest as any).audio,
-      thinking: (clientRequest as any).reasoning ? {
-        budget: (clientRequest as any).reasoning.budget,
-        summary: (clientRequest as any).reasoning.summary,
-        content: (clientRequest as any).reasoning.content,
-        encrypted_content: (clientRequest as any).reasoning.encrypted_content
-      } : undefined,
-      generation: {
-        max_tokens: (clientRequest as any).max_output_tokens ?? (clientRequest as any).max_tokens,
-        temperature: (clientRequest as any).temperature,
-        top_p: (clientRequest as any).top_p,
-        stop: (clientRequest as any).stop,
-        stop_sequences: (clientRequest as any).stop_sequences,
-        seed: (clientRequest as any).seed
-      },
-      provider_params: { openai: { use_responses_api: true, prompt_cache_key: (clientRequest as any).prompt_cache_key } }
-    };
-
-    return canonical as CanonicalRequest;
+    return mapReqToCanonical(clientRequest as any);
   }
 
   decodeCanonicalRequest(canonicalRequest: CanonicalRequest): any {
-    // Convert canonical request to OpenAI Responses API format
-    const messages = canonicalRequest.messages || [];
-    const input: any[] = [];
-    
-    for (const message of messages) {
-      if ((message as any).role === 'system') {
-        // Handle reasoning/system messages
-        const content = Array.isArray(message.content) ? message.content[0] : message.content;
-        if ((content as any)?.type === 'reasoning') {
-          input.push({
-            type: 'reasoning',
-            summary: (content as any).summary,
-            content: (content as any).content,
-            encrypted_content: (content as any).encrypted_content
-          });
-        }
-      } else {
-        // Handle regular messages
-        input.push({
-          type: 'message',
-          role: message.role,
-          content: Array.isArray(message.content) 
-            ? message.content.map((c: any) => ({
-                type: c.type === 'text' ? 'input_text' : c.type,
-                text: c.text || ''
-              }))
-            : [{ type: 'input_text', text: String(message.content || '') }]
-        });
-      }
-    }
-
-    return {
-      model: canonicalRequest.model,
-      input: input.length > 0 ? input : [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: '' }] }],
-      stream: canonicalRequest.stream,
-      temperature: canonicalRequest.generation?.temperature,
-      max_output_tokens: canonicalRequest.generation?.max_tokens,
-      top_p: canonicalRequest.generation?.top_p,
-      stop: canonicalRequest.generation?.stop,
-      stop_sequences: canonicalRequest.generation?.stop_sequences,
-      seed: canonicalRequest.generation?.seed,
-      tools: canonicalRequest.tools,
-      tool_choice: canonicalRequest.tool_choice,
-      parallel_tool_calls: canonicalRequest.parallel_tool_calls,
-      response_format: canonicalRequest.response_format,
-      include: canonicalRequest.include,
-      store: canonicalRequest.store,
-      reasoning: canonicalRequest.thinking ? {
-        budget: canonicalRequest.thinking.budget,
-        summary: canonicalRequest.thinking.summary,
-        content: canonicalRequest.thinking.content,
-        encrypted_content: canonicalRequest.thinking.encrypted_content,
-        effort: canonicalRequest.reasoning_effort
-      } : undefined,
-      modalities: canonicalRequest.modalities,
-      audio: canonicalRequest.audio,
-      prompt_cache_key: canonicalRequest.provider_params?.openai?.prompt_cache_key
-    };
+    return mapCanonicalToReq(canonicalRequest);
   }
 
   // Response path: Provider → Canonical → Client
@@ -588,7 +71,7 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
 
   // Streaming response path: Provider → Canonical → Client
   encodeStreamToCanonical?(providerStream: any): CanonicalStreamingResponse[] {
-    const text = this.normalizeProviderStream(providerStream);
+    const text = normalizeProviderStream(providerStream);
     if (!text) {
       return [];
     }
@@ -611,10 +94,16 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
 
       const dataStr = line.slice(6);
       if (dataStr === '[DONE]') {
-        chunks.push(this.buildCanonicalChunk({
+        const doneChunk = buildCanonicalChunk({
           type: 'response_completed',
           finish_reason: 'stop'
-        }));
+        });
+        (doneChunk as any).provider_raw = {
+          event: currentEvent || undefined,
+          raw_event: currentEvent ? `event: ${currentEvent}` : undefined,
+          raw_data: 'data: [DONE]'
+        };
+        chunks.push(doneChunk);
         break;
       }
 
@@ -625,17 +114,29 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
           continue;
         }
 
-        const handler = this.providerEventHandlers[eventType];
-        if (!handler) {
-          continue;
+        const handler = providerToCanonical[eventType];
+        let canonicalChunks: CanonicalStreamingResponse[] = [];
+        if (handler) {
+          const result = handler(data);
+          canonicalChunks = Array.isArray(result)
+            ? (result.filter(Boolean) as CanonicalStreamingResponse[])
+            : result
+              ? [result as CanonicalStreamingResponse]
+              : [];
         }
 
-        const result = handler(data);
-        const canonicalChunks = Array.isArray(result)
-          ? result.filter(Boolean) as CanonicalStreamingResponse[]
-          : result
-            ? [result as CanonicalStreamingResponse]
-            : [];
+        // Unknown or unhandled event: emit provider_raw-only canonical chunk so we can reconstruct exactly
+        if (!handler || canonicalChunks.length === 0) {
+          const fallback = buildCanonicalChunk({ type: 'unknown_event', event_type: eventType });
+          (fallback as any).provider_raw = {
+            event: eventType,
+            data,
+            raw_event: currentEvent ? `event: ${currentEvent}` : undefined,
+            raw_data: `data: ${dataStr}`
+          };
+          chunks.push(fallback);
+          continue;
+        }
 
         for (const chunk of canonicalChunks) {
           if (!chunk) continue;
@@ -682,7 +183,7 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
       return '';
     }
 
-    const handler = this.canonicalEventHandlers[event.type];
+    const handler = canonicalToProvider[event.type];
     const payload = handler ? handler(event) : null;
     if (!payload) {
       return '';
@@ -691,84 +192,4 @@ export class OpenAIResponsesAdapter implements FormatAdapter<OpenAIResponsesRequ
     return `event: ${payload.event}\ndata: ${JSON.stringify(payload.data)}\n\n`;
   }
 
-  private normalizeProviderStream(stream: any): string {
-    if (typeof stream === 'string') {
-      return stream;
-    }
-    if (stream instanceof Uint8Array) {
-      return new TextDecoder('utf-8').decode(stream);
-    }
-    if (Array.isArray(stream)) {
-      return new TextDecoder('utf-8').decode(new Uint8Array(stream));
-    }
-    return stream && typeof stream === 'object' && 'toString' in stream ? String(stream) : '';
-  }
-
-  private buildCanonicalChunk(event: Record<string, any>): CanonicalStreamingResponse {
-    return {
-      schema_version: '1.0.1',
-      stream_type: 'canonical',
-      event
-    } as CanonicalStreamingResponse;
-  }
-
-  private handleOutputItemAdded(data: any): CanonicalStreamingResponse {
-    const item = data.item;
-    const functionCall = this.extractFunctionOrToolUse(item?.content);
-    if (functionCall) {
-      return this.buildCanonicalChunk({
-        type: 'function_call',
-        name: functionCall.name || functionCall.function?.name,
-        arguments_json: functionCall.arguments_json || functionCall.arguments || functionCall.function?.arguments || '',
-        id: functionCall.id,
-        call_id: functionCall.id
-      }, 'response.output_item.added', data);
-    }
-
-    const canonicalItem = {
-      id: item?.id ?? data.item_id ?? '',
-      status: item?.status ?? 'in_progress',
-      type: item?.type ?? 'message',
-      role: item?.role,
-      content: Array.isArray(item?.content) ? item.content : [],
-      encrypted_content: item?.encrypted_content
-    } as any;
-
-    return this.buildCanonicalChunk({
-      type: 'output_item_added',
-      output_index: data.output_index ?? 0,
-      item: canonicalItem,
-      sequence_number: data.sequence_number,
-      item_id: data.item_id ?? canonicalItem.id
-    }, 'response.output_item.added', data);
-  }
-
-  private handleContentPartAdded(data: any): CanonicalStreamingResponse {
-    const part = data.part;
-    if (part?.type === 'function_call' || part?.type === 'tool_use') {
-      return this.buildCanonicalChunk({
-        type: 'function_call',
-        name: part.name || part.function?.name,
-        arguments_json: part.arguments_json || part.arguments || part.function?.arguments || '',
-        id: part.id,
-        call_id: part.id
-      }, 'response.content_part.added', data);
-    }
-
-    return this.buildCanonicalChunk({
-      type: 'content_part_start',
-      index: data.content_index ?? 0,
-      sequence_number: data.sequence_number,
-      item_id: data.item_id,
-      output_index: data.output_index,
-      content_block: part
-    }, 'response.content_part.added', data);
-  }
-
-  private extractFunctionOrToolUse(content: any): any | null {
-    if (!Array.isArray(content)) {
-      return null;
-    }
-    return content.find((segment: any) => segment?.type === 'function_call' || segment?.type === 'tool_use') || null;
-  }
 }
