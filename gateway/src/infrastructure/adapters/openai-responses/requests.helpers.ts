@@ -28,13 +28,14 @@ export interface OpenAIResponsesRequestShape {
   [k: string]: unknown;
 }
 
-export function decodeResponsesInputToCanonicalMessages(input: ResponsesInput): any[] {
+export function decodeResponsesInputToCanonical(input: ResponsesInput): { messages: any[]; thinking?: { budget?: number; summary?: any[]; content?: any; encrypted_content?: string } } {
   const messages: any[] = [];
+  let thinking: { budget?: number; summary?: any[]; content?: any; encrypted_content?: string } | undefined;
   if (typeof input === 'string') {
     messages.push({ role: 'user', content: input });
-    return messages;
+    return { messages };
   }
-  if (!Array.isArray(input)) return messages;
+  if (!Array.isArray(input)) return { messages };
 
   for (const item of input) {
     if (item?.type === 'message') {
@@ -43,18 +44,15 @@ export function decodeResponsesInputToCanonicalMessages(input: ResponsesInput): 
       const content = contentArr.map((c: any) => ({ type: c.type === 'input_text' ? 'text' : c.type, text: c.text || '' }));
       messages.push({ role, content });
     } else if (item?.type === 'reasoning') {
-      messages.push({
-        role: 'system',
-        content: [{
-          type: 'reasoning',
-          summary: (item as any).summary,
-          content: (item as any).content,
-          encrypted_content: (item as any).encrypted_content
-        }]
-      });
+      // Extract into top-level canonical thinking instead of injecting a synthetic message
+      thinking = {
+        summary: (item as any).summary,
+        content: (item as any).content,
+        encrypted_content: (item as any).encrypted_content
+      };
     }
   }
-  return messages;
+  return { messages, thinking };
 }
 
 export function encodeCanonicalMessagesToResponsesInput(messages: any[]): any[] {
@@ -94,4 +92,3 @@ export function buildCanonicalGenerationFromResponses(req: OpenAIResponsesReques
     seed: req.seed as any
   };
 }
-

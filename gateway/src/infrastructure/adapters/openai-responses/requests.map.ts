@@ -1,7 +1,7 @@
 import { Request as CanonicalRequest } from '../../../canonical/types/index.js';
 import {
   OpenAIResponsesRequestShape,
-  decodeResponsesInputToCanonicalMessages,
+  decodeResponsesInputToCanonical,
   encodeCanonicalMessagesToResponsesInput,
   buildCanonicalGenerationFromResponses
 } from './requests.helpers.js';
@@ -10,7 +10,7 @@ export function encodeRequestToCanonical(clientRequest: OpenAIResponsesRequestSh
   const instructions = (clientRequest as any).instructions;
   const systemPrompt = instructions ? (typeof instructions === 'string' ? instructions : String(instructions)) : undefined;
 
-  const messages = decodeResponsesInputToCanonicalMessages((clientRequest as any).input);
+  const { messages, thinking: extractedThinking } = decodeResponsesInputToCanonical((clientRequest as any).input);
 
   const canonical: any = {
     schema_version: '1.0.1',
@@ -32,7 +32,7 @@ export function encodeRequestToCanonical(clientRequest: OpenAIResponsesRequestSh
       summary: (clientRequest as any).reasoning.summary,
       content: (clientRequest as any).reasoning.content,
       encrypted_content: (clientRequest as any).reasoning.encrypted_content
-    } : undefined,
+    } : extractedThinking,
     generation: buildCanonicalGenerationFromResponses(clientRequest as any),
     provider_params: { openai: { use_responses_api: true, prompt_cache_key: (clientRequest as any).prompt_cache_key } }
   };
