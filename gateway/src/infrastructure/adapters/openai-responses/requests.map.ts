@@ -41,6 +41,21 @@ export function encodeRequestToCanonical(clientRequest: OpenAIResponsesRequestSh
 }
 
 export function decodeCanonicalRequest(canonicalRequest: CanonicalRequest): any {
+  // Derive instructions from canonical system (string or array of text parts)
+  let instructions: string | undefined;
+  const sys = (canonicalRequest as any).system;
+  if (typeof sys === 'string') {
+    instructions = sys;
+  } else if (Array.isArray(sys)) {
+    instructions = sys
+      .filter((c: any) => c?.type === 'text')
+      .map((c: any) => c.text || '')
+      .join('');
+  }
+
+  // Map optional context fields if present
+  const context = (canonicalRequest as any).context;
+
   return {
     model: canonicalRequest.model,
     input: encodeCanonicalMessagesToResponsesInput(canonicalRequest.messages as any),
@@ -51,12 +66,14 @@ export function decodeCanonicalRequest(canonicalRequest: CanonicalRequest): any 
     stop: canonicalRequest.generation?.stop,
     stop_sequences: canonicalRequest.generation?.stop_sequences,
     seed: canonicalRequest.generation?.seed,
+    instructions,
     tools: canonicalRequest.tools,
     tool_choice: canonicalRequest.tool_choice,
     parallel_tool_calls: canonicalRequest.parallel_tool_calls,
     response_format: canonicalRequest.response_format,
     include: canonicalRequest.include,
     store: canonicalRequest.store,
+    service_tier: (canonicalRequest as any).service_tier,
     reasoning: canonicalRequest.thinking ? {
       budget: canonicalRequest.thinking.budget,
       summary: canonicalRequest.thinking.summary,
@@ -66,7 +83,11 @@ export function decodeCanonicalRequest(canonicalRequest: CanonicalRequest): any 
     } : undefined,
     modalities: canonicalRequest.modalities,
     audio: canonicalRequest.audio,
-    prompt_cache_key: (canonicalRequest as any).provider_params?.openai?.prompt_cache_key
+    prompt_cache_key: (canonicalRequest as any).provider_params?.openai?.prompt_cache_key,
+    context: context ? {
+      previous_response_id: context.previous_response_id,
+      cache_ref: context.cache_ref,
+      provider_state: context.provider_state
+    } : undefined
   };
 }
-
