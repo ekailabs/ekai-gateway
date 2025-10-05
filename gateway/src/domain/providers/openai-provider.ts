@@ -42,39 +42,72 @@ export class OpenAIProvider extends BaseProvider {
 
   // Build the request body that would be sent to OpenAI Responses API (for diagnostics/tests)
   static buildRequestBodyForResponses(request: CanonicalRequest): any {
-    // Reconstruct OpenAI Responses input array from canonical messages
     const anyReq = request as any;
     const input: any[] = [];
-    
-    for (const msg of anyReq.messages || []) {
-      if (Array.isArray(msg.content)) {
-        // Check if this is a reasoning message (system role with reasoning content)
-        const reasoningContent = msg.content.find((c: any) => c.type === 'reasoning');
-        if (reasoningContent && msg.role === 'system') {
+
+    // If canonical request preserved original input array, prefer it to maintain exact ordering
+    if (Array.isArray(anyReq.input)) {
+      for (const item of anyReq.input as any[]) {
+        if (!item) continue;
+        if (item.type === 'reasoning') {
           input.push({
             type: 'reasoning',
-            summary: reasoningContent.summary,
-            content: reasoningContent.content,
-            encrypted_content: reasoningContent.encrypted_content
+            summary: item.summary,
+            content: item.content,
+            encrypted_content: item.encrypted_content
           });
+          continue;
+        }
+        if (item.type === 'message') {
+          const role = item.role;
+          const contentArr = Array.isArray(item.content) ? item.content : [];
+          input.push({
+            type: 'message',
+            role,
+            content: contentArr.map((c: any) => ({
+              // If canonical kept generic 'text', choose input/output by role; otherwise keep as-is
+              type: c?.type === 'text' ? (role === 'assistant' ? 'output_text' : 'input_text') : c?.type,
+              text: c?.text || ''
+            }))
+          });
+          continue;
+        }
+      }
+    }
+
+    // Fallback: reconstruct from canonical messages if input was not preserved
+    if (input.length === 0) {
+      for (const msg of anyReq.messages || []) {
+        if (Array.isArray(msg.content)) {
+          // Check if this is a reasoning message (system role with reasoning content)
+          const reasoningContent = msg.content.find((c: any) => c.type === 'reasoning');
+          if (reasoningContent && msg.role === 'system') {
+            input.push({
+              type: 'reasoning',
+              summary: reasoningContent.summary,
+              content: reasoningContent.content,
+              encrypted_content: reasoningContent.encrypted_content
+            });
+          } else {
+            // Regular message
+            input.push({
+              type: 'message',
+              role: msg.role,
+              content: msg.content.map((c: any) => ({
+                // Preserve explicit output_text; otherwise choose by role when generic
+                type: c.type === 'text' ? (msg.role === 'assistant' ? 'output_text' : 'input_text') : c.type,
+                text: c.text || ''
+              }))
+            });
+          }
         } else {
-          // Regular message
+          // Simple string content
           input.push({
             type: 'message',
             role: msg.role,
-            content: msg.content.map((c: any) => ({
-              type: c.type === 'text' ? 'input_text' : c.type, // Convert back to input_text
-              text: c.text || ''
-            }))
+            content: [{ type: msg.role === 'assistant' ? 'output_text' : 'input_text', text: String(msg.content ?? '') }]
           });
         }
-      } else {
-        // Simple string content
-        input.push({
-          type: 'message',
-          role: msg.role,
-          content: [{ type: 'input_text', text: String(msg.content ?? '') }]
-        });
       }
     }
 
@@ -89,15 +122,15 @@ export class OpenAIProvider extends BaseProvider {
     if (anyReq.system) body.instructions = anyReq.system;
     if (anyReq.store !== undefined) body.store = anyReq.store;
     if (anyReq.parallel_tool_calls !== undefined) body.parallel_tool_calls = anyReq.parallel_tool_calls;
-    if (anyReq.thinking) {
-      // Only pass the fields that OpenAI Responses API accepts
+    // Only include top-level reasoning if it existed in the client request
+    if (anyReq.thinking && anyReq.provider_params?.openai?.had_top_level_reasoning) {
       const thinking = anyReq.thinking;
       body.reasoning = {
         budget: thinking.budget,
         summary: thinking.summary,
         content: thinking.content,
         encrypted_content: thinking.encrypted_content,
-        effort: anyReq.reasoning_effort  // Map reasoning_effort to reasoning.effort
+        effort: anyReq.reasoning_effort
       };
     }
     if (anyReq.tools) body.tools = anyReq.tools;

@@ -10,12 +10,16 @@ export function encodeRequestToCanonical(clientRequest: OpenAIResponsesRequestSh
   const instructions = (clientRequest as any).instructions;
   const systemPrompt = instructions ? (typeof instructions === 'string' ? instructions : String(instructions)) : undefined;
 
-  const { messages, thinking: extractedThinking } = decodeResponsesInputToCanonical((clientRequest as any).input);
+  const { messages, thinking: extractedThinking, canonicalInput } = decodeResponsesInputToCanonical((clientRequest as any).input);
+
+  const clientHasTopLevelReasoning = Boolean((clientRequest as any).reasoning);
 
   const canonical: any = {
     schema_version: '1.0.1',
     model: (clientRequest as any).model,
     messages: (messages.length ? messages : [{ role: 'user', content: '' }]),
+    // Preserve original Responses API input array to maintain ordering fidelity (incl. reasoning entries)
+    input: Array.isArray(canonicalInput) && canonicalInput.length ? canonicalInput : undefined,
     system: systemPrompt,
     stream: Boolean((clientRequest as any).stream),
     tools: (clientRequest as any).tools,
@@ -34,7 +38,13 @@ export function encodeRequestToCanonical(clientRequest: OpenAIResponsesRequestSh
       encrypted_content: (clientRequest as any).reasoning.encrypted_content
     } : extractedThinking,
     generation: buildCanonicalGenerationFromResponses(clientRequest as any),
-    provider_params: { openai: { use_responses_api: true, prompt_cache_key: (clientRequest as any).prompt_cache_key } }
+    provider_params: { 
+      openai: { 
+        use_responses_api: true, 
+        prompt_cache_key: (clientRequest as any).prompt_cache_key,
+        had_top_level_reasoning: clientHasTopLevelReasoning
+      } 
+    }
   };
 
   return canonical as CanonicalRequest;

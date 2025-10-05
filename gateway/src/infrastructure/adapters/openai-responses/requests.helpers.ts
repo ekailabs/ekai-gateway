@@ -28,14 +28,16 @@ export interface OpenAIResponsesRequestShape {
   [k: string]: unknown;
 }
 
-export function decodeResponsesInputToCanonical(input: ResponsesInput): { messages: any[]; thinking?: { budget?: number; summary?: any[]; content?: any; encrypted_content?: string } } {
+export function decodeResponsesInputToCanonical(input: ResponsesInput): { messages: any[]; thinking?: { budget?: number; summary?: any[]; content?: any; encrypted_content?: string }, canonicalInput?: any[] } {
   const messages: any[] = [];
+  const canonicalInput: any[] = [];
   let thinking: { budget?: number; summary?: any[]; content?: any; encrypted_content?: string } | undefined;
   if (typeof input === 'string') {
     messages.push({ role: 'user', content: input });
-    return { messages };
+    canonicalInput.push({ type: 'message', role: 'user', content: [{ type: 'input_text', text: String(input) }] });
+    return { messages, canonicalInput };
   }
-  if (!Array.isArray(input)) return { messages };
+  if (!Array.isArray(input)) return { messages } as any;
 
   for (const item of input) {
     if (item?.type === 'message') {
@@ -43,6 +45,12 @@ export function decodeResponsesInputToCanonical(input: ResponsesInput): { messag
       const contentArr = Array.isArray((item as any).content) ? (item as any).content : [];
       const content = contentArr.map((c: any) => ({ type: c.type === 'input_text' ? 'text' : c.type, text: c.text || '' }));
       messages.push({ role, content });
+      // Preserve exact input item for round-trip fidelity
+      canonicalInput.push({
+        type: 'message',
+        role,
+        content: contentArr.map((c: any) => ({ type: c.type, text: c.text || '' }))
+      });
     } else if (item?.type === 'reasoning') {
       // Extract into top-level canonical thinking instead of injecting a synthetic message
       thinking = {
@@ -50,9 +58,16 @@ export function decodeResponsesInputToCanonical(input: ResponsesInput): { messag
         content: (item as any).content,
         encrypted_content: (item as any).encrypted_content
       };
+      // Also preserve the reasoning item in canonical input to keep ordering
+      canonicalInput.push({
+        type: 'reasoning',
+        summary: (item as any).summary,
+        content: (item as any).content,
+        encrypted_content: (item as any).encrypted_content
+      });
     }
   }
-  return { messages, thinking };
+  return { messages, thinking, canonicalInput };
 }
 
 export function encodeCanonicalMessagesToResponsesInput(messages: any[]): any[] {
@@ -75,8 +90,12 @@ export function encodeCanonicalMessagesToResponsesInput(messages: any[]): any[] 
       type: 'message',
       role: message.role,
       content: Array.isArray(message.content)
-        ? message.content.map((c: any) => ({ type: c.type === 'text' ? 'input_text' : c.type, text: c.text || '' }))
-        : [{ type: 'input_text', text: String(message.content || '') }]
+        ? message.content.map((c: any) => ({
+            // Preserve explicit input/output types; derive from role when generic 'text'
+            type: c.type === 'text' ? (message.role === 'assistant' ? 'output_text' : 'input_text') : c.type,
+            text: c.text || ''
+          }))
+        : [{ type: message.role === 'assistant' ? 'output_text' : 'input_text', text: String(message.content || '') }]
     });
   }
   return input.length > 0 ? input : [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: '' }] }];
