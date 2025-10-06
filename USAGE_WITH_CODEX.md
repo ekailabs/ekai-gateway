@@ -43,13 +43,6 @@ Navigate to your project directory where you want to use Codex:
 # Point Codex to use the gateway (OpenAI-compatible base URL)
 export OPENAI_BASE_URL="http://localhost:3001/v1"
 
-# Pick a model (examples)
-# OpenAI GPT model
-export OPENAI_MODEL="gpt-4o"
-# xAI Grok model (routes to xAI Responses)
-export OPENAI_MODEL="grok-code-fast-1"
-# You can also select models in Codex settings if supported
-
 # Start Codex as usual
 codex
 ```
