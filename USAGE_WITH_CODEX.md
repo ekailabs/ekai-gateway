@@ -6,7 +6,7 @@ The ekai-gateway provides multi-model routing and usage tracking capabilities th
 
 ekai-gateway acts as a proxy that routes requests to different AI providers (Anthropic, OpenAI, xAI, OpenRouter) while providing usage tracking and analytics through a unified interface.
 
-NOTE: We recommend using OpenAI gpt-5 models for the best results with Codex.
+NOTE: Codex works well with OpenAI and xAI models. You can use OpenAI GPT models or xAI Grok models via the gateway.
 
 ## Quick Start
 
@@ -40,8 +40,15 @@ PORT=3001
 Navigate to your project directory where you want to use Codex:
 
 ```bash
-# Point Codex to use the gateway
+# Point Codex to use the gateway (OpenAI-compatible base URL)
 export OPENAI_BASE_URL="http://localhost:3001/v1"
+
+# Pick a model (examples)
+# OpenAI GPT model
+export OPENAI_MODEL="gpt-4o"
+# xAI Grok model (routes to xAI Responses)
+export OPENAI_MODEL="grok-code-fast-1"
+# You can also select models in Codex settings if supported
 
 # Start Codex as usual
 codex
@@ -52,12 +59,17 @@ codex
 Open your browser and visit `http://localhost:3000` to view usage analytics and costs.
 
 ## Supported Inference Providers
-   OpenAI Models (Direct)
+1. OpenAI Models (Direct)
+2. xAI Models (Grok via Responses API)
+3. Anthropic Models (Direct)
+4. OpenRouter Models
 
 
 ## Model Routing Logic
 
-The gateway automatically routes requests based on model names, finds the most optimal based on costs. 
+The gateway automatically routes requests based on model names and cost:
+- Grok models (e.g., `grok-code-fast-1`, `grok-4`) → xAI (if `XAI_API_KEY` is set)
+- Other models are routed to the cheapest available configured provider
 
 ## Benefits
 - **Usage tracking**: Monitor token usage and costs across all providers
