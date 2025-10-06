@@ -45,7 +45,8 @@ export class UsageTracker {
     inputTokens: number,
     outputTokens: number,
     cacheWriteTokens: number = 0,
-    cacheReadTokens: number = 0
+    cacheReadTokens: number = 0,
+    clientIp?: string
   ): CostCalculation | null {
     // Input validation
     if (!model?.trim() || !provider?.trim()) {
@@ -106,7 +107,8 @@ export class UsageTracker {
             totalTokens,
             model,
             provider: provider.toLowerCase(),
-            requestId
+            requestId,
+            clientIp
           });
         } catch (telemetryError) {
           // Non-blocking: log warning but don't fail the request
