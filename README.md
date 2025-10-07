@@ -2,13 +2,15 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![GitHub stars](https://img.shields.io/github/stars/ekailabs/ekai-gateway.svg?style=social)](https://github.com/ekailabs/ekai-gateway)
+[![Discord](https://img.shields.io/discord/YOUR_DISCORD_ID?color=7289da&label=Discord&logo=discord)](https://discord.com/invite/5VsUUEfbJk)
 
 Multi-provider AI proxy with usage dashboard supporting Anthropic, OpenAI, xAI, and OpenRouter models through OpenAI-compatible and Anthropic-compatible APIs.
 
 **Designed for self-hosted personal use** - run your own instance to securely proxy AI requests using your API keys.
 
 ## 🎥 Demo Video
-See the gateway in action: [Watch Demo Video](https://youtu.be/hZC1Y_dWdhI)
+
+[![Demo Video](https://img.youtube.com/vi/hZC1Y_dWdhI/0.jpg)](https://youtu.be/hZC1Y_dWdhI)
 
 ## Project Structure
 
