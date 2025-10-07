@@ -7,6 +7,9 @@ Multi-provider AI proxy with usage dashboard supporting Anthropic, OpenAI, xAI, 
 
 **Designed for self-hosted personal use** - run your own instance to securely proxy AI requests using your API keys.
 
+## 🎥 Demo Video
+See the gateway in action: [Watch Demo Video](https://youtu.be/hZC1Y_dWdhI)
+
 ## Project Structure
 
 ```
@@ -74,7 +77,7 @@ Use the gateway with Claude Code for multi-provider AI assistance:
 ```bash
 # Point Claude Code to the gateway
 export ANTHROPIC_BASE_URL="http://localhost:3001"
-export ANTHROPIC_MODEL="claude-sonnet-4-20250514"  # or "grok-code-fast", "gpt-4o"
+export ANTHROPIC_MODEL="grok-code-fast-1"  # or "gpt-4o","claude-sonnet-4-20250514"
 
 # Start Claude Code as usual
 claude

@@ -6,7 +6,7 @@ The ekai-gateway provides multi-model routing and usage tracking capabilities th
 
 ekai-gateway acts as a proxy that routes requests to different AI providers (Anthropic, OpenAI, xAI, OpenRouter) while providing usage tracking and analytics through a unified interface.
 
-NOTE: We recommend using Anthropic and xAI models for the best results with Claude Code.
+NOTE: We recommend using xAI models (like `grok-code-fast-1`) for the best coding results with Claude Code, as they're specifically optimized for programming tasks.
 
 ## Quick Start
 
@@ -41,8 +41,8 @@ Navigate to your project directory where you want to use Claude Code:
 
 ```bash
 # Set the model (examples below)
-export ANTHROPIC_MODEL="claude-sonnet-4-20250514"  # Default Anthropic model
-export ANTHROPIC_MODEL="grok-code-fast"              # xAI model
+export ANTHROPIC_MODEL="grok-code-fast-1"              # xAI model
+export ANTHROPIC_MODEL="claude-sonnet-4-20250514"  # Anthropic model
 export ANTHROPIC_MODEL="gpt-4o"                      # OpenAI model
 export ANTHROPIC_MODEL="moonshotai/kimi-k2"         # OpenRouter model
 
@@ -58,8 +58,8 @@ claude
 Open your browser and visit `http://localhost:3000` to view usage analytics and costs.
 
 ## Supported Inference Providers
-1. Anthropic Models (Direct)
-2. xAI Models
+1. xAI Models (Recommended for coding)
+2. Anthropic Models (Direct)
 3. OpenAI Models
 4. OpenRouter Models
 
