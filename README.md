@@ -8,20 +8,6 @@ Multi-provider AI proxy with usage dashboard supporting Anthropic, OpenAI, xAI, 
 
 **Designed for self-hosted personal use** - run your own instance to securely proxy AI requests using your API keys.
 
-## 🎥 Demo Video
-
-[![Demo Video](https://img.youtube.com/vi/hZC1Y_dWdhI/0.jpg)](https://youtu.be/hZC1Y_dWdhI)
-
-## Project Structure
-
-```
-ekai-gateway/
-├── gateway/          # Backend API and routing
-├── ui/              # Dashboard frontend
-├── shared/          # Shared types and utilities
-└── package.json     # Root package configuration
-```
-
 ## Features
 
 - 🤖 **Multi-provider**: Anthropic + OpenAI + xAI + OpenRouter models
@@ -30,6 +16,10 @@ ekai-gateway/
 - 💰 **Usage tracking**: Track token usage and costs with visual dashboard
 - 🗄️ **Database storage**: SQLite database for persistent usage tracking
 - 📊 **Analytics dashboard**: Real-time cost analysis and usage breakdowns
+
+## 🎥 Demo Video
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/hZC1Y_dWdhI?si=zF_L8QlMZFQKAeqZ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 ## Quick Start (Beta)
 
@@ -110,6 +100,16 @@ codex
 - Check the logs in `gateway/logs/gateway.log` for debugging
 - Ensure your API keys have sufficient credits
 - Test with simple requests first before complex workflows
+
+## Project Structure
+
+```
+ekai-gateway/
+├── gateway/          # Backend API and routing
+├── ui/              # Dashboard frontend
+├── shared/          # Shared types and utilities
+└── package.json     # Root package configuration
+```
 
 ## API Endpoints
 
