@@ -6,7 +6,7 @@ The ekai-gateway provides multi-model routing and usage tracking capabilities th
 
 ekai-gateway acts as a proxy that routes requests to different AI providers (Anthropic, OpenAI, xAI, OpenRouter) while providing usage tracking and analytics through a unified interface.
 
-NOTE: We recommend using xAI models (like `grok-code-fast-1`) for the best coding results with Claude Code, as they're specifically optimized for programming tasks.
+NOTE: We recommend using Anthropic and xAI models for the best results with Claude Code.
 
 ## Quick Start
 
@@ -58,8 +58,8 @@ claude
 Open your browser and visit `http://localhost:3000` to view usage analytics and costs.
 
 ## Supported Inference Providers
-1. xAI Models (Recommended for coding)
-2. Anthropic Models (Direct)
+1. Anthropic Models (Direct)
+2. xAI Models
 3. OpenAI Models
 4. OpenRouter Models
 
