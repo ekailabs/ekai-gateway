@@ -2,20 +2,11 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![GitHub stars](https://img.shields.io/github/stars/ekailabs/ekai-gateway.svg?style=social)](https://github.com/ekailabs/ekai-gateway)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Server-7289da?logo=discord&logoColor=white)](https://discord.com/invite/5VsUUEfbJk)
 
 Multi-provider AI proxy with usage dashboard supporting Anthropic, OpenAI, xAI, and OpenRouter models through OpenAI-compatible and Anthropic-compatible APIs.
 
 **Designed for self-hosted personal use** - run your own instance to securely proxy AI requests using your API keys.
-
-## Project Structure
-
-```
-ekai-gateway/
-├── gateway/          # Backend API and routing
-├── ui/              # Dashboard frontend
-├── shared/          # Shared types and utilities
-└── package.json     # Root package configuration
-```
 
 ## Features
 
@@ -25,6 +16,12 @@ ekai-gateway/
 - 💰 **Usage tracking**: Track token usage and costs with visual dashboard
 - 🗄️ **Database storage**: SQLite database for persistent usage tracking
 - 📊 **Analytics dashboard**: Real-time cost analysis and usage breakdowns
+
+## 🎥 Demo Video
+
+<a href="https://youtu.be/hZC1Y_dWdhI" target="_blank">
+  <img src="https://img.youtube.com/vi/hZC1Y_dWdhI/0.jpg" alt="Demo Video" width="560" height="315">
+</a>
 
 ## Quick Start (Beta)
 
@@ -74,7 +71,7 @@ Use the gateway with Claude Code for multi-provider AI assistance:
 ```bash
 # Point Claude Code to the gateway
 export ANTHROPIC_BASE_URL="http://localhost:3001"
-export ANTHROPIC_MODEL="claude-sonnet-4-20250514"  # or "grok-code-fast", "gpt-4o"
+export ANTHROPIC_MODEL="grok-code-fast-1"  # or "gpt-4o","claude-sonnet-4-20250514"
 
 # Start Claude Code as usual
 claude
@@ -105,6 +102,16 @@ codex
 - Check the logs in `gateway/logs/gateway.log` for debugging
 - Ensure your API keys have sufficient credits
 - Test with simple requests first before complex workflows
+
+## Project Structure
+
+```
+ekai-gateway/
+├── gateway/          # Backend API and routing
+├── ui/              # Dashboard frontend
+├── shared/          # Shared types and utilities
+└── package.json     # Root package configuration
+```
 
 ## API Endpoints
 
