@@ -1,0 +1,59 @@
+{
+  "providers": [
+    {
+      "provider": "anthropic",
+      "models": [
+        "claude-3-5-sonnet",
+        "claude-3-5-sonnet-latest",
+        "claude-3-5-haiku",
+        "claude-3-5-haiku-latest",
+        "claude-3-haiku",
+        "claude-3-opus",
+        "claude-3-sonnet",
+        "claude-opus-4.1",
+        "claude-sonnet-4"
+      ],
+      "messages": {
+        "base_url": "https://api.anthropic.com/v1/messages",
+        "auth": {
+          "env_var": "ANTHROPIC_API_KEY",
+          "header": "x-api-key"
+        },
+        "static_headers": {
+          "anthropic-version": "2023-06-01"
+        },
+        "supported_client_formats": ["anthropic"],
+        "model_options": {
+          "ensure_anthropic_suffix": true
+        },
+        "usage": {
+          "format": "anthropic_messages"
+        },
+        "force_stream_option": true
+      }
+    },
+    {
+      "provider": "xAI",
+      "models": [
+        "grok-code-fast-1",
+        "grok-1",
+        "grok-2",
+        "grok-4-0709",
+        "grok-vision-beta"
+      ],
+      "messages": {
+        "base_url": "https://api.x.ai/v1/messages",
+        "auth": {
+          "env_var": "XAI_API_KEY",
+          "header": "Authorization",
+          "scheme": "Bearer"
+        },
+        "supported_client_formats": ["anthropic"],
+        "usage": {
+          "format": "anthropic_messages"
+        },
+        "force_stream_option": false
+      }
+    }
+  ]
+}

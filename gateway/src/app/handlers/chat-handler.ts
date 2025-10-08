@@ -8,9 +8,8 @@ import { logger } from '../../infrastructure/utils/logger.js';
 import { HTTP_STATUS, CONTENT_TYPES } from '../../domain/types/provider.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
 import { CanonicalRequest } from 'shared/types/index.js';
-import { anthropicPassthrough } from '../../infrastructure/passthrough/anthropic-passthrough.js';
-import { xaiPassthrough } from '../../infrastructure/passthrough/xai-passthrough.js';
 import { openaiResponsesPassthrough } from '../../infrastructure/passthrough/openai-responses-passthrough.js';
+import { createMessagesPassthroughRegistry } from '../../infrastructure/passthrough/messages-passthrough-registry.js';
 
 type ClientFormat = 'openai' | 'anthropic' | 'openai_responses';
 type ProviderName = string;
@@ -22,9 +21,7 @@ interface StreamingHeaders {
   'Access-Control-Allow-Origin': string;
 }
 
-const PROVIDERS = {
-  ANTHROPIC: 'anthropic'
-} as const;
+const messagesPassthroughRegistry = createMessagesPassthroughRegistry();
 
 export class ChatHandler {
   constructor(
@@ -172,22 +169,12 @@ export class ChatHandler {
   // Pass-through scenarios: where clientFormat and providerFormat are the same, we want to take a quick route
   // Currently supporting claude code proxy and xAI through pass-through, i.e., we skip the canonicalization step
   private shouldUsePassThrough(clientFormat: ClientFormat, providerName: ProviderName): boolean {
-    // Anthropic passthrough for Claude models
-    if (clientFormat === 'anthropic' && providerName === PROVIDERS.ANTHROPIC) {
-      return true;
-    }
-
-    // xAI passthrough for Grok models (assuming Anthropic compatibility)
-    if (clientFormat === 'anthropic' && providerName === 'xAI') {
-      return true;
-    }
-
-    // OpenAI responses passthrough for responses API
     if (clientFormat === 'openai_responses' && providerName === 'openai') {
       return true;
     }
 
-    return false;
+    const messagesConfig = messagesPassthroughRegistry.getConfig(providerName);
+    return Boolean(messagesConfig?.supportedClientFormats.includes(clientFormat));
   }
 
   private setStreamingHeaders(res: Response): void {
@@ -201,14 +188,21 @@ export class ChatHandler {
   }
 
   private async handlePassThrough(originalRequest: any, res: Response, clientFormat: ClientFormat, providerName: ProviderName, clientIp?: string): Promise<void> {
-    if (providerName === 'xAI') {
-      await xaiPassthrough.handleDirectRequest(originalRequest, res, clientIp);
-    } else if (clientFormat === 'openai_responses' && providerName === 'openai') {
+    if (clientFormat === 'openai_responses' && providerName === 'openai') {
       await openaiResponsesPassthrough.handleDirectRequest(originalRequest, res, clientIp);
-    } else {
-      // Default to Anthropic passthrough for backward compatibility
-      await anthropicPassthrough.handleDirectRequest(originalRequest, res, clientIp);
+      return;
     }
+
+    const passthrough = messagesPassthroughRegistry.getPassthrough(providerName);
+    const supportsFormat = messagesPassthroughRegistry
+      .getSupportedClientFormats(providerName)
+      .includes(clientFormat);
+
+    if (!passthrough || !supportsFormat) {
+      throw new APIError(500, `Passthrough not configured for provider ${providerName}`);
+    }
+
+    await passthrough.handleDirectRequest(originalRequest, res, clientIp);
   }
 
 }
