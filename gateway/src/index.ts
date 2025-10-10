@@ -32,6 +32,22 @@ import { handleUsageRequest } from './app/handlers/usage-handler.js';
 import { logger } from './infrastructure/utils/logger.js';
 import { requestContext } from './infrastructure/middleware/request-context.js';
 import { requestLogging } from './infrastructure/middleware/request-logging.js';
+import { ProviderService } from './domain/services/provider-service.js';
+
+function ensureProvidersConfigured(): void {
+  const providerService = new ProviderService();
+  const availableProviders = providerService.getAvailableProviders();
+
+  if (availableProviders.length === 0) {
+    logger.error(
+      'No provider API keys configured. Copy .env.example and set at least one of ANTHROPIC_API_KEY, OPENAI_API_KEY, XAI_API_KEY, or OPENROUTER_API_KEY before starting the gateway.',
+      { module: 'bootstrap' }
+    );
+    process.exit(1);
+  }
+}
+
+ensureProvidersConfigured();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
