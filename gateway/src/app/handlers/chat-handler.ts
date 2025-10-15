@@ -202,6 +202,15 @@ export class ChatHandler {
       throw new APIError(500, `Passthrough not configured for provider ${providerName}`);
     }
 
+    if (providerName === 'zai') {
+      logger.info('Using Z AI messages passthrough', {
+        provider: providerName,
+        model: originalRequest?.model,
+        clientFormat,
+        module: 'chat-handler'
+      });
+    }
+
     await passthrough.handleDirectRequest(originalRequest, res, clientIp);
   }
 

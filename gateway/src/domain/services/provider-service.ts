@@ -4,6 +4,7 @@ import { AnthropicProvider } from '../providers/anthropic-provider.js';
 import { OpenAIProvider } from '../providers/openai-provider.js';
 import { OpenRouterProvider } from '../providers/openrouter-provider.js';
 import { XAIProvider } from '../providers/xai-provider.js';
+import { ZAIProvider } from '../providers/zai-provider.js';
 import { logger } from '../../infrastructure/utils/logger.js';
 import { pricingLoader, ModelPricing } from '../../infrastructure/utils/pricing-loader.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
@@ -12,7 +13,8 @@ enum Provider {
   ANTHROPIC = 'anthropic',
   OPENAI = 'openai',
   OPENROUTER = 'openrouter',
-  XAI = 'xAI'
+  XAI = 'xAI',
+  ZAI = 'zai'
 }
 
 export class ProviderService {
@@ -23,7 +25,8 @@ export class ProviderService {
       [Provider.ANTHROPIC]: () => new AnthropicProvider(),
       [Provider.OPENAI]: () => new OpenAIProvider(),
       [Provider.OPENROUTER]: () => new OpenRouterProvider(),
-      [Provider.XAI]: () => new XAIProvider()
+      [Provider.XAI]: () => new XAIProvider(),
+      [Provider.ZAI]: () => new ZAIProvider()
     };
 
     const factory = adapterMap[name];

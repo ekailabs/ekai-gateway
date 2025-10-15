@@ -40,6 +40,7 @@ interface StreamUsageSnapshot {
 
 export class MessagesPassthrough {
   private initialUsage: StreamUsageSnapshot | null = null;
+  private streamBuffer = '';
 
   constructor(private readonly config: MessagesPassthroughConfig) {}
 
@@ -119,78 +120,75 @@ export class MessagesPassthrough {
     }
 
     try {
-      if (payloadChunk.includes('message_start')) {
-        const match = payloadChunk.match(/data: ({.*"type":"message_start".*})/);
-        if (match) {
-          const data = JSON.parse(match[1]);
-          if (data.message?.usage) {
-            this.initialUsage = {
-              inputTokens: data.message.usage.input_tokens || 0,
-              cacheCreationTokens: data.message.usage.cache_creation_input_tokens || 0,
-              cacheReadTokens: data.message.usage.cache_read_input_tokens || 0,
-            };
+      this.streamBuffer += payloadChunk;
+      const events = this.streamBuffer.split(/\n\n/);
+      this.streamBuffer = events.pop() ?? '';
 
-            logger.debug('Usage tracking started', {
-              provider: this.config.provider,
-              model,
-              ...this.initialUsage,
-              module: 'messages-passthrough',
-            });
-          }
+      for (const rawEvent of events) {
+        const dataLines = rawEvent
+          .split('\n')
+          .filter(line => line.startsWith('data:'))
+          .map(line => line.replace(/^data:\s?/, '').trim())
+          .filter(Boolean);
+
+        if (!dataLines.length) continue;
+
+        const payload = dataLines.join('');
+        if (!payload.startsWith('{')) continue;
+
+        const data = JSON.parse(payload);
+
+        if (data.type === 'message_start' && data.message?.usage) {
+          this.initialUsage = {
+            inputTokens: data.message.usage.input_tokens || 0,
+            cacheCreationTokens: data.message.usage.cache_creation_input_tokens || 0,
+            cacheReadTokens: data.message.usage.cache_read_input_tokens || 0,
+          };
+
+          logger.debug('Usage tracking started', {
+            provider: this.config.provider,
+            model,
+            ...this.initialUsage,
+            module: 'messages-passthrough',
+          });
+          continue;
         }
-        return;
-      }
 
-      if (payloadChunk.includes('message_delta') || payloadChunk.includes('message_stop')) {
-        const match = payloadChunk.match(/data: ({.*"type":"(?:message_delta|message_stop)".*})/);
-        if (match) {
-          const data = JSON.parse(match[1]);
-          if (data.usage && this.initialUsage) {
-            const outputTokens = data.usage.output_tokens || 0;
+        if (data.type === 'message_delta' || data.type === 'message_stop') {
+          const usageData = data.usage;
 
-            logger.debug('Usage tracking completed', {
-              provider: this.config.provider,
-              model,
-              ...this.initialUsage,
-              outputTokens,
-              module: 'messages-passthrough',
-            });
+          if (usageData) {
+            const inputTokens = usageData.input_tokens ?? this.initialUsage?.inputTokens ?? 0;
+            const cacheCreationTokens = usageData.cache_creation_input_tokens ?? this.initialUsage?.cacheCreationTokens ?? 0;
+            const cacheReadTokens = usageData.cache_read_input_tokens ?? this.initialUsage?.cacheReadTokens ?? 0;
+            const outputTokens = usageData.output_tokens ?? 0;
 
-            import('../utils/usage-tracker.js')
-              .then(({ usageTracker }) => {
-                usageTracker.trackUsage(
-                  model,
-                  this.config.provider,
-                  this.initialUsage!.inputTokens,
-                  outputTokens,
-                  this.initialUsage!.cacheCreationTokens,
-                  this.initialUsage!.cacheReadTokens,
-                  clientIp,
-                );
-              })
-              .catch(error => {
-                logger.error('Usage tracking failed', error, {
-                  provider: this.config.provider,
-                  operation: 'passthrough',
-                  module: 'messages-passthrough',
-                });
+            const usingFallback = !this.initialUsage;
+
+            if (usingFallback) {
+              logger.warn('Using fallback usage tracking', {
+                provider: this.config.provider,
+                reason: 'missed_message_start',
+                model,
+                inputTokens,
+                cacheCreationTokens,
+                cacheReadTokens,
+                outputTokens,
+                module: 'messages-passthrough',
               });
+            }
 
-            this.initialUsage = null;
-          } else if (data.usage && !this.initialUsage) {
-            const inputTokens = data.usage.input_tokens || 0;
-            const cacheCreationTokens = data.usage.cache_creation_input_tokens || 0;
-            const cacheReadTokens = data.usage.cache_read_input_tokens || 0;
-            const outputTokens = data.usage.output_tokens || 0;
-
-            logger.warn('Using fallback usage tracking', {
-              provider: this.config.provider,
-              reason: 'missed_message_start',
-              model,
+            const usageSnapshot = {
               inputTokens,
               cacheCreationTokens,
               cacheReadTokens,
               outputTokens,
+            };
+
+            logger.debug('Usage tracking completed', {
+              provider: this.config.provider,
+              model,
+              ...usageSnapshot,
               module: 'messages-passthrough',
             });
 
@@ -213,6 +211,13 @@ export class MessagesPassthrough {
                   module: 'messages-passthrough',
                 });
               });
+
+            this.initialUsage = null;
+            continue;
+          }
+
+          if (!this.initialUsage) {
+            continue;
           }
         }
       }
@@ -227,6 +232,7 @@ export class MessagesPassthrough {
 
   async handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string): Promise<void> {
     this.initialUsage = null;
+    this.streamBuffer = '';
 
     this.applyModelOptions(request);
 
