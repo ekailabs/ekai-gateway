@@ -22,9 +22,13 @@ npm run dev
 
 ### 2. Configure Environment Variables
 
-Create a `.env` file in the gateway root directory:
+Copy the example environment file and configure your API keys:
 
 ```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit the .env file with your API keys
 # Required: Add your API keys for the providers you want to use
 ANTHROPIC_API_KEY=your_anthropic_key_here
 OPENAI_API_KEY=your_openai_key_here
