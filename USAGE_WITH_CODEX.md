@@ -22,9 +22,13 @@ npm run dev
 
 ### 2. Configure Environment Variables
 
-Create a `.env` file in the gateway root directory:
+Copy the example environment file and configure your API keys:
 
 ```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit the .env file with your API keys
 # Required: Add your API keys for the providers you want to use
 ANTHROPIC_API_KEY=your_anthropic_key_here
 OPENAI_API_KEY=your_openai_key_here
@@ -37,6 +41,8 @@ PORT=3001
 
 ### 3. Configure Codex
 
+#### Option A: Using Environment Variables
+
 Navigate to your project directory where you want to use Codex:
 
 ```bash
@@ -46,6 +52,26 @@ export OPENAI_BASE_URL="http://localhost:3001/v1"
 # Start Codex as usual
 codex
 ```
+
+#### Option B: Using config.toml (Recommended for Chat Completions)
+
+For chat completions and more advanced configuration, configure the `$CODEX_HOME/config.toml` configuration file where the `CODEX_HOME` environment value defaults to `~/.codex`. (Note `CODEX_HOME` will also be where logs and other Codex-related information are stored.)
+
+Set `model_provider = "ekai"` at the top of the config and define the provider table:
+
+```toml
+# Set the model provider to use ekai-gateway
+model_provider = "ekai"
+
+[model_providers.ekai]
+name = "Ekai Gateway"
+base_url = "http://localhost:3001/v1"
+wire_api = "chat"
+```
+
+This configuration tells Codex to use the Ekai Gateway for chat completions. The `wire_api = "chat"` setting enables the chat completions API through the gateway.
+
+For more configuration options, see the [Codex configuration documentation](https://github.com/openai/codex/blob/main/docs/config.md).
 
 ### 4. Monitor Usage
 
