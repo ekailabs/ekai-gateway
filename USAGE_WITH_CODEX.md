@@ -71,6 +71,13 @@ wire_api = "chat"
 
 This configuration tells Codex to use the Ekai Gateway for chat completions. The `wire_api = "chat"` setting enables the chat completions API through the gateway.
 
+Now you can run Codex with specific models:
+
+```bash
+# Run Codex with different models through the gateway
+codex --model="grok-code-fast-1" // or "gpt-4o" or "claude-sonnet-4-20250514"
+```
+
 For more configuration options, see the [Codex configuration documentation](https://github.com/openai/codex/blob/main/docs/config.md).
 
 ### 4. Monitor Usage
