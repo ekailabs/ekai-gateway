@@ -44,7 +44,18 @@ export class ChatCompletionsPassthroughRegistry {
     if (direct) return direct;
 
     const normalized = ModelUtils.removeProviderPrefix(modelName);
-    return this.modelToProvider.get(normalized);
+    const mapped = this.modelToProvider.get(normalized);
+    if (mapped) return mapped;
+
+    // Fallback for OpenRouter aggregator: any provider/model slug should route through openrouter passthrough
+    if (modelName.includes('/')) {
+      const openRouterEntry = this.providers.get('openrouter');
+      if (openRouterEntry) {
+        return 'openrouter';
+      }
+    }
+
+    return undefined;
   }
 
   getConfig(provider: string): ChatCompletionsPassthroughConfig | undefined {

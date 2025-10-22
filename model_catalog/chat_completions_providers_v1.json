@@ -99,6 +99,42 @@
           "format": "openai_chat"
         }
       }
+    },
+    {
+      "provider": "openrouter",
+      "models": [
+        "openrouter/gpt-4.1-mini",
+        "openrouter/gpt-5",
+        "openrouter/gpt-5-mini",
+        "openrouter/gpt-4o",
+        "openrouter/gpt-4o-mini",
+        "openrouter/o1",
+        "openrouter/o3",
+        "openrouter/grok-code-fast-1",
+        "openrouter/grok-3",
+        "openrouter/grok-4"
+      ],
+      "chat_completions": {
+        "base_url": "https://openrouter.ai/api/v1/chat/completions",
+        "auth": {
+          "env_var": "OPENROUTER_API_KEY",
+          "header": "Authorization",
+          "scheme": "Bearer"
+        },
+        "static_headers": {
+          "HTTP-Referer": "https://ekailabs.xyz",
+          "X-Title": "Ekai Gateway"
+        },
+        "supported_client_formats": ["openai"],
+        "payload_defaults": {
+          "stream_options": {
+            "include_usage": true
+          }
+        },
+        "usage": {
+          "format": "openai_chat"
+        }
+      }
     }
   ]
 }
