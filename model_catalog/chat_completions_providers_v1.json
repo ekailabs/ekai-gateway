@@ -103,16 +103,14 @@
     {
       "provider": "openrouter",
       "models": [
-        "openrouter/gpt-4.1-mini",
-        "openrouter/gpt-5",
-        "openrouter/gpt-5-mini",
-        "openrouter/gpt-4o",
-        "openrouter/gpt-4o-mini",
-        "openrouter/o1",
-        "openrouter/o3",
-        "openrouter/grok-code-fast-1",
-        "openrouter/grok-3",
-        "openrouter/grok-4"
+        "anthropic/claude-haiku-4.5",
+        "openai/gpt-4o",
+        "openai/gpt-5-pro",
+        "x-ai/grok-code-fast-1",
+        "google/gemini-2.0-flash-001",
+        "google/gemini-2.5-pro",
+        "deepseek/deepseek-chat-v3.1",
+        "z-ai/glm-4.5"
       ],
       "chat_completions": {
         "base_url": "https://openrouter.ai/api/v1/chat/completions",
