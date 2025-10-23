@@ -190,8 +190,12 @@ export class PricingLoader {
    * Get pricing for a specific model (with automatic model name normalization)
    */
   getModelPricing(provider: string, model: string): ModelPricing | null {
-    const config = this.pricingCache.get(provider);
-    if (!config) return null;
+    let config = this.pricingCache.get(provider);
+    if (!config) {
+      this.loadAllPricing();
+      config = this.pricingCache.get(provider);
+      if (!config) return null;
+    }
     
     const normalizedModel = ModelUtils.normalizeModelName(model);
     return config.models[normalizedModel] || null;
@@ -320,9 +324,10 @@ export class PricingLoader {
         const serialized = yaml.dump(doc, { lineWidth: 120, noRefs: true });
         await fs.promises.writeFile(costsPath, serialized, 'utf8');
 
-        // Invalidate cache for provider so next load picks up new data
-        this.pricingCache.delete('openrouter');
-        this.lastLoadTime = 0;
+        // Refresh in-memory cache immediately to avoid transient misses.
+        const refreshedConfig = this.loadProviderPricing('openrouter');
+        this.pricingCache.set('openrouter', refreshedConfig);
+        this.lastLoadTime = Date.now();
 
         logger.info('OpenRouter pricing refreshed', {
           operation: 'pricing_refresh',
