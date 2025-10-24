@@ -33,6 +33,50 @@ import { logger } from './infrastructure/utils/logger.js';
 import { requestContext } from './infrastructure/middleware/request-context.js';
 import { requestLogging } from './infrastructure/middleware/request-logging.js';
 import { ProviderService } from './domain/services/provider-service.js';
+import { pricingLoader } from './infrastructure/utils/pricing-loader.js';
+
+async function bootstrap(): Promise<void> {
+  await pricingLoader.refreshOpenRouterPricing();
+  ensureProvidersConfigured();
+
+  const app = express();
+  const PORT = process.env.PORT || 3001;
+  // Middleware
+  app.set('trust proxy', true);
+  app.use(cors());
+  app.use(requestContext);
+  app.use(requestLogging);
+  app.use(express.json({ limit: '50mb' }));
+
+  // Health check
+  app.get('/health', (req, res) => {
+    logger.debug('Health check accessed', { 
+      requestId: req.requestId,
+      module: 'health-endpoint'
+    });
+    
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      version: '1.0.0'
+    });
+  });
+
+  // API Routes
+  app.post('/v1/chat/completions', handleOpenAIFormatChat);
+  app.post('/v1/messages', handleAnthropicFormatChat);
+  app.post('/v1/responses', handleOpenAIResponses);
+  app.get('/usage', handleUsageRequest);
+
+  // Start server
+  app.listen(PORT, () => {
+    logger.info(`Ekai Gateway server started`, {
+      port: PORT,
+      environment: process.env.NODE_ENV || 'development',
+      module: 'server'
+    });
+  });
+}
 
 function ensureProvidersConfigured(): void {
   const providerService = new ProviderService();
@@ -47,42 +91,7 @@ function ensureProvidersConfigured(): void {
   }
 }
 
-ensureProvidersConfigured();
-
-const app = express();
-const PORT = process.env.PORT || 3001;
-// Middleware
-app.set('trust proxy', true);
-app.use(cors());
-app.use(requestContext);
-app.use(requestLogging);
-app.use(express.json({ limit: '50mb' }));
-
-// Health check
-app.get('/health', (req, res) => {
-  logger.debug('Health check accessed', { 
-    requestId: req.requestId,
-    module: 'health-endpoint'
-  });
-  
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0'
-  });
-});
-
-// API Routes
-app.post('/v1/chat/completions', handleOpenAIFormatChat);
-app.post('/v1/messages', handleAnthropicFormatChat);
-app.post('/v1/responses', handleOpenAIResponses);
-app.get('/usage', handleUsageRequest);
-
-// Start server
-app.listen(PORT, () => {
-  logger.info(`Ekai Gateway server started`, {
-    port: PORT,
-    environment: process.env.NODE_ENV || 'development',
-    module: 'server'
-  });
+bootstrap().catch(error => {
+  logger.error('Gateway failed to start', error, { module: 'bootstrap' });
+  process.exit(1);
 });
