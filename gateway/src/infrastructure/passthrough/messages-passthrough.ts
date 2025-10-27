@@ -1,6 +1,6 @@
 import { Response as ExpressResponse } from 'express';
 import { logger } from '../utils/logger.js';
-import { APIError } from '../utils/error-handler.js';
+import { AuthenticationError, PaymentError, ProviderError } from '../../shared/errors/index.js';
 import { CONTENT_TYPES } from '../../domain/types/provider.js';
 import { ModelUtils } from '../utils/model-utils.js';
 
@@ -102,7 +102,7 @@ export class MessagesPassthrough {
     const envVar = this.config.auth.envVar;
     const token = process.env[envVar];
     if (!token) {
-      throw new APIError(401, `${this.config.provider} API key not configured`);
+      throw new AuthenticationError(`${this.config.provider} API key not configured`, { provider: this.config.provider });
     }
     return token;
   }
@@ -205,14 +205,19 @@ export class MessagesPassthrough {
           error: errorText,
           module: 'messages-passthrough',
         });
-        throw new APIError(
-          response.status,
-          `x402 payment failed: ${errorText || 'Insufficient balance or payment error'}`
+        throw new PaymentError(
+          errorText || 'Insufficient balance or payment error',
+          { provider: this.config.provider, statusCode: response.status }
         );
       }
       
       // Standard error handling
-      throw new APIError(response.status, `${this.config.provider} API error: ${response.status} - ${errorText}`);
+      throw new ProviderError(
+        this.config.provider,
+        errorText || `HTTP ${response.status}`,
+        response.status,
+        { endpoint: this.resolveBaseUrl() }
+      );
     }
 
     return response;

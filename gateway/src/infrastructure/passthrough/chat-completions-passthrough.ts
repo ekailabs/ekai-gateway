@@ -1,5 +1,5 @@
 import { Response as ExpressResponse } from 'express';
-import { APIError } from '../utils/error-handler.js';
+import { AuthenticationError, PaymentError, ProviderError } from '../../shared/errors/index.js';
 import { logger } from '../utils/logger.js';
 import { CONTENT_TYPES, HTTP_STATUS } from '../../domain/types/provider.js';
 
@@ -120,7 +120,7 @@ export class ChatCompletionsPassthrough {
     if (!auth) return undefined;
     const token = process.env[auth.envVar];
     if (!token) {
-      throw new APIError(401, `${this.config.provider} API key not configured`);
+      throw new AuthenticationError(`${this.config.provider} API key not configured`, { provider: this.config.provider });
     }
     return token;
   }
@@ -223,19 +223,19 @@ export class ChatCompletionsPassthrough {
           error: errorText,
           module: 'chat-completions-passthrough',
         });
-        throw new APIError(
-          response.status,
-          `x402 payment failed: ${errorText || 'Insufficient balance or payment error'}`
+        throw new PaymentError(
+          errorText || 'Insufficient balance or payment error',
+          { provider: this.config.provider, statusCode: response.status }
         );
       }
       
-      // Standard error handling for other failures (when auth is configured)
-      if (this.config.auth) {
-        throw new APIError(response.status, `${this.config.provider} chat API error: ${response.status} - ${errorText}`);
-      }
-      
-      // If no auth and not x402, still throw error
-      throw new APIError(response.status, `${this.config.provider} API error: ${response.status} - ${errorText}`);
+      // Standard error handling for other failures
+      throw new ProviderError(
+        this.config.provider,
+        errorText || `HTTP ${response.status}`,
+        response.status,
+        { endpoint: this.config.baseUrl }
+      );
     }
 
     return response;
@@ -381,7 +381,7 @@ export class ChatCompletionsPassthrough {
 
       const reader = response.body?.getReader();
       if (!reader) {
-        throw new APIError(500, 'No stream body received from chat completions provider');
+        throw new ProviderError(this.config.provider, 'No stream body received', 500);
       }
 
       while (true) {

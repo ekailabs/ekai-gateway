@@ -1,6 +1,6 @@
 import { BaseProvider } from './base-provider.js';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
-import { APIError } from '../../infrastructure/utils/error-handler.js';
+import { AuthenticationError } from '../../shared/errors/index.js';
 import fetch, { Response } from 'node-fetch';
 import { getConfig } from '../../infrastructure/config/app-config.js';
 
@@ -51,7 +51,7 @@ export class AnthropicProvider extends BaseProvider {
 
   private validateApiKey(): void {
     if (!this.apiKey) {
-      throw new APIError(401, `${this.name} API key not configured`);
+      throw new AuthenticationError(`${this.name} API key not configured`, { provider: this.name });
     }
   }
 
@@ -71,7 +71,7 @@ export class AnthropicProvider extends BaseProvider {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new APIError(response.status, `${this.name} API error: ${response.status} - ${errorText}`);
+        throw new AuthenticationError(errorText || `HTTP ${response.status}`, { provider: this.name, statusCode: response.status });
       }
 
       return response;

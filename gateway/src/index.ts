@@ -35,6 +35,7 @@ import { requestLogging } from './infrastructure/middleware/request-logging.js';
 import { ProviderService } from './domain/services/provider-service.js';
 import { pricingLoader } from './infrastructure/utils/pricing-loader.js';
 import { getConfig } from './infrastructure/config/app-config.js';
+import { errorHandler } from './infrastructure/middleware/error-handler.js';
 
 async function bootstrap(): Promise<void> {
   // Initialize and validate config
@@ -83,6 +84,9 @@ async function bootstrap(): Promise<void> {
   app.post('/v1/messages', handleAnthropicFormatChat);
   app.post('/v1/responses', handleOpenAIResponses);
   app.get('/usage', handleUsageRequest);
+
+  // Error handler MUST be last middleware
+  app.use(errorHandler);
 
   // Start server
   app.listen(PORT, () => {

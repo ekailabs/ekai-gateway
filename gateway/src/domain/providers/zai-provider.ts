@@ -1,7 +1,7 @@
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
 import { Response as NodeFetchResponse } from 'node-fetch';
 import { AIProvider } from '../types/provider.js';
-import { APIError } from '../../infrastructure/utils/error-handler.js';
+import { ProviderError } from '../../shared/errors/index.js';
 import { getConfig } from '../../infrastructure/config/app-config.js';
 
 /**
@@ -21,10 +21,10 @@ export class ZAIProvider implements AIProvider {
   }
 
   async chatCompletion(_request: CanonicalRequest): Promise<CanonicalResponse> {
-    throw new APIError(501, 'Z AI provider supports passthrough-only requests');
+    throw new ProviderError('zai', 'Z AI provider supports passthrough-only requests', 501);
   }
 
   async getStreamingResponse(_request: CanonicalRequest): Promise<NodeFetchResponse> {
-    throw new APIError(501, 'Z AI provider supports passthrough-only requests');
+    throw new ProviderError('zai', 'Z AI provider supports passthrough-only requests', 501);
   }
 }

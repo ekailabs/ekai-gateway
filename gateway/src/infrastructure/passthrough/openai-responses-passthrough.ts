@@ -9,7 +9,7 @@ export class OpenAIResponsesPassthrough {
   private get apiKey(): string {
     const { getConfig } = require('../config/app-config.js');
     const key = getConfig().providers.openai.apiKey;
-    if (!key) throw new APIError(401, 'OpenAI API key not configured');
+    if (!key) throw new AuthenticationError('OpenAI API key not configured', { provider: 'openai' });
     return key;
   }
 

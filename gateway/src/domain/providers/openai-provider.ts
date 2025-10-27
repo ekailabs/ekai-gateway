@@ -1,7 +1,7 @@
 import { BaseProvider } from './base-provider.js';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
 import fetch, { Response } from 'node-fetch';
-import { APIError } from '../../infrastructure/utils/error-handler.js';
+import { AuthenticationError, ProviderError } from '../../shared/errors/index.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
 import { getConfig } from '../../infrastructure/config/app-config.js';
 
@@ -125,7 +125,7 @@ export class OpenAIProvider extends BaseProvider {
     transformedRequest.stream = true;
 
     if (!this.apiKey) {
-      throw new APIError(401, `${this.name} API key not configured`);
+      throw new AuthenticationError(`${this.name} API key not configured`, { provider: this.name });
     }
 
     return this.fetchStreaming(this.getChatCompletionEndpoint(), transformedRequest);
@@ -133,14 +133,14 @@ export class OpenAIProvider extends BaseProvider {
 
   private async fetchStreaming(endpoint: string, body: any): Promise<Response> {
     if (!this.apiKey) {
-      throw new APIError(401, `${this.name} API key not configured`);
+      throw new AuthenticationError(`${this.name} API key not configured`, { provider: this.name });
     }
     const url = `${this.baseUrl}${endpoint}`;
     const headers = this.getHeaders();
     const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
     if (!response.ok) {
       const errorText = await response.text();
-      throw new APIError(response.status, `${this.name} API error: ${response.status} - ${errorText}`);
+      throw new ProviderError(this.name, errorText || `HTTP ${response.status}`, response.status, { endpoint, statusText: response.statusText });
     }
     return response;
   }
