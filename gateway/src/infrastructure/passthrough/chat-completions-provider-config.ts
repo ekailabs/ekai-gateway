@@ -112,15 +112,17 @@ export function loadChatCompletionsProviderDefinitions(): ChatCompletionsProvide
     if (privateKey) {
       const openRouterDefinition = definitions.find(def => def.provider === 'openrouter');
       if (openRouterDefinition) {
-        const defaultUrl = 'https://x402.ekailabs.xyz/v1/chat/completions';
-        const overrideUrl = process.env.X402_URL || defaultUrl;
+        const x402BaseUrl = process.env.X402_BASE_URL || 'https://x402.ekailabs.xyz';
+        const x402Url = `${x402BaseUrl}/v1/chat/completions`;
+        
         logger.info('Configuring OpenRouter passthrough to use x402 URL', {
-          passthroughUrl: overrideUrl,
+          passthroughUrl: x402Url,
           module: 'chat-completions-provider-config',
         });
+        
         openRouterDefinition.config = {
           ...openRouterDefinition.config,
-          baseUrl: overrideUrl,
+          baseUrl: x402Url,
           auth: undefined,
         };
       }

@@ -24,8 +24,6 @@ function findProjectRoot(startPath: string): string {
 const projectRoot = findProjectRoot(__dirname);
 dotenv.config({ path: join(projectRoot, '.env') });
 
-const DEFAULT_X402_URL = 'https://x402.ekailabs.xyz/v1/chat/completions';
-
 // Import application modules
 import express from 'express';
 import cors from 'cors';
@@ -39,8 +37,13 @@ import { pricingLoader } from './infrastructure/utils/pricing-loader.js';
 
 async function bootstrap(): Promise<void> {
   if (process.env.PRIVATE_KEY) {
-    logger.info('PRIVATE_KEY detected; OpenRouter chat completions will use x402 passthrough', {
-      passthroughUrl: process.env.X402_URL || DEFAULT_X402_URL,
+    const x402BaseUrl = process.env.X402_BASE_URL || 'https://x402.ekailabs.xyz';
+    logger.info('PRIVATE_KEY detected; x402 payment gateway enabled', {
+      x402BaseUrl,
+      chatCompletions: 'OpenRouter only',
+      chatCompletionsUrl: `${x402BaseUrl}/v1/chat/completions`,
+      messages: 'All providers',
+      messagesUrl: `${x402BaseUrl}/v1/messages`,
       module: 'bootstrap'
     });
   }
@@ -90,13 +93,40 @@ async function bootstrap(): Promise<void> {
 function ensureProvidersConfigured(): void {
   const providerService = new ProviderService();
   const availableProviders = providerService.getAvailableProviders();
+  const hasPrivateKey = !!process.env.PRIVATE_KEY;
 
-  if (availableProviders.length === 0) {
+  // Two modes of operation:
+  // 1. BYOK (Bring Your Own Key) - requires at least one API key
+  // 2. x402 Payment - requires PRIVATE_KEY (no API keys needed)
+  if (availableProviders.length === 0 && !hasPrivateKey) {
     logger.error(
-      'No provider API keys configured. Copy .env.example and set at least one of ANTHROPIC_API_KEY, OPENAI_API_KEY, XAI_API_KEY, or OPENROUTER_API_KEY before starting the gateway.',
+      'No provider configuration found. You must configure either:\n' +
+      '  1. API Keys (BYOK mode): Set at least one of ANTHROPIC_API_KEY, OPENAI_API_KEY, XAI_API_KEY, or OPENROUTER_API_KEY\n' +
+      '  2. x402 Payment mode: Set PRIVATE_KEY for cryptocurrency payments\n' +
+      'See .env.example for details.',
       { module: 'bootstrap' }
     );
     process.exit(1);
+  }
+
+  // Log the mode we're running in
+  if (availableProviders.length === 0 && hasPrivateKey) {
+    logger.info('Running in x402 payment-only mode (no API keys configured)', {
+      mode: 'x402-only',
+      module: 'bootstrap'
+    });
+  } else if (availableProviders.length > 0 && hasPrivateKey) {
+    logger.info('Running in hybrid mode (API keys + x402 payments)', {
+      mode: 'hybrid',
+      availableProviders: availableProviders.length,
+      module: 'bootstrap'
+    });
+  } else {
+    logger.info('Running in BYOK mode (API keys only, no x402)', {
+      mode: 'byok',
+      availableProviders: availableProviders.length,
+      module: 'bootstrap'
+    });
   }
 }
 
