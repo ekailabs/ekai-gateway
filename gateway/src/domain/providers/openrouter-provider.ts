@@ -35,6 +35,13 @@ export class OpenRouterProvider extends BaseProvider {
   protected readonly baseUrl = 'https://openrouter.ai/api/v1';
   protected readonly apiKey = process.env.OPENROUTER_API_KEY;
 
+  isConfigured(): boolean {
+    if (process.env.PRIVATE_KEY) {
+      return true;
+    }
+    return super.isConfigured();
+  }
+
   protected getHeaders(): Record<string, string> {
     return {
       'Authorization': `Bearer ${this.apiKey}`,

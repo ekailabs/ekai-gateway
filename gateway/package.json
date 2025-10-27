@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc && npm run copy:assets",
+    "build": "npm ci && tsc && npm run copy:assets",
+    "type-check": "tsc --noEmit",
     "copy:assets": "copyfiles -u 3 src/infrastructure/db/schema.sql dist/gateway/src/infrastructure/db/ && copyfiles -u 2 src/costs/*.yaml dist/gateway/src/costs/",
     "start": "node dist/gateway/src/index.js",
     "clean": "rm -rf dist",
@@ -27,7 +28,9 @@
     "js-yaml": "^4.1.0",
     "json-schema-to-typescript": "^15.0.4",
     "node-fetch": "^3.3.2",
-    "pino": "^9.4.0"
+    "pino": "^9.4.0",
+    "viem": "^2.0.0",
+    "x402-fetch": "^0.3.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

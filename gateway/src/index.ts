@@ -24,6 +24,8 @@ function findProjectRoot(startPath: string): string {
 const projectRoot = findProjectRoot(__dirname);
 dotenv.config({ path: join(projectRoot, '.env') });
 
+const DEFAULT_X402_URL = 'https://x402.ekailabs.xyz/v1/chat/completions';
+
 // Import application modules
 import express from 'express';
 import cors from 'cors';
@@ -36,6 +38,13 @@ import { ProviderService } from './domain/services/provider-service.js';
 import { pricingLoader } from './infrastructure/utils/pricing-loader.js';
 
 async function bootstrap(): Promise<void> {
+  if (process.env.PRIVATE_KEY) {
+    logger.info('PRIVATE_KEY detected; OpenRouter chat completions will use x402 passthrough', {
+      passthroughUrl: process.env.X402_URL || DEFAULT_X402_URL,
+      module: 'bootstrap'
+    });
+  }
+
   await pricingLoader.refreshOpenRouterPricing();
   ensureProvidersConfigured();
 
