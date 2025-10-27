@@ -2682,16 +2682,6 @@ models:
     input: 3
     output: 15
     original_provider: anthropic
-  mistralai/ministral-8b:
-    id: mistralai/ministral-8b
-    input: 0.1
-    output: 0.1
-    original_provider: mistralai
-  ministral-8b:
-    id: mistralai/ministral-8b
-    input: 0.1
-    output: 0.1
-    original_provider: mistralai
   mistralai/ministral-3b:
     id: mistralai/ministral-3b
     input: 0.04
@@ -2701,6 +2691,16 @@ models:
     id: mistralai/ministral-3b
     input: 0.04
     output: 0.04
+    original_provider: mistralai
+  mistralai/ministral-8b:
+    id: mistralai/ministral-8b
+    input: 0.1
+    output: 0.1
+    original_provider: mistralai
+  ministral-8b:
+    id: mistralai/ministral-8b
+    input: 0.1
+    output: 0.1
     original_provider: mistralai
   qwen/qwen-2.5-7b-instruct:
     id: qwen/qwen-2.5-7b-instruct
@@ -2722,16 +2722,6 @@ models:
     input: 0.6
     output: 0.6
     original_provider: nvidia
-  inflection/inflection-3-productivity:
-    id: inflection/inflection-3-productivity
-    input: 2.5
-    output: 10
-    original_provider: inflection
-  inflection-3-productivity:
-    id: inflection/inflection-3-productivity
-    input: 2.5
-    output: 10
-    original_provider: inflection
   inflection/inflection-3-pi:
     id: inflection/inflection-3-pi
     input: 2.5
@@ -2742,16 +2732,16 @@ models:
     input: 2.5
     output: 10
     original_provider: inflection
-  thedrummer/rocinante-12b:
-    id: thedrummer/rocinante-12b
-    input: 0.17
-    output: 0.43
-    original_provider: thedrummer
-  rocinante-12b:
-    id: thedrummer/rocinante-12b
-    input: 0.17
-    output: 0.43
-    original_provider: thedrummer
+  inflection/inflection-3-productivity:
+    id: inflection/inflection-3-productivity
+    input: 2.5
+    output: 10
+    original_provider: inflection
+  inflection-3-productivity:
+    id: inflection/inflection-3-productivity
+    input: 2.5
+    output: 10
+    original_provider: inflection
   anthracite-org/magnum-v2-72b:
     id: anthracite-org/magnum-v2-72b
     input: 3
@@ -2762,6 +2752,26 @@ models:
     input: 3
     output: 3
     original_provider: anthracite-org
+  thedrummer/rocinante-12b:
+    id: thedrummer/rocinante-12b
+    input: 0.17
+    output: 0.43
+    original_provider: thedrummer
+  rocinante-12b:
+    id: thedrummer/rocinante-12b
+    input: 0.17
+    output: 0.43
+    original_provider: thedrummer
+  meta-llama/llama-3.2-90b-vision-instruct:
+    id: meta-llama/llama-3.2-90b-vision-instruct
+    input: 0.35
+    output: 0.4
+    original_provider: meta-llama
+  llama-3.2-90b-vision-instruct:
+    id: meta-llama/llama-3.2-90b-vision-instruct
+    input: 0.35
+    output: 0.4
+    original_provider: meta-llama
   meta-llama/llama-3.2-3b-instruct:free:
     id: meta-llama/llama-3.2-3b-instruct:free
     input: 0
@@ -2791,16 +2801,6 @@ models:
     id: meta-llama/llama-3.2-1b-instruct
     input: 0.005
     output: 0.01
-    original_provider: meta-llama
-  meta-llama/llama-3.2-90b-vision-instruct:
-    id: meta-llama/llama-3.2-90b-vision-instruct
-    input: 0.35
-    output: 0.4
-    original_provider: meta-llama
-  llama-3.2-90b-vision-instruct:
-    id: meta-llama/llama-3.2-90b-vision-instruct
-    input: 0.35
-    output: 0.4
     original_provider: meta-llama
   meta-llama/llama-3.2-11b-vision-instruct:
     id: meta-llama/llama-3.2-11b-vision-instruct
@@ -2842,26 +2842,6 @@ models:
     input: 0.09
     output: 0.6
     original_provider: neversleep
-  openai/o1-mini:
-    id: openai/o1-mini
-    input: 1.1
-    output: 4.4
-    original_provider: openai
-  o1-mini:
-    id: openai/o1-mini
-    input: 1.1
-    output: 4.4
-    original_provider: openai
-  openai/o1-mini-2024-09-12:
-    id: openai/o1-mini-2024-09-12
-    input: 1.1
-    output: 4.4
-    original_provider: openai
-  o1-mini-2024-09-12:
-    id: openai/o1-mini-2024-09-12
-    input: 1.1
-    output: 4.4
-    original_provider: openai
   mistralai/pixtral-12b:
     id: mistralai/pixtral-12b
     input: 0.1
@@ -2872,16 +2852,6 @@ models:
     input: 0.1
     output: 0.1
     original_provider: mistralai
-  cohere/command-r-plus-08-2024:
-    id: cohere/command-r-plus-08-2024
-    input: 2.5
-    output: 10
-    original_provider: cohere
-  command-r-plus-08-2024:
-    id: cohere/command-r-plus-08-2024
-    input: 2.5
-    output: 10
-    original_provider: cohere
   cohere/command-r-08-2024:
     id: cohere/command-r-08-2024
     input: 0.15
@@ -2891,6 +2861,16 @@ models:
     id: cohere/command-r-08-2024
     input: 0.15
     output: 0.6
+    original_provider: cohere
+  cohere/command-r-plus-08-2024:
+    id: cohere/command-r-plus-08-2024
+    input: 2.5
+    output: 10
+    original_provider: cohere
+  command-r-plus-08-2024:
+    id: cohere/command-r-plus-08-2024
+    input: 2.5
+    output: 10
     original_provider: cohere
   qwen/qwen-2.5-vl-7b-instruct:
     id: qwen/qwen-2.5-vl-7b-instruct
@@ -3002,16 +2982,6 @@ models:
     input: 0.02
     output: 0.03
     original_provider: meta-llama
-  meta-llama/llama-3.1-405b-instruct:
-    id: meta-llama/llama-3.1-405b-instruct
-    input: 0.8
-    output: 0.8
-    original_provider: meta-llama
-  llama-3.1-405b-instruct:
-    id: meta-llama/llama-3.1-405b-instruct
-    input: 0.8
-    output: 0.8
-    original_provider: meta-llama
   meta-llama/llama-3.1-70b-instruct:
     id: meta-llama/llama-3.1-70b-instruct
     input: 0.4
@@ -3021,6 +2991,16 @@ models:
     id: meta-llama/llama-3.1-70b-instruct
     input: 0.4
     output: 0.4
+    original_provider: meta-llama
+  meta-llama/llama-3.1-405b-instruct:
+    id: meta-llama/llama-3.1-405b-instruct
+    input: 0.8
+    output: 0.8
+    original_provider: meta-llama
+  llama-3.1-405b-instruct:
+    id: meta-llama/llama-3.1-405b-instruct
+    input: 0.8
+    output: 0.8
     original_provider: meta-llama
   mistralai/mistral-nemo:free:
     id: mistralai/mistral-nemo:free
@@ -3042,16 +3022,6 @@ models:
     input: 0.02
     output: 0.04
     original_provider: mistralai
-  openai/gpt-4o-mini:
-    id: openai/gpt-4o-mini
-    input: 0.15
-    output: 0.6
-    original_provider: openai
-  gpt-4o-mini:
-    id: openai/gpt-4o-mini
-    input: 0.15
-    output: 0.6
-    original_provider: openai
   openai/gpt-4o-mini-2024-07-18:
     id: openai/gpt-4o-mini-2024-07-18
     input: 0.15
@@ -3059,6 +3029,16 @@ models:
     original_provider: openai
   gpt-4o-mini-2024-07-18:
     id: openai/gpt-4o-mini-2024-07-18
+    input: 0.15
+    output: 0.6
+    original_provider: openai
+  openai/gpt-4o-mini:
+    id: openai/gpt-4o-mini
+    input: 0.15
+    output: 0.6
+    original_provider: openai
+  gpt-4o-mini:
+    id: openai/gpt-4o-mini
     input: 0.15
     output: 0.6
     original_provider: openai
@@ -3172,6 +3152,16 @@ models:
     input: 1
     output: 1
     original_provider: microsoft
+  openai/gpt-4o-2024-05-13:
+    id: openai/gpt-4o-2024-05-13
+    input: 5
+    output: 15
+    original_provider: openai
+  gpt-4o-2024-05-13:
+    id: openai/gpt-4o-2024-05-13
+    input: 5
+    output: 15
+    original_provider: openai
   openai/gpt-4o:
     id: openai/gpt-4o
     input: 2.5
@@ -3202,26 +3192,6 @@ models:
     input: 0.2
     output: 0.2
     original_provider: meta-llama
-  openai/gpt-4o-2024-05-13:
-    id: openai/gpt-4o-2024-05-13
-    input: 5
-    output: 15
-    original_provider: openai
-  gpt-4o-2024-05-13:
-    id: openai/gpt-4o-2024-05-13
-    input: 5
-    output: 15
-    original_provider: openai
-  meta-llama/llama-3-8b-instruct:
-    id: meta-llama/llama-3-8b-instruct
-    input: 0.03
-    output: 0.06
-    original_provider: meta-llama
-  llama-3-8b-instruct:
-    id: meta-llama/llama-3-8b-instruct
-    input: 0.03
-    output: 0.06
-    original_provider: meta-llama
   meta-llama/llama-3-70b-instruct:
     id: meta-llama/llama-3-70b-instruct
     input: 0.3
@@ -3231,6 +3201,16 @@ models:
     id: meta-llama/llama-3-70b-instruct
     input: 0.3
     output: 0.4
+    original_provider: meta-llama
+  meta-llama/llama-3-8b-instruct:
+    id: meta-llama/llama-3-8b-instruct
+    input: 0.03
+    output: 0.06
+    original_provider: meta-llama
+  llama-3-8b-instruct:
+    id: meta-llama/llama-3-8b-instruct
+    input: 0.03
+    output: 0.06
     original_provider: meta-llama
   mistralai/mixtral-8x22b-instruct:
     id: mistralai/mixtral-8x22b-instruct
@@ -3312,16 +3292,6 @@ models:
     input: 10
     output: 30
     original_provider: openai
-  mistralai/mistral-small:
-    id: mistralai/mistral-small
-    input: 0.2
-    output: 0.6
-    original_provider: mistralai
-  mistral-small:
-    id: mistralai/mistral-small
-    input: 0.2
-    output: 0.6
-    original_provider: mistralai
   mistralai/mistral-tiny:
     id: mistralai/mistral-tiny
     input: 0.25
@@ -3331,6 +3301,16 @@ models:
     id: mistralai/mistral-tiny
     input: 0.25
     output: 0.25
+    original_provider: mistralai
+  mistralai/mistral-small:
+    id: mistralai/mistral-small
+    input: 0.2
+    output: 0.6
+    original_provider: mistralai
+  mistral-small:
+    id: mistralai/mistral-small
+    input: 0.2
+    output: 0.6
     original_provider: mistralai
   mistralai/mistral-7b-instruct-v0.2:
     id: mistralai/mistral-7b-instruct-v0.2
@@ -3452,16 +3432,6 @@ models:
     input: 0.06
     output: 0.06
     original_provider: gryphe
-  openai/gpt-3.5-turbo:
-    id: openai/gpt-3.5-turbo
-    input: 0.5
-    output: 1.5
-    original_provider: openai
-  gpt-3.5-turbo:
-    id: openai/gpt-3.5-turbo
-    input: 0.5
-    output: 1.5
-    original_provider: openai
   openai/gpt-4:
     id: openai/gpt-4
     input: 30
@@ -3481,6 +3451,16 @@ models:
     id: openai/gpt-4-0314
     input: 30
     output: 60
+    original_provider: openai
+  openai/gpt-3.5-turbo:
+    id: openai/gpt-3.5-turbo
+    input: 0.5
+    output: 1.5
+    original_provider: openai
+  gpt-3.5-turbo:
+    id: openai/gpt-3.5-turbo
+    input: 0.5
+    output: 1.5
     original_provider: openai
 metadata:
   last_updated: '2025-10-27'

@@ -32,7 +32,7 @@ export function recordUsage(params: { totalTokens: number; model: string; provid
     event: 'llm.usage',
     schema: 'v1',
     timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || 'dev',
+    version: require('../config/app-config.js').getConfig().server.version,
     tokens_total: totalTokens,
     model,
     provider,

@@ -3,6 +3,7 @@ import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
 import fetch, { Response } from 'node-fetch';
 import { APIError } from '../../infrastructure/utils/error-handler.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
+import { getConfig } from '../../infrastructure/config/app-config.js';
 
 interface OpenAIRequest {
   model: string;
@@ -33,7 +34,9 @@ interface OpenAIResponse {
 export class OpenAIProvider extends BaseProvider {
   readonly name = 'openai';
   protected readonly baseUrl = 'https://api.openai.com/v1';
-  protected readonly apiKey = process.env.OPENAI_API_KEY;
+  protected get apiKey(): string | undefined {
+    return getConfig().providers.openai.apiKey;
+  }
 
   private isResponsesAPI(request: CanonicalRequest): boolean {
     return Boolean((request as any).metadata?.useResponsesAPI);

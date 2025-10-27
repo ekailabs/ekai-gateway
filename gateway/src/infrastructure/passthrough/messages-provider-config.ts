@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { logger } from '../utils/logger.js';
+import { getConfig } from '../config/app-config.js';
 import {
   MessagesPassthroughConfig,
   MessagesAuthConfig,
@@ -122,10 +123,9 @@ export function loadMessagesProviderDefinitions(): MessagesProviderDefinition[] 
     }));
 
     // Apply x402 transformation for ALL messages providers if PRIVATE_KEY is present
-    const privateKey = process.env.PRIVATE_KEY;
-    if (privateKey) {
-      const x402BaseUrl = process.env.X402_BASE_URL || 'https://x402.ekailabs.xyz';
-      const x402Url = `${x402BaseUrl}/v1/messages`;
+    const config = getConfig();
+    if (config.x402.enabled) {
+      const x402Url = config.x402.messagesUrl;
       
       definitions.forEach(definition => {
         logger.info('Configuring messages provider to use x402 payment gateway', {

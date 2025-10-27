@@ -34,16 +34,20 @@ import { requestContext } from './infrastructure/middleware/request-context.js';
 import { requestLogging } from './infrastructure/middleware/request-logging.js';
 import { ProviderService } from './domain/services/provider-service.js';
 import { pricingLoader } from './infrastructure/utils/pricing-loader.js';
+import { getConfig } from './infrastructure/config/app-config.js';
 
 async function bootstrap(): Promise<void> {
-  if (process.env.PRIVATE_KEY) {
-    const x402BaseUrl = process.env.X402_BASE_URL || 'https://x402.ekailabs.xyz';
-    logger.info('PRIVATE_KEY detected; x402 payment gateway enabled', {
-      x402BaseUrl,
+  // Initialize and validate config
+  const config = getConfig();
+
+  if (config.x402.enabled) {
+    logger.info('x402 payment gateway enabled', {
+      x402BaseUrl: config.x402.baseUrl,
+      mode: config.getMode(),
       chatCompletions: 'OpenRouter only',
-      chatCompletionsUrl: `${x402BaseUrl}/v1/chat/completions`,
+      chatCompletionsUrl: config.x402.chatCompletionsUrl,
       messages: 'All providers',
-      messagesUrl: `${x402BaseUrl}/v1/messages`,
+      messagesUrl: config.x402.messagesUrl,
       module: 'bootstrap'
     });
   }
@@ -52,7 +56,7 @@ async function bootstrap(): Promise<void> {
   ensureProvidersConfigured();
 
   const app = express();
-  const PORT = process.env.PORT || 3001;
+  const PORT = config.server.port;
   // Middleware
   app.set('trust proxy', true);
   app.use(cors());
@@ -82,48 +86,38 @@ async function bootstrap(): Promise<void> {
 
   // Start server
   app.listen(PORT, () => {
-    logger.info(`Ekai Gateway server started`, {
+    logger.info('Ekai Gateway server started', {
       port: PORT,
-      environment: process.env.NODE_ENV || 'development',
+      environment: config.server.environment,
+      mode: config.getMode(),
       module: 'server'
     });
   });
 }
 
 function ensureProvidersConfigured(): void {
+  const config = getConfig();
   const providerService = new ProviderService();
   const availableProviders = providerService.getAvailableProviders();
-  const hasPrivateKey = !!process.env.PRIVATE_KEY;
 
-  // Two modes of operation:
-  // 1. BYOK (Bring Your Own Key) - requires at least one API key
-  // 2. x402 Payment - requires PRIVATE_KEY (no API keys needed)
-  if (availableProviders.length === 0 && !hasPrivateKey) {
-    logger.error(
-      'No provider configuration found. You must configure either:\n' +
-      '  1. API Keys (BYOK mode): Set at least one of ANTHROPIC_API_KEY, OPENAI_API_KEY, XAI_API_KEY, or OPENROUTER_API_KEY\n' +
-      '  2. x402 Payment mode: Set PRIVATE_KEY for cryptocurrency payments\n' +
-      'See .env.example for details.',
-      { module: 'bootstrap' }
-    );
-    process.exit(1);
-  }
-
-  // Log the mode we're running in
-  if (availableProviders.length === 0 && hasPrivateKey) {
+  // Config validation already ensures we have at least one auth method
+  // Just log the mode we're running in
+  const mode = config.getMode();
+  
+  if (mode === 'x402-only') {
     logger.info('Running in x402 payment-only mode (no API keys configured)', {
-      mode: 'x402-only',
+      mode,
       module: 'bootstrap'
     });
-  } else if (availableProviders.length > 0 && hasPrivateKey) {
+  } else if (mode === 'hybrid') {
     logger.info('Running in hybrid mode (API keys + x402 payments)', {
-      mode: 'hybrid',
+      mode,
       availableProviders: availableProviders.length,
       module: 'bootstrap'
     });
   } else {
     logger.info('Running in BYOK mode (API keys only, no x402)', {
-      mode: 'byok',
+      mode,
       availableProviders: availableProviders.length,
       module: 'bootstrap'
     });

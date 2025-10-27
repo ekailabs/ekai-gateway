@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { logger } from '../utils/logger.js';
+import { getConfig } from '../config/app-config.js';
 import {
   ChatCompletionsPassthroughConfig,
   ChatCompletionsAuthConfig,
@@ -108,12 +109,11 @@ export function loadChatCompletionsProviderDefinitions(): ChatCompletionsProvide
       config: toPassthroughConfig(entry.chat_completions, entry.provider),
     }));
 
-    const privateKey = process.env.PRIVATE_KEY;
-    if (privateKey) {
+    const config = getConfig();
+    if (config.x402.enabled) {
       const openRouterDefinition = definitions.find(def => def.provider === 'openrouter');
       if (openRouterDefinition) {
-        const x402BaseUrl = process.env.X402_BASE_URL || 'https://x402.ekailabs.xyz';
-        const x402Url = `${x402BaseUrl}/v1/chat/completions`;
+        const x402Url = config.x402.chatCompletionsUrl;
         
         logger.info('Configuring OpenRouter passthrough to use x402 URL', {
           passthroughUrl: x402Url,

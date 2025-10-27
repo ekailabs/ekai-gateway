@@ -52,7 +52,9 @@ export class MessagesPassthrough {
 
   private async initializeX402Support(): Promise<void> {
     // Check if x402 is enabled for this provider (set by config loader)
-    const shouldUseX402 = this.config.x402Enabled && process.env.PRIVATE_KEY;
+    const { getConfig } = await import('../config/app-config.js');
+    const config = getConfig();
+    const shouldUseX402 = this.config.x402Enabled && config.x402.enabled;
 
     if (!shouldUseX402) {
       this.x402Initialized = true;

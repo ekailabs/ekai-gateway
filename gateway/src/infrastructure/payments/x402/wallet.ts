@@ -1,6 +1,7 @@
 import { privateKeyToAccount } from 'viem/accounts';
 import type { PrivateKeyAccount } from 'viem/accounts';
 import { logger } from '../../utils/logger.js';
+import { getConfig } from '../../config/app-config.js';
 
 let cachedAccount: PrivateKeyAccount | null = null;
 let initialized = false;
@@ -18,7 +19,8 @@ export function getX402Account(): PrivateKeyAccount | null {
 
   initialized = true;
 
-  const privateKey = process.env.PRIVATE_KEY;
+  const config = getConfig();
+  const privateKey = config.x402.privateKey;
   if (!privateKey) {
     logger.warn('PRIVATE_KEY not set, x402 payments disabled', {
       module: 'x402-wallet',

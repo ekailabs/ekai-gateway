@@ -2,6 +2,7 @@ import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
 import { Response as NodeFetchResponse } from 'node-fetch';
 import { AIProvider } from '../types/provider.js';
 import { APIError } from '../../infrastructure/utils/error-handler.js';
+import { getConfig } from '../../infrastructure/config/app-config.js';
 
 /**
  * Z AI provider placeholder used to participate in provider selection.
@@ -11,7 +12,12 @@ export class ZAIProvider implements AIProvider {
   readonly name = 'zai';
 
   isConfigured(): boolean {
-    return Boolean(process.env.ZAI_API_KEY);
+    const config = getConfig();
+    // ZAI is available via x402 for /v1/messages
+    if (config.x402.enabled) {
+      return true;
+    }
+    return Boolean(config.providers.zai.apiKey);
   }
 
   async chatCompletion(_request: CanonicalRequest): Promise<CanonicalResponse> {

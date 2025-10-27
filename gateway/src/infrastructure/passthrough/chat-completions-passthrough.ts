@@ -71,9 +71,11 @@ export class ChatCompletionsPassthrough {
 
   private async initializeX402Support(): Promise<void> {
     // Only initialize for OpenRouter with x402 URL and PRIVATE_KEY
+    const { getConfig } = await import('../config/app-config.js');
+    const config = getConfig();
     const shouldUseX402 = 
       this.config.provider === 'openrouter' && 
-      process.env.PRIVATE_KEY && 
+      config.x402.enabled && 
       this.config.baseUrl.includes('x402');
 
     if (!shouldUseX402) {

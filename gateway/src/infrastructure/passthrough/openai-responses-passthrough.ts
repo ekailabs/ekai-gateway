@@ -7,7 +7,8 @@ export class OpenAIResponsesPassthrough {
   private readonly baseUrl = 'https://api.openai.com/v1/responses';
 
   private get apiKey(): string {
-    const key = process.env.OPENAI_API_KEY;
+    const { getConfig } = require('../config/app-config.js');
+    const key = getConfig().providers.openai.apiKey;
     if (!key) throw new APIError(401, 'OpenAI API key not configured');
     return key;
   }
