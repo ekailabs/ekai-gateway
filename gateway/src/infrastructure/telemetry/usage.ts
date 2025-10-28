@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger.js';
+import { getConfig } from '../config/app-config.js';
 
 /**
  * Interface for usage telemetry events
@@ -32,7 +33,7 @@ export function recordUsage(params: { totalTokens: number; model: string; provid
     event: 'llm.usage',
     schema: 'v1',
     timestamp: new Date().toISOString(),
-    version: require('../config/app-config.js').getConfig().server.version,
+    version: getConfig().server.version,
     tokens_total: totalTokens,
     model,
     provider,

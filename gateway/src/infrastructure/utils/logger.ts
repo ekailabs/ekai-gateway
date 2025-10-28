@@ -62,15 +62,10 @@ class PinoLogger implements Logger {
       formatters: { level: (label) => ({ level: label }) },
       redact: ['password','token','key','secret','authorization','headers.authorization'],
       serializers: { err: pino.stdSerializers.err },
-      base: (() => {
-        try {
-          const { getConfig } = require('../config/app-config.js');
-          return { service: 'ekai-gateway', version: getConfig().server.version };
-        } catch {
-          // Config not yet loaded during bootstrap
-          return { service: 'ekai-gateway', version: process.env.npm_package_version || 'dev' };
-        }
-      })()
+      base: { 
+        service: 'ekai-gateway', 
+        version: process.env.npm_package_version || 'dev' 
+      }
     };
 
     // start with stdout+file immediately

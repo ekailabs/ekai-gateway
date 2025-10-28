@@ -6,8 +6,8 @@
   "workspaces": ["gateway", "ui/dashboard"],
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace=gateway\" \"npm run dev --workspace=ui/dashboard\"",
-    "build": "npm run build --workspaces --if-present",
-    "start": "concurrently \"npm run start:gateway\" \"npm run start:ui\"",
+    "build": "npm install --workspaces && npm run build --workspaces --if-present",
+    "start": "npm install && concurrently \"npm run start:gateway\" \"npm run start:ui\"",
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
     "test": "npm run test --workspace=gateway",
     "dev:gateway": "npm run dev --workspace=gateway",
