@@ -54,6 +54,7 @@ Important: The dashboard is initially empty. After setup, send a query using you
 **Access Points:**
 - Gateway API: `http://localhost:3001`
 - Dashboard UI: `http://localhost:3000`
+- Detailed setup steps live in `docs/getting-started.md`; check `docs/` for additional guides.
 
 ## Populate the Dashboard
 
