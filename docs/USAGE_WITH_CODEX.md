@@ -1,4 +1,4 @@
-# Using ekai-gateway with Codex
+# Using Gateway with Codex
 
 This guide walks through configuring Codex to use ekai-gateway for unified multi‑provider access and detailed usage analytics.
 
