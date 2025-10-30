@@ -1,11 +1,11 @@
-# 3. Getting Started
+# Getting Started
 
 This guide shows how to install, configure, and use the Ekai Gateway locally.  
 You’ll learn how to start the Gateway and Dashboard, send your first requests, and connect clients like Codex or Claude Code.
 
 ---
 
-## 3.1 Prerequisites
+## Prerequisites
 
 - Node.js v18 or newer  
 - npm or Docker  
@@ -13,7 +13,7 @@ You’ll learn how to start the Gateway and Dashboard, send your first requests,
 
 ---
 
-## 3.2 Local Setup (npm)
+## Local Setup (npm)
 
 1. Clone the repository  
    ```bash
@@ -52,7 +52,7 @@ You can now send requests through the Gateway.
 
 ---
 
-## 3.3 Docker Setup
+## Docker Setup
 
 ```bash
 cp .env.example .env
@@ -65,7 +65,7 @@ Visit [http://localhost:3000](http://localhost:3000) to check that the dashboard
 
 ---
 
-## 3.4 Environment Variables
+## Environment Variables
 
 | Variable | Description |
 |-----------|-------------|
@@ -89,7 +89,7 @@ When you start the services:
 
 ---
 
-## 3.6 Using the Gateway with Clients
+## Using the Gateway with Clients
 
 ### Claude Code
 Set the base URL:
@@ -107,7 +107,7 @@ Start Codex or your custom client. The Gateway will forward requests to the corr
 
 ---
 
-## 3.7 Next Steps
+## Next Steps
 
 - Explore the Dashboard at [http://localhost:3000](http://localhost:3000)  
 - Try switching between models (`claude-3-opus`, `gpt-4o`, `grok-beta`)  
