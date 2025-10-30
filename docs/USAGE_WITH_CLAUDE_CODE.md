@@ -1,4 +1,4 @@
-# Using ekai-gateway with Claude Code
+# Using Gateway with Claude Code
 
 This guide shows how to run Claude Code through ekai-gateway for multi‑provider routing, unified configuration, and detailed usage analytics.
 
