@@ -66,10 +66,3 @@ if (account) {
 }
 ```
 
-### Future Extensions
-
-This modular structure allows easy addition of other payment protocols:
-- Lightning Network
-- Other token standards
-- Different blockchain networks
-
