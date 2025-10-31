@@ -3,6 +3,7 @@
 The Ekai Gateway is a self-hosted multi-provider API layer with built-in usage analytics.  
 It exposes OpenAI- and Anthropic-compatible endpoints, routes requests to multiple providers, and records usage and cost in a local SQLite database.
 
+![Ekai Gateway Architecture](images/architecture.png)
 ---
 
 ## System Components
