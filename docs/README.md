@@ -1,8 +1,5 @@
-# Ekai Documentation
+# Ekai Documentation Index
 
-This repository contains documentation for Ekai — the context layer for agentic AI.
-
-Docs index:
 - [Introduction](intro.md)
 - [Getting Started](getting-started.md)
 - [Architecture Overview](architecture-overview.md)
