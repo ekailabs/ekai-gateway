@@ -62,9 +62,3 @@ Notes
 - 401/403 errors: verify the relevant API key is present in `.env` and the provider allows the chosen model.
 - Connection refused: ensure `npm run dev` is active and `ANTHROPIC_BASE_URL` matches the gateway port.
 - Model not found: confirm the model name is supported by its provider and spelled correctly.
-
-## Common Tasks
-- Switch models quickly: change `ANTHROPIC_MODEL` and restart Claude Code.
-- Use only one provider: set just that provider’s API key; others are optional.
-- Audit costs: use the dashboard to compare provider/model costs over time.
-

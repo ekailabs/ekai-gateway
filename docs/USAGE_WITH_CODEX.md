@@ -76,9 +76,3 @@ codex --model "claude-sonnet-4-20250514"
 - 401/403 errors: ensure the corresponding provider API key is set in `.env` and has access to the selected model.
 - 404/Model not found: confirm the model name is supported and correctly spelled.
 - Network errors: verify `npm run dev` is running and `OPENAI_BASE_URL`/`base_url` points to the correct port.
-
-## Tips
-- Keep only the provider keys you need; others are optional.
-- Standardize models across a team by distributing a shared `config.toml`.
-- Use the dashboard to identify the most cost‑effective models for your workload.
-
