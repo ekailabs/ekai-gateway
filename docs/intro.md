@@ -2,7 +2,7 @@
 
 ## What is Ekai?
 
-Ekai is the **context layer for AI** — a unified gateway and memory system that makes your LLM context portable across models, providers, and interfaces.
+Ekai is the **universal context layer for agentic AI** — a unified gateway and memory system that makes your LLM context portable across models, providers, and interfaces.
 
 Today, every model and interface operates in isolation. Switching from Claude Code to Codex, or between different chat and coding environments, means losing continuity: prompts, memory, and workflow context. Ekai solves this by providing a single gateway that connects to multiple providers while keeping your usage, data, and context under your control.
 
