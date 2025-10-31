@@ -43,8 +43,8 @@ codex
 
 Use `--model` to pick a specific model routed by the gateway:
 ```bash
-codex --model "gpt-4o"             # OpenAI
-codex --model "grok-code-fast-1"    # xAI
+codex --model "gpt-4o"                    # OpenAI
+codex --model "grok-code-fast-1"          # xAI
 codex --model "claude-sonnet-4-20250514"  # Anthropic
 ```
 
