@@ -1,7 +1,8 @@
 # Getting Started
 
-This guide shows how to install, configure, and use the Ekai Gateway locally.  
-You’ll learn how to start the Gateway and Dashboard, send your first requests, and connect clients like Codex or Claude Code.
+This is a quick-start for running Ekai Gateway locally. For detailed client setup, see:
+- [Using with Claude Code](USAGE_WITH_CLAUDE_CODE.md)
+- [Using with Codex](USAGE_WITH_CODEX.md)
 
 ---
 
@@ -45,8 +46,8 @@ You’ll learn how to start the Gateway and Dashboard, send your first requests,
    ```
 
 After startup:
-- Gateway API → [http://localhost:3001](http://localhost:3001)  
-- Dashboard → [http://localhost:3000](http://localhost:3000)
+- Gateway API → `http://localhost:3001`
+- Dashboard → `http://localhost:3000`
 
 You can now send requests through the Gateway.
 
@@ -60,8 +61,7 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-This runs both the Gateway API (3001) and Dashboard (3000).  
-Visit [http://localhost:3000](http://localhost:3000) to check that the dashboard is active.
+This runs both the Gateway API (3001) and Dashboard (3000). Visit `http://localhost:3000` to confirm the dashboard is active.
 
 ---
 
@@ -79,7 +79,7 @@ Visit [http://localhost:3000](http://localhost:3000) to check that the dashboard
 
 ---
 
-## 3.5 Running the Gateway and Dashboard
+## Running the Gateway and Dashboard
 
 When you start the services:
 
@@ -89,26 +89,22 @@ When you start the services:
 
 ---
 
-## Using the Gateway with Clients
+## Using with Clients (Summary)
 
-### Claude Code
-Set the base URL:
-```bash
-export ANTHROPIC_BASE_URL=http://localhost:3001
-```
-Start Claude Code. All requests will route through the Gateway and appear in the Dashboard.
+- Claude Code
+  - Set `ANTHROPIC_BASE_URL=http://localhost:3001`
+  - Pick a model (e.g., `claude-sonnet-4-20250514`, `grok-code-fast-1`)
+  - Full guide → [USAGE_WITH_CLAUDE_CODE.md](USAGE_WITH_CLAUDE_CODE.md)
 
-### Codex or OpenAI SDKs
-Set:
-```bash
-export OPENAI_BASE_URL=http://localhost:3001/v1
-```
-Start Codex or your custom client. The Gateway will forward requests to the correct provider and record usage automatically.
+- Codex
+  - Set `OPENAI_BASE_URL=http://localhost:3001/v1`
+  - Optional: configure `$CODEX_HOME/config.toml` with `model_provider = "ekai"`
+  - Full guide → [USAGE_WITH_CODEX.md](USAGE_WITH_CODEX.md)
 
 ---
 
 ## Next Steps
 
-- Explore the Dashboard at [http://localhost:3000](http://localhost:3000)  
-- Try switching between models (`claude-3-opus`, `gpt-4o`, `grok-beta`)  
-- Continue to **Usage and Integration** to learn more about available endpoints and request formats.
+- Explore the Dashboard at `http://localhost:3000`
+- Try switching models (`claude-sonnet-4-20250514`, `gpt-4o`, `grok-code-fast-1`)
+- Read the detailed guides for Claude Code and Codex
