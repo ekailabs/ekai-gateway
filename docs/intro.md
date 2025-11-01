@@ -1,4 +1,12 @@
-# Introduction
+# Ekai Documentation
+
+> Ekai is the universal context layer for agentic AI. Below you’ll find quick links to get started and learn more.
+
+- [Getting Started](getting-started.md)
+- [Architecture Overview](architecture-overview.md)
+- [Usage with Claude Code](USAGE_WITH_CLAUDE_CODE.md)
+- [Usage with Codex](USAGE_WITH_CODEX.md)
+- [Providers and Models](providers-and-models.md)
 
 ## What is Ekai?
 

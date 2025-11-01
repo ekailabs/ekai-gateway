@@ -1,7 +1,6 @@
 # Table of contents
 
-* [Ekai Documentation](README.md)
-* [Introduction](intro.md)
+* [Ekai documentation](intro.md)
 * [Architecture Overview](architecture-overview.md)
 * [Getting Started](getting-started.md)
 * [Usage with Claude Code](USAGE_WITH_CLAUDE_CODE.md)
