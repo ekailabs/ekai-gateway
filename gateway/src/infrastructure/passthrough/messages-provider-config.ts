@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { logger } from '../utils/logger.js';
+import { getConfig } from '../config/app-config.js';
 import {
   MessagesPassthroughConfig,
   MessagesAuthConfig,
@@ -115,11 +116,35 @@ export function loadMessagesProviderDefinitions(): MessagesProviderDefinition[] 
       return [];
     }
 
-    return parsed.providers.map(entry => ({
+    const definitions = parsed.providers.map(entry => ({
       provider: entry.provider,
       models: entry.models || [],
       config: toPassthroughConfig(entry.messages, entry.provider),
     }));
+
+    // Apply x402 transformation for ALL messages providers if PRIVATE_KEY is present
+    const config = getConfig();
+    if (config.x402.enabled) {
+      const x402Url = config.x402.messagesUrl;
+      
+      definitions.forEach(definition => {
+        logger.info('Configuring messages provider to use x402 payment gateway', {
+          provider: definition.provider,
+          originalUrl: definition.config.baseUrl,
+          x402Url: x402Url,
+          module: 'messages-provider-config',
+        });
+        
+        definition.config = {
+          ...definition.config,
+          baseUrl: x402Url,
+          auth: undefined, // x402 uses payment instead of API keys
+          x402Enabled: true,
+        };
+      });
+    }
+
+    return definitions;
   } catch (error) {
     logger.error('Failed to load messages providers catalog', error, {
       path: CATALOG_PATH,

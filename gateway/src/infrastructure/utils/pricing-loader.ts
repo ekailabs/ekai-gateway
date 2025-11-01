@@ -6,6 +6,7 @@ import { dirname } from 'path';
 import fetch, { Response } from 'node-fetch';
 import { ModelUtils } from './model-utils.js';
 import { logger } from './logger.js';
+import { getConfig } from '../config/app-config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -282,7 +283,8 @@ export class PricingLoader {
   }
 
   async refreshOpenRouterPricing(): Promise<void> {
-    if (process.env.SKIP_OPENROUTER_PRICING_REFRESH === 'true') {
+    const config = getConfig();
+    if (config.openrouter.skipPricingRefresh) {
       return;
     }
 
@@ -352,8 +354,9 @@ export class PricingLoader {
   }
 
   private async fetchOpenRouterModels(): Promise<any> {
-    const timeoutMs = Number(process.env.OPENROUTER_PRICING_TIMEOUT_MS ?? '4000');
-    const retries = Number(process.env.OPENROUTER_PRICING_RETRIES ?? '2');
+    const config = getConfig();
+    const timeoutMs = config.openrouter.pricingTimeoutMs;
+    const retries = config.openrouter.pricingRetries;
 
     let lastError: unknown;
     for (let attempt = 0; attempt <= retries; attempt++) {
@@ -393,7 +396,8 @@ export class PricingLoader {
       'User-Agent': 'Ekai-Gateway-Pricing-Refresh/1.0'
     };
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const config = getConfig();
+    const apiKey = config.providers.openrouter.apiKey;
     if (apiKey) {
       headers['Authorization'] = `Bearer ${apiKey}`;
     }

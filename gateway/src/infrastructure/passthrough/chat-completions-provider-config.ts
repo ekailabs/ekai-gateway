@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { logger } from '../utils/logger.js';
+import { getConfig } from '../config/app-config.js';
 import {
   ChatCompletionsPassthroughConfig,
   ChatCompletionsAuthConfig,
@@ -102,11 +103,32 @@ export function loadChatCompletionsProviderDefinitions(): ChatCompletionsProvide
       return [];
     }
 
-    return parsed.providers.map(entry => ({
+    const definitions = parsed.providers.map(entry => ({
       provider: entry.provider,
       models: entry.models || [],
       config: toPassthroughConfig(entry.chat_completions, entry.provider),
     }));
+
+    const config = getConfig();
+    if (config.x402.enabled) {
+      const openRouterDefinition = definitions.find(def => def.provider === 'openrouter');
+      if (openRouterDefinition) {
+        const x402Url = config.x402.chatCompletionsUrl;
+        
+        logger.info('Configuring OpenRouter passthrough to use x402 URL', {
+          passthroughUrl: x402Url,
+          module: 'chat-completions-provider-config',
+        });
+        
+        openRouterDefinition.config = {
+          ...openRouterDefinition.config,
+          baseUrl: x402Url,
+          auth: undefined,
+        };
+      }
+    }
+
+    return definitions;
   } catch (error) {
     logger.error('Failed to load chat completions providers catalog', error, {
       path: CATALOG_PATH,

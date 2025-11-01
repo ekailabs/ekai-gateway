@@ -2,6 +2,7 @@ import { BaseProvider } from './base-provider.js';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
 import { pricingLoader } from '../../infrastructure/utils/pricing-loader.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
+import { getConfig } from '../../infrastructure/config/app-config.js';
 
 interface OpenRouterRequest {
   model: string;
@@ -33,7 +34,17 @@ interface OpenRouterResponse {
 export class OpenRouterProvider extends BaseProvider {
   readonly name = 'openrouter';
   protected readonly baseUrl = 'https://openrouter.ai/api/v1';
-  protected readonly apiKey = process.env.OPENROUTER_API_KEY;
+  protected get apiKey(): string | undefined {
+    return getConfig().providers.openrouter.apiKey;
+  }
+
+  isConfigured(): boolean {
+    const config = getConfig();
+    if (config.x402.enabled) {
+      return true;
+    }
+    return super.isConfigured();
+  }
 
   protected getHeaders(): Record<string, string> {
     return {

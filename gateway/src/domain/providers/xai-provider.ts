@@ -1,5 +1,6 @@
 import { BaseProvider } from './base-provider.js';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
+import { getConfig } from '../../infrastructure/config/app-config.js';
 
 interface GrokRequest {
   model: string;
@@ -30,7 +31,18 @@ interface GrokResponse {
 export class XAIProvider extends BaseProvider {
   readonly name = 'xAI';
   protected readonly baseUrl = 'https://api.x.ai/v1';
-  protected readonly apiKey = process.env.XAI_API_KEY;
+  protected get apiKey(): string | undefined {
+    return getConfig().providers.xai.apiKey;
+  }
+
+  isConfigured(): boolean {
+    const config = getConfig();
+    // xAI is available via x402 for /v1/messages
+    if (config.x402.enabled) {
+      return true;
+    }
+    return super.isConfigured();
+  }
 
   protected transformRequest(request: CanonicalRequest): GrokRequest {
     const messages = request.messages.map(msg => ({

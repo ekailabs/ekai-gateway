@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
-import { APIError } from '../../infrastructure/utils/error-handler.js';
+import { ProviderError, AuthenticationError } from '../../shared/errors/index.js';
 import { usageTracker } from '../../infrastructure/utils/usage-tracker.js';
 import { AIProvider, ProviderRequest, ProviderResponse, HTTP_STATUS } from '../types/provider.js';
 import { logger } from '../../infrastructure/utils/logger.js';
@@ -34,7 +34,7 @@ export abstract class BaseProvider implements AIProvider {
 
   protected async makeAPIRequest<T>(endpoint: string, options: Record<string, unknown> = {}): Promise<T> {
     if (!this.apiKey) {
-      throw new APIError(HTTP_STATUS.UNAUTHORIZED, `${this.name} API key not configured`);
+      throw new AuthenticationError(`${this.name} API key not configured`, { provider: this.name });
     }
 
     const url = `${this.baseUrl}${endpoint}`;
@@ -50,9 +50,11 @@ export abstract class BaseProvider implements AIProvider {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new APIError(
-        response.status, 
-        `${this.name} API error: ${response.status} - ${errorText}`
+      throw new ProviderError(
+        this.name,
+        errorText || `HTTP ${response.status}`,
+        response.status,
+        { endpoint, statusText: response.statusText }
       );
     }
 
@@ -92,7 +94,7 @@ export abstract class BaseProvider implements AIProvider {
     const streamingRequest = { ...transformedRequest, stream: true };
     
     if (!this.apiKey) {
-      throw new APIError(HTTP_STATUS.UNAUTHORIZED, `${this.name} API key not configured`);
+      throw new AuthenticationError(`${this.name} API key not configured`, { provider: this.name });
     }
 
     const url = `${this.baseUrl}${this.getChatCompletionEndpoint()}`;
@@ -110,9 +112,11 @@ export abstract class BaseProvider implements AIProvider {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new APIError(
-        response.status, 
-        `${this.name} streaming API error: ${response.status} - ${errorText}`
+      throw new ProviderError(
+        this.name,
+        errorText || `HTTP ${response.status}`,
+        response.status,
+        { endpoint: this.getChatCompletionEndpoint(), stream: true, statusText: response.statusText }
       );
     }
 

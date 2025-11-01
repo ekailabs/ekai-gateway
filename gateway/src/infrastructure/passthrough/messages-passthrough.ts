@@ -1,6 +1,6 @@
 import { Response as ExpressResponse } from 'express';
 import { logger } from '../utils/logger.js';
-import { APIError } from '../utils/error-handler.js';
+import { AuthenticationError, PaymentError, ProviderError } from '../../shared/errors/index.js';
 import { CONTENT_TYPES } from '../../domain/types/provider.js';
 import { ModelUtils } from '../utils/model-utils.js';
 
@@ -24,12 +24,13 @@ export interface MessagesModelOptions {
 export interface MessagesPassthroughConfig {
   provider: string;
   baseUrl: string;
-  auth: MessagesAuthConfig;
+  auth?: MessagesAuthConfig;
   staticHeaders?: Record<string, string>;
   supportedClientFormats: string[];
   modelOptions?: MessagesModelOptions;
   usage?: MessagesUsageConfig;
   forceStreamOption?: boolean;
+  x402Enabled?: boolean;
 }
 
 interface StreamUsageSnapshot {
@@ -41,25 +42,77 @@ interface StreamUsageSnapshot {
 export class MessagesPassthrough {
   private initialUsage: StreamUsageSnapshot | null = null;
   private streamBuffer = '';
+  private x402FetchFunction: typeof fetch | null = null;
+  private x402Initialized = false;
 
-  constructor(private readonly config: MessagesPassthroughConfig) {}
+  constructor(private readonly config: MessagesPassthroughConfig) {
+    // Initialize x402 payment wrapper once if needed
+    this.initializeX402Support();
+  }
+
+  private async initializeX402Support(): Promise<void> {
+    // Check if x402 is enabled for this provider (set by config loader)
+    const { getConfig } = await import('../config/app-config.js');
+    const config = getConfig();
+    const shouldUseX402 = this.config.x402Enabled && config.x402.enabled;
+
+    if (!shouldUseX402) {
+      this.x402Initialized = true;
+      return;
+    }
+
+    try {
+      const { getX402Account, createX402Fetch, logPaymentReady } = await import('../payments/x402/index.js');
+      const account = getX402Account();
+      
+      if (account) {
+        this.x402FetchFunction = createX402Fetch(account);
+        logPaymentReady(account, {
+          provider: this.config.provider,
+          baseUrl: this.config.baseUrl,
+        });
+        logger.info('x402 payment support initialized', {
+          provider: this.config.provider,
+          walletAddress: account.address,
+          module: 'messages-passthrough',
+        });
+      } else {
+        logger.error('x402 wallet initialization failed - getX402Account returned null', {
+          provider: this.config.provider,
+          module: 'messages-passthrough',
+        });
+      }
+    } catch (error) {
+      logger.error('Failed to initialize x402 payments', error, {
+        provider: this.config.provider,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        module: 'messages-passthrough',
+      });
+    } finally {
+      this.x402Initialized = true;
+    }
+  }
 
   private resolveBaseUrl(): string {
     return this.config.baseUrl;
   }
 
-  private get apiKey(): string {
+  private get apiKey(): string | undefined {
+    if (!this.config.auth) return undefined;
     const envVar = this.config.auth.envVar;
     const token = process.env[envVar];
     if (!token) {
-      throw new APIError(401, `${this.config.provider} API key not configured`);
+      throw new AuthenticationError(`${this.config.provider} API key not configured`, { provider: this.config.provider });
     }
     return token;
   }
 
-  private buildAuthHeader(): string {
+  private buildAuthHeader(): string | undefined {
+    if (!this.config.auth) return undefined;
     const { scheme, template } = this.config.auth;
     const token = this.apiKey;
+    
+    if (!token) return undefined;
 
     if (template) {
       return template.replace('{{token}}', token);
@@ -78,7 +131,13 @@ export class MessagesPassthrough {
       ...this.config.staticHeaders,
     };
 
-    headers[this.config.auth.header] = this.buildAuthHeader();
+    // Only add auth header if auth is configured (not x402 mode)
+    if (this.config.auth) {
+      const authHeader = this.buildAuthHeader();
+      if (authHeader) {
+        headers[this.config.auth.header] = authHeader;
+      }
+    }
 
     return headers;
   }
@@ -100,18 +159,87 @@ export class MessagesPassthrough {
   }
 
   private async makeRequest(body: any, stream: boolean): Promise<globalThis.Response> {
-    const response = await fetch(this.resolveBaseUrl(), {
-      method: 'POST',
-      headers: this.buildHeaders(),
-      body: JSON.stringify(this.ensurePayloadBody(body, stream)),
-    });
+    // Wait for x402 initialization to complete
+    while (!this.x402Initialized) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
 
+    // Use x402 fetch if available, otherwise standard fetch
+    const fetchFunction = this.x402FetchFunction || fetch;
+    const isX402Enabled = this.x402FetchFunction !== null;
+
+    let response: globalThis.Response;
+    
+    try {
+      response = await fetchFunction(this.resolveBaseUrl(), {
+        method: 'POST',
+        headers: this.buildHeaders(),
+        body: JSON.stringify(this.ensurePayloadBody(body, stream)),
+      });
+    } catch (error) {
+      // Catch x402 payment errors (insufficient balance, payment failures, etc.)
+      if (isX402Enabled) {
+        logger.error('x402 payment request failed', error, {
+          provider: this.config.provider,
+          baseUrl: this.config.baseUrl,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          module: 'messages-passthrough',
+        });
+      }
+      throw error;
+    }
+
+    // Log payment information if present
+    if (isX402Enabled && response.headers.has('x-payment-response')) {
+      await this.handleX402PaymentResponse(response, body?.model);
+    }
+
+    // Handle failed responses
     if (!response.ok) {
       const errorText = await response.text();
-      throw new APIError(response.status, `${this.config.provider} API error: ${response.status} - ${errorText}`);
+      
+      // Special handling for 402 with x402 enabled - payment failed
+      if (response.status === 402 && isX402Enabled) {
+        logger.error('x402 payment failed', {
+          provider: this.config.provider,
+          error: errorText,
+          module: 'messages-passthrough',
+        });
+        throw new PaymentError(
+          errorText || 'Insufficient balance or payment error',
+          { provider: this.config.provider, statusCode: response.status }
+        );
+      }
+      
+      // Standard error handling
+      throw new ProviderError(
+        this.config.provider,
+        errorText || `HTTP ${response.status}`,
+        response.status,
+        { endpoint: this.resolveBaseUrl() }
+      );
     }
 
     return response;
+  }
+
+  private async handleX402PaymentResponse(response: Response, model?: string): Promise<void> {
+    try {
+      const { extractPaymentInfo, logPaymentInfo } = await import('../payments/x402/index.js');
+      const paymentInfo = extractPaymentInfo(response);
+      
+      if (paymentInfo) {
+        logPaymentInfo(paymentInfo, {
+          provider: this.config.provider,
+          model,
+        });
+      }
+    } catch (error) {
+      logger.debug('Could not process x402 payment response', {
+        error: error instanceof Error ? error.message : String(error),
+        module: 'messages-passthrough',
+      });
+    }
   }
 
   private trackUsage(payloadChunk: string, model: string, clientIp?: string): void {

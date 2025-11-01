@@ -1,14 +1,15 @@
 import { Response as ExpressResponse } from 'express';
 import { logger } from '../utils/logger.js';
-import { APIError } from '../utils/error-handler.js';
+import { AuthenticationError, ProviderError } from '../../shared/errors/index.js';
 import { CONTENT_TYPES } from '../../domain/types/provider.js';
+import { getConfig } from '../config/app-config.js';
 
 export class OpenAIResponsesPassthrough {
   private readonly baseUrl = 'https://api.openai.com/v1/responses';
 
   private get apiKey(): string {
-    const key = process.env.OPENAI_API_KEY;
-    if (!key) throw new APIError(401, 'OpenAI API key not configured');
+    const key = getConfig().providers.openai.apiKey;
+    if (!key) throw new AuthenticationError('OpenAI API key not configured', { provider: 'openai' });
     return key;
   }
 
@@ -34,7 +35,7 @@ export class OpenAIResponsesPassthrough {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new APIError(response.status, `OpenAI API error: ${response.status} - ${errorText}`);
+      throw new ProviderError('openai', errorText || `HTTP ${response.status}`, response.status, { endpoint: this.baseUrl });
     }
 
     return response;

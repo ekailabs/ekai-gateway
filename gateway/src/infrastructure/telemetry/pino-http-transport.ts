@@ -11,7 +11,9 @@ interface TransportOptions {
 }
 
 export default async function transport(opts: TransportOptions = {}): Promise<Writable> {
-  const url = opts.url || process.env.TELEMETRY_ENDPOINT;
+  const { getConfig } = await import('../config/app-config.js');
+  const config = getConfig();
+  const url = opts.url || config.telemetry.endpoint;
   if (!url) {
     // No endpoint configured → return a no-op writable (as per docs pattern)
     return new Writable({ 

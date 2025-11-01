@@ -1,7 +1,8 @@
 import { BaseProvider } from './base-provider.js';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
-import { APIError } from '../../infrastructure/utils/error-handler.js';
+import { AuthenticationError } from '../../shared/errors/index.js';
 import fetch, { Response } from 'node-fetch';
+import { getConfig } from '../../infrastructure/config/app-config.js';
 
 interface AnthropicRequest {
   model: string;
@@ -35,11 +36,22 @@ const REQUEST_TIMEOUT = 30000;
 export class AnthropicProvider extends BaseProvider {
   readonly name = 'anthropic';
   protected readonly baseUrl = 'https://api.anthropic.com/v1';
-  protected readonly apiKey = process.env.ANTHROPIC_API_KEY;
+  protected get apiKey(): string | undefined {
+    return getConfig().providers.anthropic.apiKey;
+  }
+
+  isConfigured(): boolean {
+    const config = getConfig();
+    // Anthropic is available via x402 for /v1/messages
+    if (config.x402.enabled) {
+      return true;
+    }
+    return super.isConfigured();
+  }
 
   private validateApiKey(): void {
     if (!this.apiKey) {
-      throw new APIError(401, `${this.name} API key not configured`);
+      throw new AuthenticationError(`${this.name} API key not configured`, { provider: this.name });
     }
   }
 
@@ -59,7 +71,7 @@ export class AnthropicProvider extends BaseProvider {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new APIError(response.status, `${this.name} API error: ${response.status} - ${errorText}`);
+        throw new AuthenticationError(errorText || `HTTP ${response.status}`, { provider: this.name, statusCode: response.status });
       }
 
       return response;
