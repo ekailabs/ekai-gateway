@@ -78,7 +78,7 @@ export ANTHROPIC_MODEL="grok-code-fast-1"  # or "gpt-4o","claude-sonnet-4-202505
 claude
 ```
 
-📖 **[Complete Claude Code Guide →](./USAGE_WITH_CLAUDE_CODE.md)**
+📖 **[Complete Claude Code Guide →](./docs/USAGE_WITH_CLAUDE_CODE.md)**
 
 ### 💻 **Codex Integration** 
 Use the gateway with Codex for OpenAI-compatible development tools:
@@ -91,7 +91,7 @@ export OPENAI_BASE_URL="http://localhost:3001/v1"
 codex
 ```
 
-📖 **[Complete Codex Guide →](./USAGE_WITH_CODEX.md)**
+📖 **[Complete Codex Guide →](./docs/USAGE_WITH_CODEX.md)**
 ## Beta Testing Notes
 
 🚧 **This is a beta release** - please report any issues or feedback!
