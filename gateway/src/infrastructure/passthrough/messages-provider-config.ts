@@ -122,25 +122,37 @@ export function loadMessagesProviderDefinitions(): MessagesProviderDefinition[] 
       config: toPassthroughConfig(entry.messages, entry.provider),
     }));
 
-    // Apply x402 transformation for ALL messages providers if PRIVATE_KEY is present
+    // Apply x402 as fallback: only for providers whose API key is NOT configured
     const config = getConfig();
     if (config.x402.enabled) {
       const x402Url = config.x402.messagesUrl;
       
       definitions.forEach(definition => {
-        logger.info('Configuring messages provider to use x402 payment gateway', {
-          provider: definition.provider,
-          originalUrl: definition.config.baseUrl,
-          x402Url: x402Url,
-          module: 'messages-provider-config',
-        });
+        const providerApiKey = definition.config.auth?.envVar;
+        const hasProviderKey = providerApiKey && process.env[providerApiKey];
         
-        definition.config = {
-          ...definition.config,
-          baseUrl: x402Url,
-          auth: undefined, // x402 uses payment instead of API keys
-          x402Enabled: true,
-        };
+        if (!hasProviderKey) {
+          logger.info('Provider API key not found, using x402 payment gateway as fallback', {
+            provider: definition.provider,
+            envVar: providerApiKey,
+            originalUrl: definition.config.baseUrl,
+            x402Url: x402Url,
+            module: 'messages-provider-config',
+          });
+          
+          definition.config = {
+            ...definition.config,
+            baseUrl: x402Url,
+            auth: undefined, // x402 uses payment instead of API keys
+            x402Enabled: true,
+          };
+        } else {
+          logger.info('Provider API key found, using normal configuration', {
+            provider: definition.provider,
+            envVar: providerApiKey,
+            module: 'messages-provider-config',
+          });
+        }
       });
     }
 

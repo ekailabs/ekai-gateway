@@ -186,6 +186,26 @@ export class ChatCompletionsPassthrough {
     const fetchFunction = this.x402FetchFunction || fetch;
     const isX402Enabled = this.x402FetchFunction !== null;
 
+    // Log which authentication method is being used for this request
+    if (isX402Enabled) {
+      logger.info('Making request with x402 payment (PRIVATE_KEY)', {
+        provider: this.config.provider,
+        model: body?.model,
+        baseUrl: this.config.baseUrl,
+        stream,
+        module: 'chat-completions-passthrough',
+      });
+    } else {
+      logger.info('Making request with API key authentication', {
+        provider: this.config.provider,
+        model: body?.model,
+        baseUrl: this.config.baseUrl,
+        apiKeyEnvVar: this.config.auth?.envVar,
+        stream,
+        module: 'chat-completions-passthrough',
+      });
+    }
+
     let response: globalThis.Response;
     
     try {
