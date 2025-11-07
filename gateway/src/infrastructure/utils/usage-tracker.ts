@@ -90,8 +90,7 @@ export class UsageTracker {
           outputCost: 0,
           totalCost,
           currency: 'USD', // x402 amounts are in USD
-          provider,
-          model
+          unit: 'request' // x402 charges per request
         };
         
         logger.debug('Using x402 actual payment amount for cost tracking', {
