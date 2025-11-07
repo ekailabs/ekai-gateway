@@ -3403,7 +3403,7 @@ models:
     output: 60
     original_provider: openai
 metadata:
-  last_updated: '2025-11-06'
+  last_updated: '2025-11-07'
   source: https://openrouter.ai/api/v1/models
   notes: Auto-refreshed from OpenRouter models API
   version: auto

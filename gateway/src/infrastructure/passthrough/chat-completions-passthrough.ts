@@ -63,6 +63,7 @@ export class ChatCompletionsPassthrough {
   private eventBuffer = '';
   private x402FetchFunction: typeof fetch | null = null;
   private x402Initialized = false;
+  private lastX402PaymentAmount: string | undefined = undefined;
 
   constructor(private readonly config: ChatCompletionsPassthroughConfig) {
     // Initialize x402 payment wrapper once if needed
@@ -227,9 +228,19 @@ export class ChatCompletionsPassthrough {
       throw error;
     }
 
-    // Log payment information if present
-    if (isX402Enabled && response.headers.has('x-payment-response')) {
-      await this.handleX402PaymentResponse(response, body?.model);
+    // Store fixed x402 cost for chat completions ($0.02 per request)
+    // TODO: Replace with dynamically calculated amounts from x402 payment response
+    if (isX402Enabled) {
+      this.lastX402PaymentAmount = '0.02';
+      
+      const { logPaymentInfo, extractPaymentInfo } = await import('../payments/x402/index.js');
+      const paymentInfo = extractPaymentInfo(response);
+      if (paymentInfo) {
+        logPaymentInfo(paymentInfo, {
+          provider: this.config.provider,
+          model: body?.model,
+        });
+      }
     }
 
     // Handle failed responses
@@ -261,24 +272,6 @@ export class ChatCompletionsPassthrough {
     return response;
   }
 
-  private async handleX402PaymentResponse(response: Response, model?: string): Promise<void> {
-    try {
-      const { extractPaymentInfo, logPaymentInfo } = await import('../payments/x402/index.js');
-      const paymentInfo = extractPaymentInfo(response);
-      
-      if (paymentInfo) {
-        logPaymentInfo(paymentInfo, {
-          provider: this.config.provider,
-          model,
-        });
-      }
-    } catch (error) {
-      logger.debug('Could not process x402 payment response', {
-        error: error instanceof Error ? error.message : String(error),
-        module: 'chat-completions-passthrough',
-      });
-    }
-  }
 
   private recordOpenAIUsage(usage: OpenAIChatUsage, model: string, clientIp?: string): void {
     const totalInputTokens = usage.prompt_tokens ?? 0;
@@ -295,6 +288,8 @@ export class ChatCompletionsPassthrough {
       completionTokens,
       totalTokens: usage.total_tokens,
       reasoningTokens: usage.completion_tokens_details?.reasoning_tokens,
+      x402PaymentAmount: this.lastX402PaymentAmount,
+      willUseX402Pricing: !!this.lastX402PaymentAmount,
       module: 'chat-completions-passthrough',
     });
 
@@ -308,7 +303,10 @@ export class ChatCompletionsPassthrough {
           Math.max(cachedPromptTokens, 0),
           0,
           clientIp,
+          this.lastX402PaymentAmount, // Pass x402 payment amount if available
         );
+        // Clear payment amount after tracking
+        this.lastX402PaymentAmount = undefined;
       })
       .catch(error => {
         logger.error('Usage tracking failed', error, {
@@ -381,6 +379,7 @@ export class ChatCompletionsPassthrough {
 
   async handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string): Promise<void> {
     this.eventBuffer = '';
+    this.lastX402PaymentAmount = undefined; // Reset payment amount for new request
 
     if (request?.stream) {
       const response = await this.makeRequest(request, true);

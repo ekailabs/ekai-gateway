@@ -44,6 +44,7 @@ export class MessagesPassthrough {
   private streamBuffer = '';
   private x402FetchFunction: typeof fetch | null = null;
   private x402Initialized = false;
+  private lastX402PaymentAmount: string | undefined = undefined;
 
   constructor(private readonly config: MessagesPassthroughConfig) {
     // Initialize x402 payment wrapper once if needed
@@ -209,9 +210,19 @@ export class MessagesPassthrough {
       throw error;
     }
 
-    // Log payment information if present
-    if (isX402Enabled && response.headers.has('x-payment-response')) {
-      await this.handleX402PaymentResponse(response, body?.model);
+    // Store fixed x402 cost for messages ($0.01 per request)
+    // TODO: Replace with dynamically calculated amounts from x402 payment response
+    if (isX402Enabled) {
+      this.lastX402PaymentAmount = '0.01';
+      
+      const { logPaymentInfo, extractPaymentInfo } = await import('../payments/x402/index.js');
+      const paymentInfo = extractPaymentInfo(response);
+      if (paymentInfo) {
+        logPaymentInfo(paymentInfo, {
+          provider: this.config.provider,
+          model: body?.model,
+        });
+      }
     }
 
     // Handle failed responses
@@ -243,24 +254,6 @@ export class MessagesPassthrough {
     return response;
   }
 
-  private async handleX402PaymentResponse(response: Response, model?: string): Promise<void> {
-    try {
-      const { extractPaymentInfo, logPaymentInfo } = await import('../payments/x402/index.js');
-      const paymentInfo = extractPaymentInfo(response);
-      
-      if (paymentInfo) {
-        logPaymentInfo(paymentInfo, {
-          provider: this.config.provider,
-          model,
-        });
-      }
-    } catch (error) {
-      logger.debug('Could not process x402 payment response', {
-        error: error instanceof Error ? error.message : String(error),
-        module: 'messages-passthrough',
-      });
-    }
-  }
 
   private trackUsage(payloadChunk: string, model: string, clientIp?: string): void {
     if (this.config.usage?.format !== 'anthropic_messages') {
@@ -337,6 +330,8 @@ export class MessagesPassthrough {
               provider: this.config.provider,
               model,
               ...usageSnapshot,
+              x402PaymentAmount: this.lastX402PaymentAmount,
+              willUseX402Pricing: !!this.lastX402PaymentAmount,
               module: 'messages-passthrough',
             });
 
@@ -350,7 +345,10 @@ export class MessagesPassthrough {
                   cacheCreationTokens,
                   cacheReadTokens,
                   clientIp,
+                  this.lastX402PaymentAmount, // Pass x402 payment amount if available
                 );
+                // Clear payment amount after tracking
+                this.lastX402PaymentAmount = undefined;
               })
               .catch(error => {
                 logger.error('Usage tracking failed', error, {
@@ -381,6 +379,7 @@ export class MessagesPassthrough {
   async handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string): Promise<void> {
     this.initialUsage = null;
     this.streamBuffer = '';
+    this.lastX402PaymentAmount = undefined; // Reset payment amount for new request
 
     this.applyModelOptions(request);
 
@@ -424,6 +423,8 @@ export class MessagesPassthrough {
         cacheCreationTokens,
         cacheReadTokens,
         outputTokens,
+        x402PaymentAmount: this.lastX402PaymentAmount,
+        willUseX402Pricing: !!this.lastX402PaymentAmount,
         module: 'messages-passthrough',
       });
 
@@ -437,7 +438,10 @@ export class MessagesPassthrough {
             cacheCreationTokens,
             cacheReadTokens,
             clientIp,
+            this.lastX402PaymentAmount, // Pass x402 payment amount if available
           );
+          // Clear payment amount after tracking
+          this.lastX402PaymentAmount = undefined;
         })
         .catch(error => {
           logger.error('Usage tracking failed', error, {

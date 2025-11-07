@@ -9,6 +9,6 @@
  */
 
 export { getX402Account, isX402Available } from './wallet.js';
-export { createX402Fetch, extractPaymentInfo, logPaymentInfo, logPaymentReady } from './client.js';
+export { createX402Fetch, extractPaymentInfo, extractPaymentAmountUSD, logPaymentInfo, logPaymentReady } from './client.js';
 export type { X402PaymentInfo } from './client.js';
 

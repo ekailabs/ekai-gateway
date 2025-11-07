@@ -45,6 +45,42 @@ export function extractPaymentInfo(response: Response): X402PaymentInfo | null {
 }
 
 /**
+ * Extracts and converts payment amount from x402 response for cost tracking.
+ * Converts from smallest unit (e.g., 20000) to USD (e.g., 0.02).
+ * 
+ * @param response - Fetch Response object
+ * @returns Payment amount in USD or null if not present
+ */
+export function extractPaymentAmountUSD(response: Response): string | null {
+  const paymentInfo = extractPaymentInfo(response);
+  
+  if (!paymentInfo || !paymentInfo.amount) {
+    return null;
+  }
+  
+  try {
+    const amountInSmallestUnit = parseFloat(paymentInfo.amount);
+    const amountInUSD = amountInSmallestUnit / 1_000_000;
+    
+    logger.debug('x402 payment amount extracted', {
+      rawAmount: paymentInfo.amount,
+      convertedUSD: amountInUSD,
+      transactionHash: paymentInfo.transactionHash,
+      module: 'x402-client',
+    });
+    
+    return amountInUSD.toString();
+  } catch (error) {
+    logger.warn('Failed to convert x402 payment amount', {
+      error: error instanceof Error ? error.message : String(error),
+      rawAmount: paymentInfo.amount,
+      module: 'x402-client',
+    });
+    return null;
+  }
+}
+
+/**
  * Logs payment information from a completed x402 transaction.
  * 
  * @param paymentInfo - Payment details from x-payment-response header

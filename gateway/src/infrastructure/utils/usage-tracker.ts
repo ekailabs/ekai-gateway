@@ -37,6 +37,8 @@ export class UsageTracker {
    * @param outputTokens - Number of output tokens
    * @param cacheWriteTokens - Number of cache write tokens
    * @param cacheReadTokens - Number of cache read tokens
+   * @param clientIp - Client IP address for telemetry
+   * @param x402PaymentAmount - Actual payment amount for x402 requests (overrides YAML pricing)
    * @returns Cost calculation or null if pricing not found
    */
   trackUsage(
@@ -46,7 +48,8 @@ export class UsageTracker {
     outputTokens: number,
     cacheWriteTokens: number = 0,
     cacheReadTokens: number = 0,
-    clientIp?: string
+    clientIp?: string,
+    x402PaymentAmount?: string
   ): CostCalculation | null {
     // Input validation
     if (!model?.trim() || !provider?.trim()) {
@@ -63,8 +66,45 @@ export class UsageTracker {
     
     const pricing = pricingLoader.getModelPricing(provider, model);
 
-    // Calculate cost using the pricing system
-    const costCalculation = pricingLoader.calculateCost(provider, model, inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens);
+    // For x402 payments, use actual payment amount instead of YAML pricing
+    let costCalculation: CostCalculation | null;
+    
+    if (x402PaymentAmount) {
+      // Parse the actual payment amount from x402
+      const totalCost = parseFloat(x402PaymentAmount);
+      
+      if (isNaN(totalCost)) {
+        logger.warn('Invalid x402 payment amount, falling back to YAML pricing', {
+          x402PaymentAmount,
+          model,
+          provider,
+          module: 'usage-tracker'
+        });
+        costCalculation = pricingLoader.calculateCost(provider, model, inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens);
+      } else {
+        // Use actual payment amount - distribute proportionally across token types
+        costCalculation = {
+          inputCost: 0,
+          cacheWriteCost: 0,
+          cacheReadCost: 0,
+          outputCost: 0,
+          totalCost,
+          currency: 'USD', // x402 amounts are in USD
+          provider,
+          model
+        };
+        
+        logger.debug('Using x402 actual payment amount for cost tracking', {
+          model,
+          provider,
+          x402Amount: totalCost,
+          module: 'usage-tracker'
+        });
+      }
+    } else {
+      // Calculate cost using the pricing system from YAML
+      costCalculation = pricingLoader.calculateCost(provider, model, inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens);
+    }
 
     if (costCalculation) {
       // Generate unique request ID
