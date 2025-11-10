@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { logger } from '../utils/logger.js';
+import { getConfig } from '../config/app-config.js';
 import {
   MessagesPassthroughConfig,
   MessagesAuthConfig,
@@ -115,11 +116,47 @@ export function loadMessagesProviderDefinitions(): MessagesProviderDefinition[] 
       return [];
     }
 
-    return parsed.providers.map(entry => ({
+    const definitions = parsed.providers.map(entry => ({
       provider: entry.provider,
       models: entry.models || [],
       config: toPassthroughConfig(entry.messages, entry.provider),
     }));
+
+    // Apply x402 as fallback: only for providers whose API key is NOT configured
+    const config = getConfig();
+    if (config.x402.enabled) {
+      const x402Url = config.x402.messagesUrl;
+      
+      definitions.forEach(definition => {
+        const providerApiKey = definition.config.auth?.envVar;
+        const hasProviderKey = providerApiKey && process.env[providerApiKey];
+        
+        if (!hasProviderKey) {
+          logger.info('Provider API key not found, using x402 payment gateway as fallback', {
+            provider: definition.provider,
+            envVar: providerApiKey,
+            originalUrl: definition.config.baseUrl,
+            x402Url: x402Url,
+            module: 'messages-provider-config',
+          });
+          
+          definition.config = {
+            ...definition.config,
+            baseUrl: x402Url,
+            auth: undefined, // x402 uses payment instead of API keys
+            x402Enabled: true,
+          };
+        } else {
+          logger.info('Provider API key found, using normal configuration', {
+            provider: definition.provider,
+            envVar: providerApiKey,
+            module: 'messages-provider-config',
+          });
+        }
+      });
+    }
+
+    return definitions;
   } catch (error) {
     logger.error('Failed to load messages providers catalog', error, {
       path: CATALOG_PATH,

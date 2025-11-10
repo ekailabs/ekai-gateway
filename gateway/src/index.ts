@@ -34,13 +34,30 @@ import { requestContext } from './infrastructure/middleware/request-context.js';
 import { requestLogging } from './infrastructure/middleware/request-logging.js';
 import { ProviderService } from './domain/services/provider-service.js';
 import { pricingLoader } from './infrastructure/utils/pricing-loader.js';
+import { getConfig } from './infrastructure/config/app-config.js';
+import { errorHandler } from './infrastructure/middleware/error-handler.js';
 
 async function bootstrap(): Promise<void> {
+  // Initialize and validate config
+  const config = getConfig();
+
+  if (config.x402.enabled) {
+    logger.info('x402 payment gateway enabled', {
+      x402BaseUrl: config.x402.baseUrl,
+      mode: config.getMode(),
+      chatCompletions: 'OpenRouter only',
+      chatCompletionsUrl: config.x402.chatCompletionsUrl,
+      messages: 'All providers',
+      messagesUrl: config.x402.messagesUrl,
+      module: 'bootstrap'
+    });
+  }
+
   await pricingLoader.refreshOpenRouterPricing();
   ensureProvidersConfigured();
 
   const app = express();
-  const PORT = process.env.PORT || 3001;
+  const PORT = config.server.port;
   // Middleware
   app.set('trust proxy', true);
   app.use(cors());
@@ -68,26 +85,46 @@ async function bootstrap(): Promise<void> {
   app.post('/v1/responses', handleOpenAIResponses);
   app.get('/usage', handleUsageRequest);
 
+  // Error handler MUST be last middleware
+  app.use(errorHandler);
+
   // Start server
   app.listen(PORT, () => {
-    logger.info(`Ekai Gateway server started`, {
+    logger.info('Ekai Gateway server started', {
       port: PORT,
-      environment: process.env.NODE_ENV || 'development',
+      environment: config.server.environment,
+      mode: config.getMode(),
       module: 'server'
     });
   });
 }
 
 function ensureProvidersConfigured(): void {
+  const config = getConfig();
   const providerService = new ProviderService();
   const availableProviders = providerService.getAvailableProviders();
 
-  if (availableProviders.length === 0) {
-    logger.error(
-      'No provider API keys configured. Copy .env.example and set at least one of ANTHROPIC_API_KEY, OPENAI_API_KEY, XAI_API_KEY, or OPENROUTER_API_KEY before starting the gateway.',
-      { module: 'bootstrap' }
-    );
-    process.exit(1);
+  // Config validation already ensures we have at least one auth method
+  // Just log the mode we're running in
+  const mode = config.getMode();
+  
+  if (mode === 'x402-only') {
+    logger.info('Running in x402 payment-only mode (no API keys configured)', {
+      mode,
+      module: 'bootstrap'
+    });
+  } else if (mode === 'hybrid') {
+    logger.info('Running in hybrid mode (API keys + x402 payments)', {
+      mode,
+      availableProviders: availableProviders.length,
+      module: 'bootstrap'
+    });
+  } else {
+    logger.info('Running in BYOK mode (API keys only, no x402)', {
+      mode,
+      availableProviders: availableProviders.length,
+      module: 'bootstrap'
+    });
   }
 }
 

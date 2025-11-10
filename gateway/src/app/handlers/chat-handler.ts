@@ -3,7 +3,8 @@ import { ProviderService } from '../../domain/services/provider-service.js';
 import { OpenAIAdapter } from '../../infrastructure/adapters/openai-adapter.js';
 import { OpenAIResponsesAdapter } from '../../infrastructure/adapters/openai-responses-adapter.js';
 import { AnthropicAdapter } from '../../infrastructure/adapters/anthropic-adapter.js';
-import { handleError, APIError } from '../../infrastructure/utils/error-handler.js';
+import { handleError } from '../../infrastructure/utils/error-handler.js';
+import { ValidationError, ConfigurationError } from '../../shared/errors/index.js';
 import { logger } from '../../infrastructure/utils/logger.js';
 import { HTTP_STATUS, CONTENT_TYPES } from '../../domain/types/provider.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
@@ -74,8 +75,10 @@ export class ChatHandler {
         // Normal flow for other client formats
         const result = this.providerService.getMostOptimalProvider(req.body.model, req.requestId);
         if (result.error) {
-          const statusCode = result.error.code === 'NO_PROVIDERS_CONFIGURED' ? 503 : 400;
-          throw new APIError(statusCode, result.error.message, result.error.code);
+          if (result.error.code === 'NO_PROVIDERS_CONFIGURED') {
+            throw new ConfigurationError(result.error.message, { code: result.error.code });
+          }
+          throw new ValidationError(result.error.message, { code: result.error.code, model: req.body.model });
         }
 
         providerName = result.provider;
@@ -216,7 +219,7 @@ export class ChatHandler {
       .includes(clientFormat);
 
     if (!passthrough || !supportsFormat) {
-      throw new APIError(500, `Passthrough not configured for provider ${providerName}`);
+      throw new ConfigurationError(`Passthrough not configured for provider ${providerName}`, { provider: providerName, format: clientFormat });
     }
 
     await passthrough.handleDirectRequest(originalRequest, res, clientIp);
