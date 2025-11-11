@@ -9,6 +9,7 @@
 - [Usage with Claude Code](USAGE_WITH_CLAUDE_CODE.md)
 - [Usage with Codex](USAGE_WITH_CODEX.md)
 - [Providers and Models](providers-and-models.md)
+- [Get Started with x402](GET_STARTED_WITH_X402.md)
 
 ## What is Ekai?
 
