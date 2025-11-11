@@ -8,7 +8,7 @@ import { ValidationError, ConfigurationError } from '../../shared/errors/index.j
 import { logger } from '../../infrastructure/utils/logger.js';
 import { HTTP_STATUS, CONTENT_TYPES } from '../../domain/types/provider.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
-import { CanonicalRequest } from 'shared/types/index.js';
+import { CanonicalRequest, CanonicalResponse, CanonicalMessage } from 'shared/types/index.js';
 import { openaiResponsesPassthrough } from '../../infrastructure/passthrough/openai-responses-passthrough.js';
 import { createChatCompletionsPassthroughRegistry } from '../../infrastructure/passthrough/chat-completions-passthrough-registry.js';
 import { createMessagesPassthroughRegistry } from '../../infrastructure/passthrough/messages-passthrough-registry.js';
@@ -105,6 +105,7 @@ export class ChatHandler {
       });
 
       if (passThrough) {
+        
         await this.handlePassThrough(originalRequest, res, clientFormat, providerName, clientIp);
         return;
       }

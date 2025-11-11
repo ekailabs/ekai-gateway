@@ -45,6 +45,7 @@ export class MessagesPassthrough {
   private x402FetchFunction: typeof fetch | null = null;
   private x402Initialized = false;
   private lastX402PaymentAmount: string | undefined = undefined;
+  private assistantResponseBuffer = '';
 
   constructor(private readonly config: MessagesPassthroughConfig) {
     // Initialize x402 payment wrapper once if needed
@@ -278,6 +279,11 @@ export class MessagesPassthrough {
         if (!payload.startsWith('{')) continue;
 
         const data = JSON.parse(payload);
+        
+        // Extract assistant response content
+        if (data.type === 'content_block_delta' && data.delta?.type === 'text_delta') {
+          this.assistantResponseBuffer += data.delta.text || '';
+        }
 
         if (data.type === 'message_start' && data.message?.usage) {
           this.initialUsage = {
@@ -379,7 +385,11 @@ export class MessagesPassthrough {
   async handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string): Promise<void> {
     this.initialUsage = null;
     this.streamBuffer = '';
+    this.assistantResponseBuffer = '';
     this.lastX402PaymentAmount = undefined; // Reset payment amount for new request
+
+    // Retrieve and inject memory context
+    this.injectMemoryContext(request);
 
     this.applyModelOptions(request);
 
@@ -404,6 +414,9 @@ export class MessagesPassthrough {
         res.write(value);
       }
       res.end();
+      
+      // Persist memory after streaming completes
+      this.persistMemory(request, this.assistantResponseBuffer);
       return;
     }
 
@@ -452,6 +465,163 @@ export class MessagesPassthrough {
         });
     }
 
+    // Extract assistant response from non-streaming response
+    const assistantResponse = json?.content?.[0]?.text || '';
+    this.persistMemory(request, assistantResponse);
+
     res.json(json);
+  }
+  
+  private injectMemoryContext(request: any): void {
+    try {
+      const { memoryService } = require('../memory/memory-service.js');
+      
+      // Retrieve memories for the user (uses default limit from memory backend)
+      const memories = memoryService.retrieve({
+        userId: 'test',
+      });
+      
+      logger.info('Memory retrieval result', {
+        totalMemories: memories.length,
+        provider: this.config.provider,
+        module: 'messages-passthrough',
+      });
+      
+      if (memories.length === 0) {
+        logger.info('No memories found to inject', { 
+          provider: this.config.provider,
+          module: 'messages-passthrough' 
+        });
+        return;
+      }
+      
+      // Extract user content from current messages for deduplication
+      const currentMessages = request.messages || [];
+      const currentUserContents = currentMessages
+        .filter((msg: any) => msg.role === 'user')
+        .map((msg: any) => {
+          let content: string;
+          if (typeof msg.content === 'string') {
+            content = msg.content;
+          } else if (Array.isArray(msg.content)) {
+            content = msg.content
+              .map((c: any) => c.type === 'text' ? c.text : `[${c.type}]`)
+              .join(' ');
+          } else {
+            content = JSON.stringify(msg.content);
+          }
+          return content.trim();
+        });
+      
+      // Filter out memories that are already in the current conversation
+      const relevantMemories = memories.filter((memory) => {
+        // Extract user content from memory (format: "User: <content>\n\nAssistant: <response>")
+        const userMatch = memory.content.match(/^User: ([\s\S]*?)\n\nAssistant:/);
+        if (!userMatch) return false;
+        
+        const memoryUserContent = userMatch[1].trim();
+        return !currentUserContents.includes(memoryUserContent);
+      });
+      
+      if (relevantMemories.length === 0) {
+        logger.info('No new memories to inject after deduplication', { 
+          totalMemories: memories.length,
+          currentUserMessages: currentUserContents.length,
+          provider: this.config.provider,
+          module: 'messages-passthrough' 
+        });
+        return;
+      }
+      
+      // Format memories for system parameter
+      const formattedMemories = relevantMemories
+        .reverse() // Oldest first
+        .map((m) => m.content)
+        .join('\n\n---\n\n');
+      
+      const memoryContext = `Previous conversation context:\n\n${formattedMemories}`;
+      
+      // Anthropic Messages API uses top-level 'system' parameter, not a system role in messages
+      if (request.system) {
+        // Prepend memory context to existing system prompt
+        request.system = `${memoryContext}\n\n---\n\n${request.system}`;
+      } else {
+        // Set as new system parameter
+        request.system = memoryContext;
+      }
+    } catch (error) {
+      logger.warn('Failed to inject memory context', { 
+        error, 
+        provider: this.config.provider,
+        module: 'messages-passthrough' 
+      });
+    }
+  }
+
+  private persistMemory(request: any, assistantResponse: string): void {
+    try {
+      const { memoryService } = require('../memory/memory-service.js');
+      
+      // Extract only the LAST user message (current turn)
+      const messages = request.messages || [];
+      const userMessages = messages.filter((msg: any) => msg.role === 'user');
+      
+      if (userMessages.length === 0) {
+        logger.debug('No user message found to persist', { module: 'messages-passthrough' });
+        return;
+      }
+      
+      const lastUserMessage = userMessages[userMessages.length - 1];
+      let userContent: string;
+      
+      if (typeof lastUserMessage.content === 'string') {
+        userContent = lastUserMessage.content;
+      } else if (Array.isArray(lastUserMessage.content)) {
+        userContent = lastUserMessage.content
+          .map((c: any) => c.type === 'text' ? c.text : `[${c.type}]`)
+          .join(' ');
+      } else {
+        userContent = JSON.stringify(lastUserMessage.content);
+      }
+      
+      // Filter out system reminders and other internal messages
+      userContent = userContent
+        .replace(/<system-reminder>[\s\S]*?<\/system-reminder>/gi, '') // Remove system-reminder tags
+        .replace(/<system[^>]*>[\s\S]*?<\/system>/gi, '') // Remove any other system tags
+        .trim();
+      
+      // Skip persisting if user content is empty after filtering
+      if (!userContent) {
+        logger.debug('Skipping memory persistence - user content empty after filtering', { 
+          module: 'messages-passthrough' 
+        });
+        return;
+      }
+      
+      const content = `User: ${userContent}\n\nAssistant: ${assistantResponse}`;
+      
+      memoryService.add({
+        userId: 'test',
+        agentId: this.config.provider,
+        content,
+        metadata: {
+          model: request.model,
+          provider: this.config.provider,
+        },
+      });
+      
+      logger.debug('Memory persisted in passthrough', {
+        provider: this.config.provider,
+        model: request.model,
+        hasAssistantResponse: assistantResponse.length > 0,
+        module: 'messages-passthrough',
+      });
+    } catch (error) {
+      logger.warn('Failed to persist memory in passthrough', { 
+        error, 
+        provider: this.config.provider,
+        module: 'messages-passthrough' 
+      });
+    }
   }
 }
