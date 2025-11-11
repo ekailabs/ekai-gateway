@@ -280,10 +280,7 @@ export class MessagesPassthrough {
 
         const data = JSON.parse(payload);
         
-        // Extract assistant response content
-        if (data.type === 'content_block_delta' && data.delta?.type === 'text_delta') {
-          this.assistantResponseBuffer += data.delta.text || '';
-        }
+        // Don't accumulate from content_block_delta - we'll get the final response from message_delta/message_stop
 
         if (data.type === 'message_start' && data.message?.usage) {
           this.initialUsage = {
@@ -303,6 +300,18 @@ export class MessagesPassthrough {
 
         if (data.type === 'message_delta' || data.type === 'message_stop') {
           const usageData = data.usage;
+          
+          // Extract final response text from message_delta/message_stop event
+          // Check if there's a message field with content
+          if (data.message?.content && Array.isArray(data.message.content)) {
+            const textContent = data.message.content
+              .filter((c: any) => c.type === 'text')
+              .map((c: any) => c.text || '')
+              .join('');
+            if (textContent) {
+              this.assistantResponseBuffer = textContent;
+            }
+          }
 
           if (usageData) {
             const inputTokens = usageData.input_tokens ?? this.initialUsage?.inputTokens ?? 0;
@@ -584,21 +593,29 @@ export class MessagesPassthrough {
         userContent = JSON.stringify(lastUserMessage.content);
       }
       
-      // Filter out system reminders and other internal messages
-      userContent = userContent
-        .replace(/<system-reminder>[\s\S]*?<\/system-reminder>/gi, '') // Remove system-reminder tags
-        .replace(/<system[^>]*>[\s\S]*?<\/system>/gi, '') // Remove any other system tags
-        .trim();
-      
-      // Skip persisting if user content is empty after filtering
-      if (!userContent) {
-        logger.debug('Skipping memory persistence - user content empty after filtering', { 
+      // Skip persisting if user content is empty
+      if (!userContent || !userContent.trim()) {
+        logger.debug('Skipping memory persistence - user content empty', { 
           module: 'messages-passthrough' 
         });
         return;
       }
       
+      // Skip if assistant response is too short or empty (not useful)
+      const trimmedResponse = assistantResponse.trim();
+      if (!trimmedResponse || trimmedResponse.length < 3) {
+        return;
+      }
+      
       const content = `User: ${userContent}\n\nAssistant: ${assistantResponse}`;
+      
+      // Filter out specific test patterns
+      const filteredPatterns = [
+        'User: test\n\nAssistant: Hello',
+      ];
+      if (filteredPatterns.includes(content)) {
+        return;
+      }
       
       memoryService.add({
         userId: 'test',
