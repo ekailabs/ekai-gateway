@@ -24,6 +24,8 @@ The **Ekai Gateway** is a self-hosted multi-provider API layer that lets you rou
 
 It is fully compatible with both **OpenAI** and **Anthropic** APIs, supports **OpenRouter**, **xAI**, and others, and includes built-in **usage tracking** and **cost analytics** through a lightweight dashboard.
 
+It also supports **x402 pay-for-inference**: when a requested model doesn’t have a local API key, the Gateway can route via x402 Rasta, settle fees on‑chain in stablecoins, and relay the response from the appropriate provider.
+
 With the Gateway, you can:
 - Use one unified endpoint for all supported providers  
 - Keep your own API keys and billing under control  
