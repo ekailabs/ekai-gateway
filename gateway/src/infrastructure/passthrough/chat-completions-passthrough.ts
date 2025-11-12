@@ -458,7 +458,7 @@ export class ChatCompletionsPassthrough {
       
       // Retrieve memories for the user (uses default limit from memory backend)
       const memories = memoryService.retrieve({
-        userId: 'test',
+        userId: 'default',
       });
       
       logger.info('Memory retrieval result', {
@@ -558,7 +558,7 @@ export class ChatCompletionsPassthrough {
       const content = `User: ${userContent}\n\nAssistant: ${assistantResponse}`;
       
       memoryService.add({
-        userId: 'test',
+        userId: 'default',
         agentId: this.config.provider,
         content,
         metadata: {

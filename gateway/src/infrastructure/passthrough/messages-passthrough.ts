@@ -487,7 +487,7 @@ export class MessagesPassthrough {
       
       // Retrieve memories for the user (uses default limit from memory backend)
       const memories = memoryService.retrieve({
-        userId: 'test',
+        userId: 'default',
       });
       
       logger.info('Memory retrieval result', {
@@ -618,7 +618,7 @@ export class MessagesPassthrough {
       }
       
       memoryService.add({
-        userId: 'test',
+        userId: 'default',
         agentId: this.config.provider,
         content,
         metadata: {
