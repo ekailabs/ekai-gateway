@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js';
 import { AuthenticationError, ProviderError } from '../../shared/errors/index.js';
 import { CONTENT_TYPES } from '../../domain/types/provider.js';
 import { getConfig } from '../config/app-config.js';
+import { injectMemoryContext, persistMemory } from '../memory/memory-helper.js';
 
 export class OpenAIResponsesPassthrough {
   private readonly baseUrl = 'https://api.openai.com/v1/responses';
@@ -146,7 +147,18 @@ export class OpenAIResponsesPassthrough {
     this.assistantResponseBuffer = '';
 
     // Retrieve and inject memory context
-    this.injectMemoryContext(request);
+    injectMemoryContext(request, {
+      provider: 'openai',
+      defaultUserId: 'default',
+      extractCurrentUserInputs: req => extractResponsesUserInputs(req),
+      applyMemoryContext: (req, context) => {
+        if (req.instructions) {
+          req.instructions = `${context}\n\n---\n\n${req.instructions}`;
+        } else {
+          req.instructions = context;
+        }
+      }
+    });
 
     if (request.stream) {
       const response = await this.makeRequest(request, true);
@@ -173,7 +185,15 @@ export class OpenAIResponsesPassthrough {
       res.end();
       
       // Persist memory after streaming completes
-      this.persistMemory(request, this.assistantResponseBuffer);
+      persistMemory(request, this.assistantResponseBuffer, {
+        provider: 'openai',
+        defaultUserId: 'default',
+        extractUserContent: req => req.input || '',
+        metadataBuilder: req => ({
+          model: req.model,
+          provider: 'openai',
+        }),
+      });
     } else {
       const response = await this.makeRequest(request, false);
       const json = await response.json();
@@ -206,129 +226,26 @@ export class OpenAIResponsesPassthrough {
 
       // Extract assistant response from non-streaming response
       const assistantResponse = json?.output?.[0]?.content?.[0]?.text || '';
-      this.persistMemory(request, assistantResponse);
+      persistMemory(request, assistantResponse, {
+        provider: 'openai',
+        defaultUserId: 'default',
+        extractUserContent: req => req.input || '',
+        metadataBuilder: req => ({
+          model: req.model,
+          provider: 'openai',
+        }),
+      });
 
       res.json(json);
     }
   }
   
-  private injectMemoryContext(request: any): void {
-    try {
-      const { memoryService } = require('../memory/memory-service.js');
-      
-      // Retrieve memories for the user (uses default limit from memory backend)
-      const memories = memoryService.retrieve({
-        userId: 'default',
-      });
-      
-      logger.info('Memory retrieval result', {
-        totalMemories: memories.length,
-        provider: 'openai',
-        module: 'openai-responses-passthrough',
-      });
-      
-      if (memories.length === 0) {
-        logger.info('No memories found to inject', { 
-          provider: 'openai',
-          module: 'openai-responses-passthrough' 
-        });
-        return;
-      }
-      
-      // Extract current user input for deduplication
-      const currentUserContent = (request.input || '').trim();
-      
-      // Filter out memories that contain the current user input
-      const relevantMemories = memories.filter((memory) => {
-        // Extract user content from memory (format: "User: <content>\n\nAssistant: <response>")
-        const userMatch = memory.content.match(/^User: ([\s\S]*?)\n\nAssistant:/);
-        if (!userMatch) return false;
-        
-        const memoryUserContent = userMatch[1].trim();
-        return memoryUserContent !== currentUserContent;
-      });
-      
-      if (relevantMemories.length === 0) {
-        logger.info('No new memories to inject after deduplication', { 
-          totalMemories: memories.length,
-          currentUserInput: currentUserContent,
-          provider: 'openai',
-          module: 'openai-responses-passthrough' 
-        });
-        return;
-      }
-      
-      // Format memories for instructions field
-      const formattedMemories = relevantMemories
-        .reverse() // Oldest first
-        .map((m) => m.content)
-        .join('\n\n---\n\n');
-      
-      const memoryContext = `Previous conversation context:\n\n${formattedMemories}`;
-      
-      // Inject into instructions field (prepend to existing instructions if any)
-      if (request.instructions) {
-        request.instructions = `${memoryContext}\n\n---\n\n${request.instructions}`;
-      } else {
-        request.instructions = memoryContext;
-      }
-      
-      logger.info('Memory context injected', {
-        totalMemories: memories.length,
-        injectedCount: relevantMemories.length,
-        provider: 'openai',
-        injectedContent: formattedMemories.substring(0, 500) + (formattedMemories.length > 500 ? '...' : ''),
-        module: 'openai-responses-passthrough',
-      });
-    } catch (error) {
-      logger.warn('Failed to inject memory context', { 
-        error, 
-        provider: 'openai',
-        module: 'openai-responses-passthrough' 
-      });
-    }
-  }
-  
-  private persistMemory(request: any, assistantResponse: string): void {
-    try {
-      const { memoryService } = require('../memory/memory-service.js');
-      
-      // Extract user input (OpenAI Responses API has different structure)
-      // The 'input' field contains the current user message
-      const userContent = request.input || '';
-      
-      if (!userContent) {
-        logger.debug('No user input found to persist', { module: 'openai-responses-passthrough' });
-        return;
-      }
-      
-      const content = `User: ${userContent}\n\nAssistant: ${assistantResponse}`;
-      
-      memoryService.add({
-        userId: 'default',
-        agentId: 'openai',
-        content,
-        metadata: {
-          model: request.model,
-          provider: 'openai',
-        },
-      });
-      
-      logger.debug('Memory persisted in passthrough', {
-        provider: 'openai',
-        model: request.model,
-        hasAssistantResponse: assistantResponse.length > 0,
-        module: 'openai-responses-passthrough',
-      });
-    } catch (error) {
-      logger.warn('Failed to persist memory in passthrough', { 
-        error, 
-        provider: 'openai',
-        module: 'openai-responses-passthrough' 
-      });
-    }
-  }
 }
 
 // Singleton instance
 export const openaiResponsesPassthrough = new OpenAIResponsesPassthrough();
+
+function extractResponsesUserInputs(request: any): string[] {
+  const content = (request.input || '').trim();
+  return content ? [content] : [];
+}

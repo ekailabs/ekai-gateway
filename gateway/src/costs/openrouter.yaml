@@ -104,13 +104,13 @@ models:
     original_provider: nvidia
   minimax/minimax-m2:
     id: minimax/minimax-m2
-    input: 0.21
-    output: 0.84
+    input: 0.255
+    output: 1.02
     original_provider: minimax
   minimax-m2:
     id: minimax/minimax-m2
-    input: 0.21
-    output: 0.84
+    input: 0.255
+    output: 1.02
     original_provider: minimax
   liquid/lfm2-8b-a1b:
     id: liquid/lfm2-8b-a1b

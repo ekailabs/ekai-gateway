@@ -2,6 +2,7 @@ import { Response as ExpressResponse } from 'express';
 import { AuthenticationError, PaymentError, ProviderError } from '../../shared/errors/index.js';
 import { logger } from '../utils/logger.js';
 import { CONTENT_TYPES, HTTP_STATUS } from '../../domain/types/provider.js';
+import { injectMemoryContext, persistMemory } from '../memory/memory-helper.js';
 
 export type ChatUsageFormat = 'openai_chat';
 
@@ -390,7 +391,20 @@ export class ChatCompletionsPassthrough {
     this.lastX402PaymentAmount = undefined; // Reset payment amount for new request
 
     // Retrieve and inject memory context
-    this.injectMemoryContext(request);
+    injectMemoryContext(request, {
+      provider: this.config.provider,
+      defaultUserId: 'default',
+      extractCurrentUserInputs: req => extractOpenAIUserMessages(req),
+      applyMemoryContext: (req, context) => {
+        if (!req.messages) {
+          req.messages = [];
+        }
+        req.messages.unshift({
+          role: 'system',
+          content: context,
+        });
+      }
+    });
 
     if (request?.stream) {
       const response = await this.makeRequest(request, true);
@@ -426,7 +440,15 @@ export class ChatCompletionsPassthrough {
       res.end();
       
       // Persist memory after streaming completes
-      this.persistMemory(request, this.assistantResponseBuffer);
+      persistMemory(request, this.assistantResponseBuffer, {
+        provider: this.config.provider,
+        defaultUserId: 'default',
+        extractUserContent: req => extractOpenAILastUserContent(req),
+        metadataBuilder: req => ({
+          model: req.model,
+          provider: this.config.provider,
+        }),
+      });
       return;
     }
 
@@ -447,138 +469,41 @@ export class ChatCompletionsPassthrough {
 
     // Extract assistant response from non-streaming response
     const assistantResponse = json?.choices?.[0]?.message?.content || '';
-    this.persistMemory(request, assistantResponse);
+    persistMemory(request, assistantResponse, {
+      provider: this.config.provider,
+      defaultUserId: 'default',
+      extractUserContent: req => extractOpenAILastUserContent(req),
+      metadataBuilder: req => ({
+        model: req.model,
+        provider: this.config.provider,
+      }),
+    });
 
     res.status(HTTP_STATUS.OK).json(json);
   }
   
-  private injectMemoryContext(request: any): void {
-    try {
-      const { memoryService } = require('../memory/memory-service.js');
-      
-      // Retrieve memories for the user (uses default limit from memory backend)
-      const memories = memoryService.retrieve({
-        userId: 'default',
-      });
-      
-      logger.info('Memory retrieval result', {
-        totalMemories: memories.length,
-        provider: this.config.provider,
-        module: 'chat-completions-passthrough',
-      });
-      
-      if (memories.length === 0) {
-        logger.info('No memories found to inject', { 
-          provider: this.config.provider,
-          module: 'chat-completions-passthrough' 
-        });
-        return;
-      }
-      
-      // Extract user content from current messages for deduplication
-      const currentMessages = request.messages || [];
-      const currentUserContents = currentMessages
-        .filter((msg: any) => msg.role === 'user')
-        .map((msg: any) => {
-          const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
-          return content.trim();
-        });
-      
-      // Filter out memories that are already in the current conversation
-      const relevantMemories = memories.filter((memory) => {
-        // Extract user content from memory (format: "User: <content>\n\nAssistant: <response>")
-        const userMatch = memory.content.match(/^User: ([\s\S]*?)\n\nAssistant:/);
-        if (!userMatch) return false;
-        
-        const memoryUserContent = userMatch[1].trim();
-        return !currentUserContents.includes(memoryUserContent);
-      });
-      
-      if (relevantMemories.length === 0) {
-        logger.info('No new memories to inject after deduplication', { 
-          totalMemories: memories.length,
-          currentUserMessages: currentUserContents.length,
-          provider: this.config.provider,
-          module: 'chat-completions-passthrough' 
-        });
-        return;
-      }
-      
-      // Format memories for system message
-      const formattedMemories = relevantMemories
-        .reverse() // Oldest first
-        .map((m) => m.content)
-        .join('\n\n---\n\n');
-      
-      const systemMessage = {
-        role: 'system',
-        content: `Previous conversation context:\n\n${formattedMemories}`,
-      };
-      
-      // Inject at the beginning of messages array
-      if (!request.messages) {
-        request.messages = [];
-      }
-      request.messages.unshift(systemMessage);
-      
-      logger.info('Memory context injected', {
-        totalMemories: memories.length,
-        injectedCount: relevantMemories.length,
-        provider: this.config.provider,
-        injectedContent: formattedMemories.substring(0, 500) + (formattedMemories.length > 500 ? '...' : ''),
-        module: 'chat-completions-passthrough',
-      });
-    } catch (error) {
-      logger.warn('Failed to inject memory context', { 
-        error, 
-        provider: this.config.provider,
-        module: 'chat-completions-passthrough' 
-      });
-    }
-  }
+}
 
-  private persistMemory(request: any, assistantResponse: string): void {
-    try {
-      const { memoryService } = require('../memory/memory-service.js');
-      
-      // Extract only the LAST user message (current turn)
-      const messages = request.messages || [];
-      const userMessages = messages.filter((msg: any) => msg.role === 'user');
-      
-      if (userMessages.length === 0) {
-        logger.debug('No user message found to persist', { module: 'chat-completions-passthrough' });
-        return;
-      }
-      
-      const lastUserMessage = userMessages[userMessages.length - 1];
-      const userContent = typeof lastUserMessage.content === 'string' 
-        ? lastUserMessage.content 
-        : JSON.stringify(lastUserMessage.content);
-      
-      const content = `User: ${userContent}\n\nAssistant: ${assistantResponse}`;
-      
-      memoryService.add({
-        userId: 'default',
-        agentId: this.config.provider,
-        content,
-        metadata: {
-          model: request.model,
-          provider: this.config.provider,
-        },
-      });
-      
-      logger.debug('Memory persisted in passthrough', {
-        provider: this.config.provider,
-        model: request.model,
-        hasAssistantResponse: assistantResponse.length > 0,
-        module: 'chat-completions-passthrough',
-      });
-    } catch (error) {
-      logger.warn('Failed to persist memory in passthrough', { 
-        error, 
-        provider: this.config.provider,
-        module: 'chat-completions-passthrough' 
-      });
-    }
+function extractOpenAIUserMessages(request: any): string[] {
+  const currentMessages = request.messages || [];
+  return currentMessages
+    .filter((msg: any) => msg.role === 'user')
+    .map((msg: any) => {
+      const content = typeof msg.content === 'string'
+        ? msg.content
+        : JSON.stringify(msg.content);
+      return content;
+    });
+}
+
+function extractOpenAILastUserContent(request: any): string | null {
+  const messages = request.messages || [];
+  const userMessages = messages.filter((msg: any) => msg.role === 'user');
+  if (!userMessages.length) {
+    return null;
   }
+  const lastUserMessage = userMessages[userMessages.length - 1];
+  return typeof lastUserMessage.content === 'string'
+    ? lastUserMessage.content
+    : JSON.stringify(lastUserMessage.content);
 }
