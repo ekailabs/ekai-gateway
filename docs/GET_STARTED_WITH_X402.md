@@ -4,7 +4,7 @@ This guide explains how to enable and use x402 pay-for-inference with the Ekai G
 
 ## Overview
 
-x402 enables on‑chain, per‑request payments when a target model does not have a local API key configured. The gateway automatically handles 402 responses, performs the on‑chain payment in stablecoins, retries the request with proof, and streams the provider’s response back to your client.
+x402 enables on‑chain, per‑request payments when a target model does not have a API key configured. The gateway automatically handles 402 responses, performs the on‑chain payment in stablecoins, retries the request with proof, and streams the provider’s response back to your client.
 
 ## Prerequisites
 
@@ -20,7 +20,7 @@ Set environment variables before starting the gateway:
 PRIVATE_KEY=0x...  # EVM private key with USDC balance
 
 # Optional: override x402 endpoint(s)
-X402_URL=https://x402.ekailabs.xyz/v1/chat/completions
+X402_BASE_URL=x402_supported_provider_url
 ```
 
 Gateway modes and endpoints are configured via `config.x402` (see logs at startup):
@@ -38,4 +38,4 @@ Gateway modes and endpoints are configured via `config.x402` (see logs at startu
 
 ## Client Usage
 
-Use your existing OpenAI- or Anthropic‑compatible clients (Claude Code, Codex, Cursor) pointed at the gateway. When a chosen model has no local API key, the gateway routes via x402 automatically; otherwise it uses your configured provider keys directly.
+Use your existing OpenAI- or Anthropic‑compatible clients (Claude Code, Codex, Cursor) pointed at the gateway. When a chosen model has no API key, the gateway routes via x402 automatically; otherwise it uses your configured provider keys directly.

@@ -3,7 +3,7 @@
 The Ekai Gateway is a self-hosted multi-provider API layer with built-in usage analytics.\
 It exposes OpenAI- and Anthropic-compatible endpoints, routes requests to multiple providers, and records usage and cost in a local SQLite database.
 
-It also supports x402 pay-for-inference: when a model lacks a local API key, the gateway can route via x402 Rasta, settle fees on-chain in stablecoins, and relay the response from the appropriate provider.
+It also supports x402 pay-for-inference: when a model lacks a API key, the gateway can route via x402 Rasta, settle fees on-chain in stablecoins, and relay the response from the appropriate provider.
 
 <figure><img src="images/architecture.png" alt="" width="563"><figcaption></figcaption></figure>
 
@@ -23,7 +23,7 @@ It can automatically fall back to another provider if one fails and can prioriti
 
 ### x402 Integration
 
-Provides a pay-to-unlock path when local API credentials are unavailable.\
+Provides a pay-to-unlock path when API credentials are unavailable.\
 Returns payment parameters, settles fees on-chain to the x402 facilitator, and forwards requests to the correct provider once confirmed.
 
 ### Dashboard UI (port 3000)
@@ -80,7 +80,7 @@ The Gateway acts as a neutral interface between clients and providers, enabling 
 
 ### How x402 Works
 
-1. Clients (Claude Code, Codex, Cursor) can select any target model through the local gateway.
+1. Clients (Claude Code, Codex, Cursor) can select any target model through the gateway.
 2. When a requested model lacks a configured API credential, the gateway escalates the request to x402 Rasta.
 3. x402 Rasta returns the payment parameters required to authorize processing.
 4. The gateway settles the fee on-chain in stablecoins to the designated x402 facilitator address.
