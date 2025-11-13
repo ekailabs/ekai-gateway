@@ -47,6 +47,10 @@ cp .env.example .env
 
 # 2. Start with Docker Compose
 docker compose up --build -d
+
+# (Optional) Build single-container runtime and run it
+docker build --target ekai-gateway-runtime -t ekai-gateway .
+docker run --env-file .env -p 3001:3001 -p 3000:3000 ekai-gateway
 ```
 
 Important: The dashboard is initially empty. After setup, send a query using your own client/tool (IDE, app, or API) through the gateway; usage appears once at least one request is processed.
