@@ -45,10 +45,10 @@ npm start
 cp .env.example .env
 # Edit .env and add at least one API key (see .env.example for details)
 
-# 2. Start with Docker Compose
+# 2. Start with Docker Compose (builds + runs ekai-gateway-runtime)
 docker compose up --build -d
 
-# (Optional) Build single-container runtime and run it
+# Optional: manual docker build/run without Compose
 docker build --target ekai-gateway-runtime -t ekai-gateway .
 docker run --env-file .env -p 3001:3001 -p 3000:3000 ekai-gateway
 ```

@@ -53,7 +53,7 @@ You can now send requests through the Gateway.
 
 ---
 
-## Docker Setup
+## Docker Setup (default single container)
 
 ```bash
 cp .env.example .env
@@ -61,7 +61,17 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-This runs both the Gateway API (3001) and Dashboard (3000). Visit `http://localhost:3000` to confirm the dashboard is active.
+This builds the `ekai-gateway-runtime` stage and runs both the Gateway API (3001) and Dashboard (3000) inside one container. Visit `http://localhost:3000` to confirm the dashboard is active.
+
+### Optional: split services
+
+Need to run the Gateway and Dashboard as separate containers (e.g., for independent scaling or debugging)?
+
+```bash
+docker compose --profile split up --build -d
+```
+
+The `split` profile starts the `gateway` and `dashboard` services defined in `docker-compose.yaml`.
 
 ---
 
