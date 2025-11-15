@@ -1,0 +1,12 @@
+provider: "eigencompute"
+currency: "USD"
+unit: "MTok"
+models:
+  gpt-oss-120b-f16:
+    input: 0.10
+    output: 0.20
+metadata:
+  last_updated: "2025-11-15"
+  source: "EigenCompute API docs"
+  notes: "Pricing for EigenCompute models"
+  version: "0.1"

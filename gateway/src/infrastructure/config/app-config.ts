@@ -50,6 +50,10 @@ export class AppConfig {
       apiKey: this.getOptionalString('ZAI_API_KEY'),
       enabled: this.has('ZAI_API_KEY'),
     },
+    eigencompute: {
+      apiKey: this.getOptionalString('EIGENCOMPUTE_API_KEY'),
+      enabled: this.has('EIGENCOMPUTE_API_KEY'),
+    },
   };
 
   // Telemetry configuration
