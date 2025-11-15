@@ -3,14 +3,55 @@ import { logger } from '../utils/logger.js';
 import { AuthenticationError, ProviderError } from '../../shared/errors/index.js';
 import { CONTENT_TYPES } from '../../domain/types/provider.js';
 import { getConfig } from '../config/app-config.js';
+import { ResponsesPassthrough, ResponsesPassthroughConfig } from './responses-passthrough.js';
 
-export class OpenAIResponsesPassthrough {
-  private readonly baseUrl = 'https://api.openai.com/v1/responses';
+export class OpenAIResponsesPassthrough implements ResponsesPassthrough {
+  constructor(private readonly config: ResponsesPassthroughConfig) {}
+
+  private get baseUrl(): string {
+    return this.config.baseUrl;
+  }
 
   private get apiKey(): string {
-    const key = getConfig().providers.openai.apiKey;
-    if (!key) throw new AuthenticationError('OpenAI API key not configured', { provider: 'openai' });
-    return key;
+    const envVar = this.config.auth?.envVar;
+    if (envVar) {
+      const token = process.env[envVar];
+      if (token) return token;
+    }
+
+    const fallback = getConfig().providers.openai.apiKey;
+    if (fallback) return fallback;
+
+    throw new AuthenticationError('OpenAI API key not configured', { provider: this.config.provider });
+  }
+
+  private buildAuthHeader(): string {
+    const token = this.apiKey;
+    const { auth } = this.config;
+    if (!auth) {
+      return `Bearer ${token}`;
+    }
+
+    if (auth.template) {
+      return auth.template.replace('{{token}}', token);
+    }
+
+    if (auth.scheme) {
+      return `${auth.scheme} ${token}`.trim();
+    }
+
+    return token;
+  }
+
+  private buildHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...this.config.staticHeaders,
+    };
+
+    const headerName = this.config.auth?.header ?? 'Authorization';
+    headers[headerName] = this.buildAuthHeader();
+    return headers;
   }
 
   // Store usage data for tracking
@@ -26,10 +67,7 @@ export class OpenAIResponsesPassthrough {
   private async makeRequest(body: any, stream: boolean): Promise<globalThis.Response> {
     const response = await fetch(this.baseUrl, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json'
-      },
+      headers: this.buildHeaders(),
       body: JSON.stringify({ ...body, stream, store: false }) // Not storing responses
     });
 
@@ -191,6 +229,3 @@ export class OpenAIResponsesPassthrough {
     }
   }
 }
-
-// Singleton instance
-export const openaiResponsesPassthrough = new OpenAIResponsesPassthrough();
