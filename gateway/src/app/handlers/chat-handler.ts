@@ -9,9 +9,9 @@ import { logger } from '../../infrastructure/utils/logger.js';
 import { HTTP_STATUS, CONTENT_TYPES } from '../../domain/types/provider.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
 import { CanonicalRequest } from 'shared/types/index.js';
-import { openaiResponsesPassthrough } from '../../infrastructure/passthrough/openai-responses-passthrough.js';
 import { createChatCompletionsPassthroughRegistry } from '../../infrastructure/passthrough/chat-completions-passthrough-registry.js';
 import { createMessagesPassthroughRegistry } from '../../infrastructure/passthrough/messages-passthrough-registry.js';
+import { createResponsesPassthroughRegistry } from '../../infrastructure/passthrough/responses-passthrough-registry.js';
 
 type ClientFormat = 'openai' | 'anthropic' | 'openai_responses';
 type ProviderName = string;
@@ -25,6 +25,7 @@ interface StreamingHeaders {
 
 const chatCompletionsPassthroughRegistry = createChatCompletionsPassthroughRegistry();
 const messagesPassthroughRegistry = createMessagesPassthroughRegistry();
+const responsesPassthroughRegistry = createResponsesPassthroughRegistry();
 
 export class ChatHandler {
   constructor(
@@ -174,7 +175,8 @@ export class ChatHandler {
   // Pass-through scenarios: where clientFormat and providerFormat are the same, we want to take a quick route
   // Currently supporting native provider formats via chat completions/messages passthroughs
   private shouldUsePassThrough(clientFormat: ClientFormat, providerName: ProviderName): boolean {
-    if (clientFormat === 'openai_responses' && providerName === 'openai') {
+    const responsesFormats = responsesPassthroughRegistry.getSupportedClientFormats(providerName);
+    if (responsesFormats.includes(clientFormat)) {
       return true;
     }
 
@@ -198,8 +200,13 @@ export class ChatHandler {
   }
 
   private async handlePassThrough(originalRequest: any, res: Response, clientFormat: ClientFormat, providerName: ProviderName, clientIp?: string): Promise<void> {
-    if (clientFormat === 'openai_responses' && providerName === 'openai') {
-      await openaiResponsesPassthrough.handleDirectRequest(originalRequest, res, clientIp);
+    const responsesPassthrough = responsesPassthroughRegistry.getPassthrough(providerName);
+    const responsesSupportsFormat = responsesPassthroughRegistry
+      .getSupportedClientFormats(providerName)
+      .includes(clientFormat);
+
+    if (responsesPassthrough && responsesSupportsFormat) {
+      await responsesPassthrough.handleDirectRequest(originalRequest, res, clientIp);
       return;
     }
 
