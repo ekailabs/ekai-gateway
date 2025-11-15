@@ -2,6 +2,14 @@ provider: "openai"
 currency: "USD"
 unit: "MTok"
 models:
+  gpt-5.1:
+    input: 1.25
+    cached_input: 0.125
+    output: 10.00
+  gpt-5.1-codex:
+    input: 1.25
+    cached_input: 0.125
+    output: 10.00
   gpt-5:
     input: 1.25
     cached_input: 0.125
@@ -168,15 +176,8 @@ models:
   gpt-3.5-turbo-16k-0613:
     input: 3.00
     output: 4.00
-  davinci-002:
-    input: 2.00
-    output: 2.00
-  babbage-002:
-    input: 0.40
-    output: 0.40
-
 metadata:
-  last_updated: "2025-10-06"
+  last_updated: "2025-11-15"
   source: "https://platform.openai.com/docs/pricing"
   notes: "Prices in USD per 1M tokens for Standard tier processing. Cached input pricing included where available."
   version: "0.1"
