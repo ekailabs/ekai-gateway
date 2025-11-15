@@ -1,0 +1,56 @@
+services:
+  fullstack:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ekai-gateway-runtime
+    env_file:
+      - .env
+    environment:
+      PORT: ${PORT:-3001}
+      UI_PORT: ${UI_PORT:-3000}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3001}
+    ports:
+      - "${PORT:-3001}:3001"
+      - "${UI_PORT:-3000}:3000"
+    volumes:
+      - gateway_logs:/app/gateway/logs
+      - gateway_db:/app/gateway/data
+    restart: unless-stopped
+
+  gateway:
+    profiles: ["split"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gateway-runtime
+    env_file:
+      - .env
+    environment:
+      PORT: ${PORT:-3001}
+    ports:
+      - "${PORT:-3001}:3001"
+    volumes:
+      - gateway_logs:/app/gateway/logs
+      - gateway_db:/app/gateway/data
+    restart: unless-stopped
+
+  dashboard:
+    profiles: ["split"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dashboard-runtime
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3001}
+    ports:
+      - "${UI_PORT:-3000}:3000"
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+volumes:
+  gateway_logs:
+  gateway_db:
