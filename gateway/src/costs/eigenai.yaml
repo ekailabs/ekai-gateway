@@ -1,4 +1,4 @@
-provider: "eigencompute"
+provider: "eigenai"
 currency: "USD"
 unit: "MTok"
 models:
@@ -7,6 +7,6 @@ models:
     output: 0.20
 metadata:
   last_updated: "2025-11-15"
-  source: "EigenCompute API docs"
-  notes: "Pricing for EigenCompute models"
+  source: "EigenAI API docs"
+  notes: "Pricing for EigenAI models"
   version: "0.1"

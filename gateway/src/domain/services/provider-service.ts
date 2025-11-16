@@ -5,7 +5,7 @@ import { OpenAIProvider } from '../providers/openai-provider.js';
 import { OpenRouterProvider } from '../providers/openrouter-provider.js';
 import { XAIProvider } from '../providers/xai-provider.js';
 import { ZAIProvider } from '../providers/zai-provider.js';
-import { EigenComputeProvider } from '../providers/eigencompute-provider.js';
+import { EigenAIProvider } from '../providers/eigenai-provider.js';
 import { logger } from '../../infrastructure/utils/logger.js';
 import { pricingLoader, ModelPricing } from '../../infrastructure/utils/pricing-loader.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
@@ -16,7 +16,7 @@ enum Provider {
   OPENROUTER = 'openrouter',
   XAI = 'xAI',
   ZAI = 'zai',
-  EIGENCOMPUTE = 'eigencompute'
+  EIGENAI = 'eigenai'
 }
 
 export class ProviderService {
@@ -29,7 +29,7 @@ export class ProviderService {
       [Provider.OPENROUTER]: () => new OpenRouterProvider(),
       [Provider.XAI]: () => new XAIProvider(),
       [Provider.ZAI]: () => new ZAIProvider(),
-      [Provider.EIGENCOMPUTE]: () => new EigenComputeProvider()
+      [Provider.EIGENAI]: () => new EigenAIProvider()
     };
 
     const factory = adapterMap[name];

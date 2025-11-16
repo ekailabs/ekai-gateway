@@ -133,6 +133,28 @@
           "format": "openai_chat"
         }
       }
+    },
+    {
+      "provider": "eigenai",
+      "models": [
+        "gpt-oss-120b-f16"
+      ],
+      "chat_completions": {
+        "base_url": "https://eigenai-sepolia.eigencloud.xyz/v1/chat/completions",
+        "auth": {
+          "env_var": "EIGENAI_API_KEY",
+          "header": "X-API-Key"
+        },
+        "supported_client_formats": ["openai"],
+        "payload_defaults": {
+          "stream_options": {
+            "include_usage": true
+          }
+        },
+        "usage": {
+          "format": "openai_chat"
+        }
+      }
     }
   ]
 }

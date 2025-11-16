@@ -50,9 +50,9 @@ export class AppConfig {
       apiKey: this.getOptionalString('ZAI_API_KEY'),
       enabled: this.has('ZAI_API_KEY'),
     },
-    eigencompute: {
-      apiKey: this.getOptionalString('EIGENCOMPUTE_API_KEY'),
-      enabled: this.has('EIGENCOMPUTE_API_KEY'),
+    eigenai: {
+      apiKey: this.getOptionalString('EIGENAI_API_KEY'),
+      enabled: this.has('EIGENAI_API_KEY'),
     },
   };
 

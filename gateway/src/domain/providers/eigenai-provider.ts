@@ -1,9 +1,8 @@
 import { BaseProvider } from './base-provider.js';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
-import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
 import { getConfig } from '../../infrastructure/config/app-config.js';
 
-interface EigenComputeRequest {
+interface EigenAIRequest {
   model: string;
   messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string; }>;
   max_tokens?: number;
@@ -13,7 +12,7 @@ interface EigenComputeRequest {
   seed?: number;
 }
 
-interface EigenComputeResponse {
+interface EigenAIResponse {
   id: string;
   object: string;
   created: number;
@@ -30,11 +29,11 @@ interface EigenComputeResponse {
   };
 }
 
-export class EigenComputeProvider extends BaseProvider {
-  readonly name = 'eigencompute';
+export class EigenAIProvider extends BaseProvider {
+  readonly name = 'eigenai';
   protected readonly baseUrl = 'https://eigenai-sepolia.eigencloud.xyz/v1';
   protected get apiKey(): string | undefined {
-    return getConfig().providers.eigencompute.apiKey;
+    return getConfig().providers.eigenai.apiKey;
   }
 
   protected getHeaders(): Record<string, string> {
@@ -44,7 +43,7 @@ export class EigenComputeProvider extends BaseProvider {
     };
   }
 
-  protected transformRequest(request: CanonicalRequest): EigenComputeRequest {
+  protected transformRequest(request: CanonicalRequest): EigenAIRequest {
     const messages = request.messages.map(msg => ({
       role: msg.role,
       content: msg.content
@@ -53,7 +52,7 @@ export class EigenComputeProvider extends BaseProvider {
         .join('')
     }));
 
-    const requestData: EigenComputeRequest = {
+    const requestData: EigenAIRequest = {
       model: request.model,
       messages,
       temperature: request.temperature,
@@ -72,7 +71,7 @@ export class EigenComputeProvider extends BaseProvider {
     return requestData;
   }
 
-  protected transformResponse(response: EigenComputeResponse): CanonicalResponse {
+  protected transformResponse(response: EigenAIResponse): CanonicalResponse {
     const choice = response.choices[0];
 
     return {
