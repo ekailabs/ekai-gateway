@@ -9,7 +9,7 @@ x402 enables on‑chain, per‑request payments when a target model does not hav
 ## Prerequisites
 
 - Ekai Gateway with x402 support enabled.
-- An EVM wallet private key funded with USDC on a supported chain (e.g., Base Sepolia for testing).
+- An EVM wallet private key funded with USDC on a supported chain.
 
 ## Configuration
 
