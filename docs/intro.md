@@ -9,6 +9,7 @@
 - [Usage with Claude Code](USAGE_WITH_CLAUDE_CODE.md)
 - [Usage with Codex](USAGE_WITH_CODEX.md)
 - [Providers and Models](providers-and-models.md)
+- [Get Started with x402](GET_STARTED_WITH_X402.md)
 
 ## What is Ekai?
 
@@ -23,6 +24,8 @@ Today, every model and interface operates in isolation. Switching from Claude Co
 The **Ekai Gateway** is a self-hosted multi-provider API layer that lets you route LLM requests to different providers and models through one endpoint. Think of using xAI's models in Codex, or using OpenAI's models in Claude Code.
 
 It is fully compatible with both **OpenAI** and **Anthropic** APIs, supports **OpenRouter**, **xAI**, and others, and includes built-in **usage tracking** and **cost analytics** through a lightweight dashboard.
+
+It also supports **x402 pay-for-inference**: when a requested model doesn’t have a local API key, the Gateway can route via x402 Rasta, settle fees on‑chain in stablecoins, and relay the response from the appropriate provider.
 
 With the Gateway, you can:
 - Use one unified endpoint for all supported providers  
