@@ -39,18 +39,18 @@ npm run build
 npm start
 ```
 
-**Option 2: Using Docker**
+**Option 2: Using Docker (published image)**
 ```bash
 # 1. Setup environment variables
 cp .env.example .env
 # Edit .env and add at least one API key (see .env.example for details)
 
-# 2. Start with Docker Compose (builds + runs ekai-gateway-runtime)
-docker compose up --build -d
+# 2. Pull + start the latest GHCR image
+docker compose up -d
 
-# Optional: manual docker build/run without Compose
-docker build --target ekai-gateway-runtime -t ekai-gateway .
-docker run --env-file .env -p 3001:3001 -p 3000:3000 ekai-gateway
+# Optional: run without Compose
+docker pull ghcr.io/ekailabs/ekai-gateway:latest
+docker run --env-file .env -p 3001:3001 -p 3000:3000 ghcr.io/ekailabs/ekai-gateway:latest
 ```
 
 Important: The dashboard is initially empty. After setup, send a query using your own client/tool (IDE, app, or API) through the gateway; usage appears once at least one request is processed.
@@ -59,6 +59,15 @@ Important: The dashboard is initially empty. After setup, send a query using you
 - Gateway API: `http://localhost:3001`
 - Dashboard UI: `http://localhost:3000`
 - Detailed setup steps live in `docs/getting-started.md`; check `docs/` for additional guides.
+
+### Build the Image Yourself (optional)
+
+If you’re contributing changes or need a custom build:
+
+```bash
+docker build --target ekai-gateway-runtime -t ekai-gateway .
+docker run --env-file .env -p 3001:3001 -p 3000:3000 ekai-gateway
+```
 
 ## Populate the Dashboard
 
