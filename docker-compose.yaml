@@ -1,15 +1,16 @@
 services:
   fullstack:
     image: ghcr.io/ekailabs/ekai-gateway:latest
-    env_file:
-      - .env
     environment:
       PORT: ${PORT:-3001}
       UI_PORT: ${UI_PORT:-3000}
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3001}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://p3001.m1054.opf-testnet-rofl-25.rofl.app}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      XAI_API_KEY: ${XAI_API_KEY:-}
     ports:
-      - "${PORT:-3001}:3001"
-      - "${UI_PORT:-3000}:3000"
+      - "3001:3001"
+      - "3000:3000"
     volumes:
       - gateway_logs:/app/gateway/logs
       - gateway_db:/app/gateway/data

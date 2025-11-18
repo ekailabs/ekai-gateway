@@ -1,0 +1,53 @@
+name: ekai-gateway
+version: 0.1.0
+description: A multi-provider AI proxy with usage dashboard and optional x402 payment support.
+tee: tdx
+kind: container
+resources:
+  memory: 2048
+  cpus: 2
+  storage:
+    kind: disk-persistent
+    size: 4096
+artifacts:
+  firmware: https://github.com/oasisprotocol/oasis-boot/releases/download/v0.6.2/ovmf.tdx.fd#db47100a7d6a0c1f6983be224137c3f8d7cb09b63bb1c7a5ee7829d8e994a42f
+  kernel: https://github.com/oasisprotocol/oasis-boot/releases/download/v0.6.2/stage1.bin#e5d4d654ca1fa2c388bf64b23fc6e67815893fc7cb8b7cfee253d87963f54973
+  stage2: https://github.com/oasisprotocol/oasis-boot/releases/download/v0.6.2/stage2-podman.tar.bz2#b2ea2a0ca769b6b2d64e3f0c577ee9c08f0bb81a6e33ed5b15b2a7e50ef9a09f
+  container:
+    runtime: https://github.com/oasisprotocol/oasis-sdk/releases/download/rofl-containers%2Fv0.8.4/rofl-containers#2cd0468ec2ea5f4264f47f728c5c3b0fcce93f5a537e568f8cbab8a53b526ae7
+    compose: docker-compose.yaml
+deployments:
+  default:
+    app_id: rofl1qrzh85ly2h7yy9wdzlklzhkv53d42us78g8u63v4
+    network: testnet
+    paratime: sapphire
+    admin: my_account
+    oci_repository: rofl.sh/9e3ee038-a4f9-481c-acd3-a0d95c30265f:1763395055
+    trust_root:
+      height: 29374343
+      hash: 91b1a377ebb56f356d9464af0f99e341f37b0f64600aa7ca7222898d584b36fe
+    policy:
+      quotes:
+        pcs:
+          tcb_validity_period: 30
+          min_tcb_evaluation_data_number: 18
+          tdx: {}
+      enclaves:
+        - id: nN+m4EyLeI+uTBdYAis8dDqkN920t5Npi1kdJ/HKPCUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+        - id: gacYR/+JLIz7J4LD/CXVRC3oDkc2BYMEgUNRY5avQtIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+      endorsements:
+        - any: {}
+      fees: endorsing_node
+      max_expiration: 3
+    secrets:
+      - name: OPENAI_API_KEY
+        value: pGJwa1ggrF6Omo3153MdPwl9gYoztImq60pKKD3M8gFi2UOwvCZkbmFtZVgeYOT/7v6JJF0W/UV4Vz/8bjgQmudY9L/kGwzVtTb5ZW5vbmNlT3Tsl+xu5jcWcUWT58vljmV2YWx1ZVi0aHkoOimrPtGUGem8sYK+F6mXF8EQt71KQ3mmnMEzBmr2uL6hob55jBqjphcHc6g6Q8TwKfr/l1JljTctEjl69Ue0aUAos960L/rz55S5rNhaYdqO8QqcZ9xT6aLxvKZl12+gdMx5HHGGk2dtDmtkTbmQfG7iltIoUPl8l/flXYP9vYkcqI1+InrRftewCAnLQNYnzZHdoz6qsgfES3N2R5iezHcrirB1X2LnfQ0RFcpoqbD6
+      - name: ANTHROPIC_API_KEY
+        value: pGJwa1gg9b7RMViSV8X9Zxfe+fQYuIIstWKE9xmZKHB6bEx6jltkbmFtZVghkczVkUxw2pG83rDCH4SrmtRIQbcj1vcbomSlNWCULacxZW5vbmNlT3dNiWLD5p6YXilhyB2wgGV2YWx1ZVh8kV56G55EenD4hPAg8vA3ER1DmnKFpIzYaV9wkQEA3xojqSgJJRilSttt6qnEHNGQYsQBiLNVJ4ZpAvhJDXFClE3h4AbYBr/ol3zZ3zeUjiw/T0agTFTHin0k3r2bX3qJKEYp1RxpcYVG/Ggg/2xbT5ICJ1KyiTsKzjgMAQ==
+      - name: XAI_API_KEY
+        value: pGJwa1ggleWCUeZ/qUHWOcxZE8UHeXQnhdTt3fUENzofTbNh10dkbmFtZVgbc635cpVpkSm3MDBPFjScquR83nmmf8lzVarvZW5vbmNlTyfJ64O0ovk8ZsEdhofQkWV2YWx1ZVhkfqry8oujMsNPAtAij+aGhbHGHZHQLIkrk9OUpK6rF0dHfJLlQexIr48DTEA23hsQk4X4cZNaF4J/dVdB89/WagEJopAsP22SUBq22oWj+fLDsS3sWHZ14o9dzvX7J2rC55T8fA==
+    machines:
+      default:
+        provider: oasis1qp2ens0hsp7gh23wajxa4hpetkdek3swyyulyrmz
+        offer: playground_short
+        id: 000000000000041f
