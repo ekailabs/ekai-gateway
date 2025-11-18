@@ -6,10 +6,12 @@ import ProviderChart from '@/components/ProviderChart';
 import ModelChart from '@/components/ModelChart';
 import UsageTable from '@/components/UsageTable';
 import DateRangePicker, { DateRange } from '@/components/DateRangePicker';
+import { useUsageData } from '@/hooks/useUsageData';
 
 export default function Dashboard() {
   const [dateRange, setDateRange] = useState<DateRange | null>(null);
   const [mounted, setMounted] = useState(false);
+  const usageData = useUsageData(dateRange?.from, dateRange?.to);
   
   useEffect(() => {
     // Set default to last 7 days after hydration
@@ -57,16 +59,16 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-6 py-12">
         <div className="space-y-12">
           {/* Trend Chart */}
-          <TrendChart dateRange={dateRange} />
+          <TrendChart usageData={usageData} />
 
           {/* Provider and Model Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <ProviderChart dateRange={dateRange} />
-            <ModelChart dateRange={dateRange} />
+            <ProviderChart usageData={usageData} />
+            <ModelChart usageData={usageData} />
           </div>
 
           {/* Usage Table */}
-          <UsageTable dateRange={dateRange} />
+          <UsageTable usageData={usageData} />
         </div>
       </main>
     </div>
