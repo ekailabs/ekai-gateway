@@ -1,0 +1,16 @@
+{
+  "providers": [
+    {
+      "provider": "openai",
+      "responses": {
+        "base_url": "https://api.openai.com/v1/responses",
+        "auth": {
+          "env_var": "OPENAI_API_KEY",
+          "header": "Authorization",
+          "scheme": "Bearer"
+        },
+        "supported_client_formats": ["openai_responses"]
+      }
+    }
+  ]
+}

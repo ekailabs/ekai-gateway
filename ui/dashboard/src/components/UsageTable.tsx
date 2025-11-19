@@ -3,20 +3,18 @@
 import { useState } from 'react';
 import { UsageRecord } from '@/lib/api';
 import { formatCurrency, formatNumber } from '@/lib/utils';
-import { useUsageData } from '@/hooks/useUsageData';
+import { UsageDataResult } from '@/hooks/useUsageData';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ErrorState from '@/components/ui/ErrorState';
 import EmptyState from '@/components/ui/EmptyState';
 
-import { DateRange } from '@/components/DateRangePicker';
-
 interface UsageTableProps {
   className?: string;
-  dateRange?: DateRange | null;
+  usageData: UsageDataResult;
 }
 
-export default function UsageTable({ className = '', dateRange }: UsageTableProps) {
-  const { records, loading, error, refetch } = useUsageData(dateRange?.from, dateRange?.to);
+export default function UsageTable({ className = '', usageData }: UsageTableProps) {
+  const { records, loading, error, refetch } = usageData;
   const [sortField, setSortField] = useState<keyof UsageRecord>('timestamp');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 

@@ -3,21 +3,19 @@
 import { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { groupByDate, formatForChart, calculateBurnRate, detectAnomalies, formatCurrency, formatNumber } from '@/lib/utils';
-import { useUsageData } from '@/hooks/useUsageData';
+import { UsageDataResult } from '@/hooks/useUsageData';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ErrorState from '@/components/ui/ErrorState';
 import EmptyState from '@/components/ui/EmptyState';
 import ChartTooltip from '@/components/ui/ChartTooltip';
 
-import { DateRange } from '@/components/DateRangePicker';
-
 interface TrendChartProps {
   className?: string;
-  dateRange?: DateRange | null;
+  usageData: UsageDataResult;
 }
 
-export default function TrendChart({ className = '', dateRange }: TrendChartProps) {
-  const { records, loading, error, refetch } = useUsageData(dateRange?.from, dateRange?.to);
+export default function TrendChart({ className = '', usageData }: TrendChartProps) {
+  const { records, loading, error, refetch } = usageData;
   const [chartType, setChartType] = useState<'line' | 'bar'>('bar');
   const [timeframe, setTimeframe] = useState<'hour' | 'day'>('day');
 

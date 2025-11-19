@@ -3,21 +3,19 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { formatCurrency } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/constants';
-import { useUsageData } from '@/hooks/useUsageData';
+import { UsageDataResult } from '@/hooks/useUsageData';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ErrorState from '@/components/ui/ErrorState';
 import EmptyState from '@/components/ui/EmptyState';
 import ChartTooltip from '@/components/ui/ChartTooltip';
 
-import { DateRange } from '@/components/DateRangePicker';
-
 interface ModelChartProps {
   className?: string;
-  dateRange?: DateRange | null;
+  usageData: UsageDataResult;
 }
 
-export default function ModelChart({ className = '', dateRange }: ModelChartProps) {
-  const { costByModel, totalCost, loading, error, refetch } = useUsageData(dateRange?.from, dateRange?.to);
+export default function ModelChart({ className = '', usageData }: ModelChartProps) {
+  const { costByModel, totalCost, loading, error, refetch } = usageData;
 
   // Helper function to clean model names for display
   const cleanModelName = (modelName: string) => {

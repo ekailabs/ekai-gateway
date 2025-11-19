@@ -3,15 +3,56 @@ import { logger } from '../utils/logger.js';
 import { AuthenticationError, ProviderError } from '../../shared/errors/index.js';
 import { CONTENT_TYPES } from '../../domain/types/provider.js';
 import { getConfig } from '../config/app-config.js';
+import { ResponsesPassthrough, ResponsesPassthroughConfig } from './responses-passthrough.js';
 import { injectMemoryContext, persistMemory } from '../memory/memory-helper.js';
 
-export class OpenAIResponsesPassthrough {
-  private readonly baseUrl = 'https://api.openai.com/v1/responses';
+export class OpenAIResponsesPassthrough implements ResponsesPassthrough {
+  constructor(private readonly config: ResponsesPassthroughConfig) {}
+
+  private get baseUrl(): string {
+    return this.config.baseUrl;
+  }
 
   private get apiKey(): string {
-    const key = getConfig().providers.openai.apiKey;
-    if (!key) throw new AuthenticationError('OpenAI API key not configured', { provider: 'openai' });
-    return key;
+    const envVar = this.config.auth?.envVar;
+    if (envVar) {
+      const token = process.env[envVar];
+      if (token) return token;
+    }
+
+    const fallback = getConfig().providers.openai.apiKey;
+    if (fallback) return fallback;
+
+    throw new AuthenticationError('OpenAI API key not configured', { provider: this.config.provider });
+  }
+
+  private buildAuthHeader(): string {
+    const token = this.apiKey;
+    const { auth } = this.config;
+    if (!auth) {
+      return `Bearer ${token}`;
+    }
+
+    if (auth.template) {
+      return auth.template.replace('{{token}}', token);
+    }
+
+    if (auth.scheme) {
+      return `${auth.scheme} ${token}`.trim();
+    }
+
+    return token;
+  }
+
+  private buildHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...this.config.staticHeaders,
+    };
+
+    const headerName = this.config.auth?.header ?? 'Authorization';
+    headers[headerName] = this.buildAuthHeader();
+    return headers;
   }
 
   // Store usage data for tracking
@@ -23,17 +64,12 @@ export class OpenAIResponsesPassthrough {
 
   // Buffer to handle multi-chunk SSE events
   private eventBuffer: string = '';
-  
-  // Buffer to accumulate assistant response
   private assistantResponseBuffer: string = '';
 
   private async makeRequest(body: any, stream: boolean): Promise<globalThis.Response> {
     const response = await fetch(this.baseUrl, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json'
-      },
+      headers: this.buildHeaders(),
       body: JSON.stringify({ ...body, stream, store: false }) // Not storing responses
     });
 
@@ -146,9 +182,8 @@ export class OpenAIResponsesPassthrough {
     this.eventBuffer = '';
     this.assistantResponseBuffer = '';
 
-    // Retrieve and inject memory context
     injectMemoryContext(request, {
-      provider: 'openai',
+      provider: this.config.provider,
       defaultUserId: 'default',
       extractCurrentUserInputs: req => extractResponsesUserInputs(req),
       applyMemoryContext: (req, context) => {
@@ -183,15 +218,14 @@ export class OpenAIResponsesPassthrough {
         res.write(value);
       }
       res.end();
-      
-      // Persist memory after streaming completes
+
       persistMemory(request, this.assistantResponseBuffer, {
-        provider: 'openai',
+        provider: this.config.provider,
         defaultUserId: 'default',
         extractUserContent: req => req.input || '',
         metadataBuilder: req => ({
           model: req.model,
-          provider: 'openai',
+          provider: this.config.provider,
         }),
       });
     } else {
@@ -224,26 +258,21 @@ export class OpenAIResponsesPassthrough {
         }).catch(() => {});
       }
 
-      // Extract assistant response from non-streaming response
       const assistantResponse = json?.output?.[0]?.content?.[0]?.text || '';
       persistMemory(request, assistantResponse, {
-        provider: 'openai',
+        provider: this.config.provider,
         defaultUserId: 'default',
         extractUserContent: req => req.input || '',
         metadataBuilder: req => ({
           model: req.model,
-          provider: 'openai',
+          provider: this.config.provider,
         }),
       });
 
       res.json(json);
     }
   }
-  
 }
-
-// Singleton instance
-export const openaiResponsesPassthrough = new OpenAIResponsesPassthrough();
 
 function extractResponsesUserInputs(request: any): string[] {
   const content = (request.input || '').trim();

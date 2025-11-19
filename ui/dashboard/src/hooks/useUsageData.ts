@@ -1,7 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiService, UsageResponse } from '@/lib/api';
+import { apiService, UsageResponse, UsageRecord } from '@/lib/api';
 
-export const useUsageData = (fromDate?: Date, toDate?: Date) => {
+export interface UsageDataResult {
+  data: UsageResponse | null;
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+  records: UsageRecord[];
+  totalCost: number;
+  totalTokens: number;
+  totalRequests: number;
+  costByProvider: Record<string, number>;
+  costByModel: Record<string, number>;
+}
+
+export const useUsageData = (fromDate?: Date, toDate?: Date): UsageDataResult => {
   const [data, setData] = useState<UsageResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -40,12 +40,12 @@
   EXPOSE 3001
   CMD ["node", "dist/gateway/src/index.js"]
   
-  # ---------- dashboard runtime ----------
-  FROM node:20-alpine AS dashboard-runtime
-  WORKDIR /app/ui/dashboard
-  ENV NODE_ENV=production
-  COPY ui/dashboard/package.json ui/dashboard/package-lock.json ./
-  RUN npm install --omit=dev
+# ---------- dashboard runtime ----------
+FROM node:20-alpine AS dashboard-runtime
+WORKDIR /app/ui/dashboard
+COPY ui/dashboard/package.json ui/dashboard/package-lock.json ./
+RUN npm install
+ENV NODE_ENV=production
   # Copy production build output
   COPY --from=dashboard-build /app/ui/dashboard/.next ./.next
   COPY --from=dashboard-build /app/ui/dashboard/public ./public
@@ -54,4 +54,32 @@
   COPY --from=dashboard-build /app/ui/dashboard/postcss.config.mjs ./postcss.config.mjs
   EXPOSE 3000
   CMD ["npx", "next", "start", "-p", "3000"]
+  
+# ---------- fullstack runtime ----------
+FROM node:20-alpine AS ekai-gateway-runtime
+WORKDIR /app
+  
+  # Gateway runtime bits
+COPY gateway/package.json gateway/package-lock.json ./gateway/
+RUN cd gateway && npm install --omit=dev
+COPY --from=gateway-build /app/gateway/dist ./gateway/dist
+RUN mkdir -p /app/gateway/data /app/gateway/logs
+  
+  # Dashboard runtime bits
+COPY ui/dashboard/package.json ui/dashboard/package-lock.json ./ui/dashboard/
+RUN cd ui/dashboard && npm install
+  COPY --from=dashboard-build /app/ui/dashboard/.next ./ui/dashboard/.next
+  COPY --from=dashboard-build /app/ui/dashboard/public ./ui/dashboard/public
+  COPY --from=dashboard-build /app/ui/dashboard/next.config.ts ./ui/dashboard/next.config.ts
+  COPY --from=dashboard-build /app/ui/dashboard/postcss.config.mjs ./ui/dashboard/postcss.config.mjs
+  
+# Entrypoint for running both services
+COPY scripts/start-docker-fullstack.sh /app/start-docker-fullstack.sh
+RUN chmod +x /app/start-docker-fullstack.sh
+
+ENV NODE_ENV=production
+  
+EXPOSE 3001 3000
+VOLUME ["/app/gateway/data", "/app/gateway/logs"]
+CMD ["/app/start-docker-fullstack.sh"]
   

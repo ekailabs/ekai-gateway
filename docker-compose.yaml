@@ -1,0 +1,20 @@
+services:
+  fullstack:
+    image: ghcr.io/ekailabs/ekai-gateway:latest
+    env_file:
+      - .env
+    environment:
+      PORT: ${PORT:-3001}
+      UI_PORT: ${UI_PORT:-3000}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3001}
+    ports:
+      - "${PORT:-3001}:3001"
+      - "${UI_PORT:-3000}:3000"
+    volumes:
+      - gateway_logs:/app/gateway/logs
+      - gateway_db:/app/gateway/data
+    restart: unless-stopped
+
+volumes:
+  gateway_logs:
+  gateway_db:
