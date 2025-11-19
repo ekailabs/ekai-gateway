@@ -5,6 +5,7 @@ import { OpenAIProvider } from '../providers/openai-provider.js';
 import { OpenRouterProvider } from '../providers/openrouter-provider.js';
 import { XAIProvider } from '../providers/xai-provider.js';
 import { ZAIProvider } from '../providers/zai-provider.js';
+import { GoogleProvider } from '../providers/google-provider.js';
 import { logger } from '../../infrastructure/utils/logger.js';
 import { pricingLoader, ModelPricing } from '../../infrastructure/utils/pricing-loader.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
@@ -14,7 +15,8 @@ enum Provider {
   OPENAI = 'openai',
   OPENROUTER = 'openrouter',
   XAI = 'xAI',
-  ZAI = 'zai'
+  ZAI = 'zai',
+  GOOGLE = 'google'
 }
 
 export class ProviderService {
@@ -26,7 +28,8 @@ export class ProviderService {
       [Provider.OPENAI]: () => new OpenAIProvider(),
       [Provider.OPENROUTER]: () => new OpenRouterProvider(),
       [Provider.XAI]: () => new XAIProvider(),
-      [Provider.ZAI]: () => new ZAIProvider()
+      [Provider.ZAI]: () => new ZAIProvider(),
+      [Provider.GOOGLE]: () => new GoogleProvider()
     };
 
     const factory = adapterMap[name];
@@ -75,6 +78,12 @@ export class ProviderService {
     if (modelName.includes('grok-') || modelName.includes('grok_beta')) {
       if (availableProviders.includes(Provider.XAI)) {
         return { provider: Provider.XAI };
+      }
+    }
+
+    if (modelName.toLowerCase().includes('gemini')) {
+      if (availableProviders.includes(Provider.GOOGLE)) {
+        return { provider: Provider.GOOGLE };
       }
     }
 
