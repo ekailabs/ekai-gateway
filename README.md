@@ -4,13 +4,13 @@
 [![GitHub stars](https://img.shields.io/github/stars/ekailabs/ekai-gateway.svg?style=social)](https://github.com/ekailabs/ekai-gateway)
 [![Discord](https://img.shields.io/badge/Discord-Join%20Server-7289da?logo=discord&logoColor=white)](https://discord.com/invite/5VsUUEfbJk)
 
-Multi-provider AI proxy with usage dashboard supporting Anthropic, OpenAI, xAI, and OpenRouter models through OpenAI-compatible and Anthropic-compatible APIs.
+Multi-provider AI proxy with usage dashboard supporting Anthropic, OpenAI, Google Gemini, xAI, and OpenRouter models through OpenAI-compatible and Anthropic-compatible APIs.
 
 **Designed for self-hosted personal use** - run your own instance to securely proxy AI requests using your API keys.
 
 ## Features
 
-- 🤖 **Multi-provider**: Anthropic + OpenAI + xAI + OpenRouter models
+- 🤖 **Multi-provider**: Anthropic + OpenAI + Google (Gemini) + xAI + OpenRouter models
 - 🔄 **Dual APIs**: OpenAI-compatible + Anthropic-compatible endpoints
 - 🔀 **Cost-optimized routing**: Automatic selection of cheapest provider for each model
 - 💰 **Usage tracking**: Track token usage and costs with visual dashboard
@@ -75,7 +75,7 @@ docker run --env-file .env -p 3001:3001 -p 3000:3000 ekai-gateway
 - Send a query using your usual workflow; both OpenAI-compatible and Anthropic-compatible endpoints are tracked.
 - Open `http://localhost:3000` to view usage and costs after your first request.
 
-**Required:** At least one API key from Anthropic, OpenAI, xAI, or OpenRouter (see `.env.example` for configuration details).
+**Required:** At least one API key from Anthropic, OpenAI, Google Gemini, xAI, or OpenRouter (see `.env.example` for configuration details).
 
 ## Integration Guides
 

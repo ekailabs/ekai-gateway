@@ -18,7 +18,7 @@ Endpoints include `/v1/chat/completions`, `/v1/messages`, `/usage`, and `/health
 ### Provider Router
 
 Resolves which provider to use for each model.\
-The router supports OpenAI, Anthropic, xAI (Grok), and OpenRouter.\
+The router supports OpenAI, Anthropic, Google (Gemini), xAI (Grok), and OpenRouter.\
 It can automatically fall back to another provider if one fails and can prioritize the cheapest option.
 
 ### x402 Integration

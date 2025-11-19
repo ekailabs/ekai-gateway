@@ -50,6 +50,10 @@ export class AppConfig {
       apiKey: this.getOptionalString('ZAI_API_KEY'),
       enabled: this.has('ZAI_API_KEY'),
     },
+    google: {
+      apiKey: this.getOptionalString('GOOGLE_API_KEY'),
+      enabled: this.has('GOOGLE_API_KEY'),
+    },
   };
 
   // Telemetry configuration
