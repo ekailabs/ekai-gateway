@@ -29,13 +29,10 @@ interface GoogleResponse {
   };
 }
 
-interface GoogleStreamResponse extends GoogleResponse {
-  data?: string;
-}
-
 export class GoogleProvider extends BaseProvider {
   readonly name = 'google';
   protected readonly baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
+  private lastRequestedModel: string | null = null;
 
   protected get apiKey(): string | undefined {
     return getConfig().providers.google.apiKey;
@@ -101,7 +98,7 @@ export class GoogleProvider extends BaseProvider {
     return body;
   }
 
-  protected transformResponse(response: GoogleResponse, requestedModel: string): CanonicalResponse {
+  private toCanonicalResponse(response: GoogleResponse, requestedModel: string): CanonicalResponse {
     const candidate = response.candidates?.[0];
     const parts = candidate?.content?.parts ?? [];
     const text = parts
@@ -133,6 +130,11 @@ export class GoogleProvider extends BaseProvider {
     };
   }
 
+  protected transformResponse(response: Record<string, unknown>): CanonicalResponse {
+    const model = this.lastRequestedModel ?? 'gemini';
+    return this.toCanonicalResponse(response as GoogleResponse, model);
+  }
+
   private mapFinishReason(reason?: string): 'stop' | 'length' | 'tool_calls' | 'error' {
     switch ((reason || '').toUpperCase()) {
       case 'STOP':
@@ -149,6 +151,7 @@ export class GoogleProvider extends BaseProvider {
       throw new AuthenticationError('Google API key not configured', { provider: this.name });
     }
 
+    this.lastRequestedModel = request.model;
     const url = this.buildUrl(request.model, 'generateContent');
     const body = JSON.stringify(this.transformRequest(request));
     const response = await fetch(url, {
@@ -163,7 +166,7 @@ export class GoogleProvider extends BaseProvider {
     }
 
     const json = await response.json() as GoogleResponse;
-    const canonical = this.transformResponse(json, request.model);
+    const canonical = this.toCanonicalResponse(json, request.model);
 
     usageTracker.trackUsage(
       request.model,
