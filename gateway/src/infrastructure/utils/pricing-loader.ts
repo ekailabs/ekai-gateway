@@ -51,6 +51,7 @@ export interface CostCalculation {
 
 export class PricingLoader {
   private costsDir = path.join(__dirname, '../../costs');
+  private generatedCostsDir = path.join(__dirname, '../../../costs/generated');
   private pricingCache = new Map<string, PricingConfig>();
   private lastLoadTime = 0;
   private cacheExpiryMs = 5 * 60 * 1000; // 5 minutes
@@ -111,7 +112,7 @@ export class PricingLoader {
    * Load pricing for a specific provider
    */
   loadProviderPricing(provider: string): PricingConfig {
-    const filePath = path.join(this.costsDir, `${provider}.yaml`);
+    const filePath = this.getCostFilePath(provider);
 
     if (!fs.existsSync(filePath)) {
       throw new Error(`Pricing file not found for provider: ${provider}`);
@@ -136,6 +137,22 @@ export class PricingLoader {
     }
 
     return config;
+  }
+  private getCostFilePath(provider: string): string {
+    if (provider === 'openrouter') {
+      const generatedCandidates = [
+        path.join(this.generatedCostsDir, `${provider}.yaml`),
+        path.join(this.costsDir, 'generated', `${provider}.yaml`)
+      ];
+
+      for (const candidate of generatedCandidates) {
+        if (fs.existsSync(candidate)) {
+          return candidate;
+        }
+      }
+    }
+
+    return path.join(this.costsDir, `${provider}.yaml`);
   }
 
   /**
