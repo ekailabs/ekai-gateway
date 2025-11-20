@@ -146,7 +146,20 @@ export default function ConfigStatus({ status, loading, error, onRetry }: Config
             </p>
             <p className="text-sm text-amber-700 mt-0.5">
               {status.x402Enabled 
-                ? 'These will use automatically use x402 on-chain payments if supported by the x402 URL.' 
+                ? (
+                  <>
+                    These will automatically use x402 on-chain payments if supported by the x402 gateway URL.{' '}
+                    <a 
+                      href="https://docs.ekailabs.xyz/get_started_with_x402" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="underline hover:text-amber-900 font-medium"
+                    >
+                      Learn more about x402 on Ekai
+                    </a>
+                    .
+                  </>
+                )
                 : 'Add API keys to your .env file to enable these providers.'}
             </p>
           </div>
