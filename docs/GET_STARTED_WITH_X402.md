@@ -4,7 +4,7 @@ This guide explains how to enable and use x402 pay-for-inference with the Ekai G
 
 ## Overview
 
-x402 enables on‑chain, per‑request payments when a target model does not have an API key configured. The gateway automatically handles 402 responses, performs the onchain payment in stablecoins, retries the request with proof, and streams the provider’s response back to your client.
+x402 enables onchain, per‑request payments when a target model does not have an API key configured. The gateway automatically handles 402 responses, performs the onchain payment in stablecoins, retries the request with proof, and streams the provider’s response back to your client.
 
 ## Prerequisites
 
