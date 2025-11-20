@@ -31,6 +31,17 @@ export interface UsageResponse {
   records: UsageRecord[];
 }
 
+export interface ConfigStatusResponse {
+  providers: Record<string, boolean>;
+  mode: 'byok' | 'hybrid' | 'x402-only';
+  hasApiKeys: boolean;
+  x402Enabled: boolean;
+  server: {
+    environment: string;
+    port: number;
+  };
+}
+
 // API service functions
 export const apiService = {
   // Fetch usage data
@@ -69,6 +80,41 @@ export const apiService = {
     const response = await fetch(`${API_BASE_URL}/health`);
     if (!response.ok) {
       throw new Error(`Failed to fetch health: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  async downloadUsageCsv(fromDate?: Date, toDate?: Date) {
+    const params = new URLSearchParams();
+    if (fromDate) params.append('startTime', fromDate.toISOString());
+    if (toDate) params.append('endTime', toDate.toISOString());
+    params.append('format', 'csv');
+
+    const url = `${API_BASE_URL}/usage?${params.toString()}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to export CSV: ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+    const link = document.createElement('a');
+    const downloadUrl = window.URL.createObjectURL(blob);
+    link.href = downloadUrl;
+
+    const startLabel = fromDate ? fromDate.toISOString().slice(0, 10) : 'start';
+    const endLabel = toDate ? toDate.toISOString().slice(0, 10) : 'end';
+    link.download = `usage-${startLabel}-${endLabel}.csv`;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+  },
+
+  async getConfigStatus(): Promise<ConfigStatusResponse> {
+    const response = await fetch(`${API_BASE_URL}/config/status`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch config status: ${response.statusText}`);
     }
     return response.json();
   }
