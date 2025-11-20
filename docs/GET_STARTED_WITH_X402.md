@@ -39,3 +39,14 @@ Gateway modes and endpoints are configured via `config.x402` (see logs at startu
 ## Client Usage
 
 Use your existing OpenAI- or Anthropic‑compatible clients (Claude Code, Codex, Cursor) pointed at the gateway. When a chosen model has no API key, the gateway routes via x402 automatically; otherwise it uses your configured provider keys directly.
+
+## Supported Providers & Endpoints
+
+| Provider | /chat/completions | /messages | Pattern |
+|----------|-------------------|-----------|---------|
+| **OpenRouter** | ✅ (100+ models) |  | Any OpenRouter model ID (e.g., `openai/gpt-5`, `moonshotai/kimi-k2-thinking`) |
+| **Anthropic** |  | ✅ | Models containing `claude` (e.g., `claude-haiku-4-5-20251001`) |
+| **xAI** |  | ✅ | Models containing `grok` (e.g., `grok-code-fast-1`) |
+
+Notes:
+- Model IDs must follow the provider’s naming (e.g., `<provider>/<model>` for OpenRouter, `claude-*` for Anthropic).
