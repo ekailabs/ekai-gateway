@@ -88,15 +88,6 @@ export const apiService = {
     return response.json();
   },
 
-  // Fetch models data
-  async getModels() {
-    const response = await fetch(`${API_BASE_URL}/v1/models`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch models: ${response.statusText}`);
-    }
-    return response.json();
-  },
-
   // Check health
   async getHealth() {
     const response = await fetch(`${API_BASE_URL}/health`);

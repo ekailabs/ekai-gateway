@@ -117,7 +117,7 @@ function CommandSnippet({ command }: { command: string }) {
       await navigator.clipboard.writeText(command);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch (_) {
+    } catch {
       setCopied(false);
     }
   };

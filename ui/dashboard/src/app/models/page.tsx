@@ -3,7 +3,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { ModelCatalogEntry } from '@/lib/api';
 import { useModels } from '@/hooks/useModels';
-import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ErrorState from '@/components/ui/ErrorState';
 import EmptyState from '@/components/ui/EmptyState';
 import Link from 'next/link';
@@ -29,7 +28,7 @@ export default function ModelsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const { items, loading, error, refetch, total } = useModels();
+  const { items, loading, error, refetch } = useModels();
 
   const providers = useMemo(() => {
     const set = new Set<string>();
@@ -63,7 +62,7 @@ export default function ModelsPage() {
   }, [totalPages]);
 
   // Reset to page 1 when filters change
-  const handleFilterChange = (setter: (value: any) => void) => (value: any) => {
+  const handleFilterChange = <T,>(setter: (value: T) => void) => (value: T) => {
     setter(value);
     setCurrentPage(1);
   };
@@ -149,7 +148,7 @@ export default function ModelsPage() {
                 </select>
                 <select
                   value={endpoint}
-                  onChange={e => handleFilterChange(setEndpoint)(e.target.value as any)}
+                  onChange={e => handleFilterChange(setEndpoint)(e.target.value as 'chat_completions' | 'messages' | 'responses' | '')}
                   className="border border-gray-300 rounded-md px-3 py-2 text-sm"
                 >
                   <option value="">All endpoints</option>

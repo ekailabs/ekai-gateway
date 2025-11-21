@@ -82,7 +82,7 @@ export default function ModelCatalog({ className = '' }: ModelCatalogProps) {
           </select>
           <select
             value={endpoint}
-            onChange={e => setEndpoint(e.target.value as any)}
+            onChange={e => setEndpoint(e.target.value as 'chat_completions' | 'messages' | '')}
             className="border border-gray-300 rounded-md px-3 py-2 text-sm"
           >
             <option value="">All endpoints</option>

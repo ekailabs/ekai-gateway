@@ -79,7 +79,7 @@ export const useModels = (filter: ModelsFilter = {}) => {
     };
 
     fetchModels();
-  }, [filter.provider, filter.endpoint, filter.search]);
+  }, [filter]);
 
   return {
     data,
