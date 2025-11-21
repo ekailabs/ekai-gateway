@@ -17,6 +17,7 @@ export interface UsageRecord {
   output_cost: number;
   total_cost: number;
   currency: string;
+  payment_method?: string;
   created_at: string;
 }
 
@@ -29,8 +30,8 @@ export class DatabaseQueries {
       INSERT INTO usage_records (
         request_id, provider, model, timestamp,
         input_tokens, cache_write_input_tokens, cache_read_input_tokens, output_tokens, total_tokens,
-        input_cost, cache_write_cost, cache_read_cost, output_cost, total_cost, currency
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        input_cost, cache_write_cost, cache_read_cost, output_cost, total_cost, currency, payment_method
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -48,7 +49,8 @@ export class DatabaseQueries {
       record.cache_read_cost,
       record.output_cost,
       record.total_cost,
-      record.currency
+      record.currency,
+      record.payment_method || 'api_key'
     );
     
     return result.lastInsertRowid as number;

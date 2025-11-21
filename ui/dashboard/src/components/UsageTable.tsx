@@ -153,9 +153,16 @@ export default function UsageTable({ className = '', usageData }: UsageTableProp
                   {new Date(record.timestamp).toLocaleString()}
                 </td>
                 <td className="px-4 py-3">
-                  <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                    {getProviderName(record.provider)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                      {getProviderName(record.provider)}
+                    </span>
+                    {record.payment_method === 'x402' && (
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
+                        x402
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-900 font-mono">
                   {record.model}

@@ -19,6 +19,7 @@ export interface UsageRecord {
   output_cost: number;
   total_cost: number;
   currency: string;
+  payment_method?: string;
   created_at: string;
 }
 

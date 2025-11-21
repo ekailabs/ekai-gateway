@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS usage_records (
   output_cost REAL NOT NULL,
   total_cost REAL NOT NULL,
   currency TEXT DEFAULT 'USD',
+  payment_method TEXT DEFAULT 'api_key',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
