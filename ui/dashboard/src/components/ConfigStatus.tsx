@@ -1,4 +1,5 @@
 import { ConfigStatusResponse } from '@/lib/api';
+import { getProviderName } from '@/lib/utils';
 
 interface ConfigStatusProps {
   status: ConfigStatusResponse | null;
@@ -6,15 +7,6 @@ interface ConfigStatusProps {
   error?: string | null;
   onRetry: () => void;
 }
-
-const PROVIDER_LABELS: Record<string, string> = {
-  openai: 'OpenAI',
-  anthropic: 'Anthropic',
-  google: 'Google',
-  xai: 'xAI',
-  openrouter: 'OpenRouter',
-  zai: 'z-AI',
-};
 
 export default function ConfigStatus({ status, loading, error, onRetry }: ConfigStatusProps) {
   if (loading || !status) {
@@ -92,7 +84,7 @@ export default function ConfigStatus({ status, loading, error, onRetry }: Config
                       key={provider}
                       className="inline-block px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded"
                     >
-                      {PROVIDER_LABELS[provider.toLowerCase()] || provider}
+                      {getProviderName(provider)}
                     </span>
                   ))}
                   {activeProviders.length > 3 && (
@@ -142,7 +134,7 @@ export default function ConfigStatus({ status, loading, error, onRetry }: Config
           </svg>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-amber-900">
-              Missing providers: {inactiveProviders.map(p => PROVIDER_LABELS[p.toLowerCase()] || p).join(', ')}
+              Missing providers: {inactiveProviders.map(p => getProviderName(p)).join(', ')}
             </p>
             <p className="text-sm text-amber-700 mt-0.5">
               {status.x402Enabled 

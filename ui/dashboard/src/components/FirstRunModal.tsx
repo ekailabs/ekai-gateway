@@ -71,7 +71,7 @@ export default function FirstRunModal({ open, onClose, onRefresh, children }: Fi
           <button
             onClick={onRefresh}
             className="px-4 py-2 text-sm font-semibold text-white rounded-md shadow"
-            style={{ backgroundColor: '#111827' }}
+            style={{ backgroundColor: '#004f4f' }}
           >
             Refresh after first call
           </button>
