@@ -69,6 +69,8 @@ export class UsageTracker {
     // For x402 payments, use actual payment amount instead of YAML pricing
     let costCalculation: CostCalculation | null;
     
+    const paymentMethod = x402PaymentAmount ? 'x402' : 'api_key';
+
     if (x402PaymentAmount) {
       // Parse the actual payment amount from x402
       const totalCost = parseFloat(x402PaymentAmount);
@@ -126,7 +128,8 @@ export class UsageTracker {
           cache_read_cost: costCalculation.cacheReadCost,
           output_cost: costCalculation.outputCost,
           total_cost: costCalculation.totalCost,
-          currency: costCalculation.currency
+          currency: costCalculation.currency,
+          payment_method: paymentMethod
         });
 
         logger.info('Usage tracked', {
