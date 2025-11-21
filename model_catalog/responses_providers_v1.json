@@ -2,6 +2,10 @@
   "providers": [
     {
       "provider": "openai",
+      "models": [
+        "gpt-5-codex",
+        "codex-mini-latest"
+      ],
       "responses": {
         "base_url": "https://api.openai.com/v1/responses",
         "auth": {

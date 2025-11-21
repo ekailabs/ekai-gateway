@@ -11,6 +11,7 @@ import { useConfigStatus } from '@/hooks/useConfigStatus';
 import ConfigStatus from '@/components/ConfigStatus';
 import FirstRunModal from '@/components/FirstRunModal';
 import { apiService } from '@/lib/api';
+import Link from 'next/link';
 
 export default function Dashboard() {
   const [dateRange, setDateRange] = useState<DateRange | null>(null);
@@ -78,8 +79,8 @@ export default function Dashboard() {
               <button
                 onClick={handleExportCsv}
                 disabled={exporting}
-                className="px-4 py-2 text-sm font-semibold text-white rounded-md disabled:opacity-60"
-                style={{ backgroundColor: '#111827' }}
+                className="px-4 py-2 text-sm font-semibold text-white rounded-md disabled:opacity-60 hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: '#004f4f' }}
               >
                 {exporting ? 'Exporting…' : 'Export CSV'}
               </button>
@@ -100,6 +101,26 @@ export default function Dashboard() {
           onRetry={configStatus.refetch} 
         />
 
+        {/* Model Catalog Link */}
+        <div className="card p-6 mb-8 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">Browse Available Models</h3>
+              <p className="text-sm text-gray-600">View the full catalog of models across all providers with pricing information</p>
+            </div>
+            <Link 
+              href="/models"
+              className="flex-shrink-0 inline-flex items-center gap-2 px-6 py-3 text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
+              style={{ backgroundColor: '#004f4f' }}
+            >
+              View Model Catalog
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+
         <div className="space-y-12">
           {/* Trend Chart */}
           <TrendChart usageData={usageData} />
@@ -107,13 +128,13 @@ export default function Dashboard() {
           {/* Provider and Model Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <ProviderChart usageData={usageData} />
-            <ModelChart usageData={usageData} />
-          </div>
-
-          {/* Usage Table */}
-          <UsageTable usageData={usageData} />
+          <ModelChart usageData={usageData} />
         </div>
-      </main>
+
+        {/* Usage Table */}
+        <UsageTable usageData={usageData} />
+      </div>
+    </main>
 
       <FirstRunModal 
         open={showFirstRunGuide} 

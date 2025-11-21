@@ -83,13 +83,16 @@ export class PricingLoader {
       
       files.forEach(file => {
         if (file.endsWith('.yaml') || file.endsWith('.yml')) {
-          const provider = path.basename(file, path.extname(file));
+          const providerFromFile = path.basename(file, path.extname(file));
           
           // Skip template files
-          if (provider === 'templates') return;
+          if (providerFromFile === 'templates') return;
+          
+          // Normalize provider name to lowercase for consistent lookups
+          const provider = providerFromFile.toLowerCase();
           
           try {
-            const pricing = this.loadProviderPricing(provider);
+            const pricing = this.loadProviderPricing(providerFromFile);
             this.pricingCache.set(provider, pricing);
             logger.debug('Pricing loaded', { provider, modelCount: Object.keys(pricing.models).length, operation: 'pricing_load', module: 'pricing-loader' });
           } catch (error) {
@@ -131,8 +134,8 @@ export class PricingLoader {
       config.models = this.normalizeAnthropicCacheFields(config.models);
     }
 
-    // Normalize cache field names for xAI
-    if (provider === 'xAI') {
+    // Normalize cache field names for xAI (handle both xAI and xai for filename compatibility)
+    if (provider.toLowerCase() === 'xai') {
       config.models = this.normalizeXAICacheFields(config.models);
     }
 
