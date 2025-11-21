@@ -1,11 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { apiService, ModelCatalogEntry, ModelsResponse } from '@/lib/api';
-
-export interface ModelsFilter {
-  provider?: string;
-  endpoint?: 'chat_completions' | 'messages' | 'responses';
-  search?: string;
-}
+import { ModelsFilter, normalizeModelsFilter, filterKey } from '@/lib/modelFilters';
 
 const PAGE_SIZE = 500;
 
@@ -55,6 +50,9 @@ export const useModels = (filter: ModelsFilter = {}) => {
   const isInitialLoadRef = useRef(true);
   const dataRef = useRef<ModelsResponse | null>(null);
 
+  const normalizedFilter = useMemo(() => normalizeModelsFilter(filter), [filter.provider, filter.endpoint, filter.search]);
+  const normalizedKey = useMemo(() => filterKey(normalizedFilter), [normalizedFilter]);
+
   useEffect(() => {
     const fetchModels = async () => {
       const hasExistingData = dataRef.current !== null && dataRef.current.items.length > 0;
@@ -67,7 +65,7 @@ export const useModels = (filter: ModelsFilter = {}) => {
           setLoading(true);
         }
         setError(null);
-        const resp = await fetchAllModels(filter);
+        const resp = await fetchAllModels(normalizedFilter);
         setData(resp);
         dataRef.current = resp;
         isInitialLoadRef.current = false;
@@ -79,7 +77,7 @@ export const useModels = (filter: ModelsFilter = {}) => {
     };
 
     fetchModels();
-  }, [filter]);
+  }, [normalizedFilter, normalizedKey]);
 
   return {
     data,
@@ -91,7 +89,7 @@ export const useModels = (filter: ModelsFilter = {}) => {
       isInitialLoadRef.current = false;
       setLoading(true);
       try {
-        const resp = await fetchAllModels(filter);
+        const resp = await fetchAllModels(normalizedFilter);
         setData(resp);
         dataRef.current = resp;
       } catch (err) {
