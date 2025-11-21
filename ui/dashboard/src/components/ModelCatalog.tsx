@@ -6,6 +6,9 @@ import { useModels } from '@/hooks/useModels';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ErrorState from '@/components/ui/ErrorState';
 import EmptyState from '@/components/ui/EmptyState';
+import { Card } from '@/components/ui/Card';
+import { useCopy } from '@/hooks/useCopy';
+import { ModelEndpoint } from '@/lib/modelFilters';
 import { getProviderName } from '@/lib/utils';
 
 interface ModelCatalogProps {
@@ -15,7 +18,7 @@ interface ModelCatalogProps {
 export default function ModelCatalog({ className = '' }: ModelCatalogProps) {
   const [search, setSearch] = useState('');
   const [provider, setProvider] = useState<string>('');
-  const [endpoint, setEndpoint] = useState<'chat_completions' | 'messages' | ''>('');
+  const [endpoint, setEndpoint] = useState<ModelEndpoint | ''>('');
 
   const { items, loading, error, refetch, total } = useModels({
     search: search.trim() || undefined,
@@ -30,10 +33,6 @@ export default function ModelCatalog({ className = '' }: ModelCatalogProps) {
   }, [items]);
 
   const filteredItems = items; // server-side filters already applied
-
-  const copy = (id: string) => {
-    navigator.clipboard.writeText(id).catch(() => undefined);
-  };
 
   if (loading) {
     return <LoadingSkeleton className={className} />;
@@ -55,7 +54,7 @@ export default function ModelCatalog({ className = '' }: ModelCatalogProps) {
   }
 
   return (
-    <div className={`card p-8 ${className}`}>
+    <Card className={`p-8 ${className}`}>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <p className="text-xs font-medium uppercase text-gray-500">Model Catalog</p>
@@ -105,16 +104,17 @@ export default function ModelCatalog({ className = '' }: ModelCatalogProps) {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filteredItems.map((item) => (
-              <ModelRow key={`${item.provider}-${item.id}-${item.endpoint}`} entry={item} onCopy={copy} />
+              <ModelRow key={`${item.provider}-${item.id}-${item.endpoint}`} entry={item} />
             ))}
           </tbody>
         </table>
       </div>
-    </div>
+    </Card>
   );
 }
 
-function ModelRow({ entry, onCopy }: { entry: ModelCatalogEntry; onCopy: (id: string) => void }) {
+function ModelRow({ entry }: { entry: ModelCatalogEntry }) {
+  const { copied, copy } = useCopy();
   const priceText =
     entry.pricing && typeof entry.pricing.input === 'number' && typeof entry.pricing.output === 'number'
       ? `${entry.pricing.input.toFixed(4)} / ${entry.pricing.output.toFixed(4)} ${entry.pricing.currency}`
@@ -134,10 +134,12 @@ function ModelRow({ entry, onCopy }: { entry: ModelCatalogEntry; onCopy: (id: st
       </td>
       <td className="px-4 py-3 text-right">
         <button
-          onClick={() => onCopy(entry.id)}
+          onClick={() => {
+            copy(entry.id);
+          }}
           className="text-sm font-medium text-gray-700 hover:text-gray-900 underline"
         >
-          Copy ID
+          {copied ? 'Copied' : 'Copy ID'}
         </button>
       </td>
     </tr>

@@ -7,6 +7,7 @@ import ErrorState from '@/components/ui/ErrorState';
 import EmptyState from '@/components/ui/EmptyState';
 import Link from 'next/link';
 import { getProviderName } from '@/lib/utils';
+import { ModelEndpoint } from '@/lib/modelFilters';
 
 const ITEMS_PER_PAGE = 10;
 const SEARCH_DEBOUNCE_MS = 400;
@@ -15,7 +16,7 @@ export default function ModelsPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [provider, setProvider] = useState<string>('');
-  const [endpoint, setEndpoint] = useState<'chat_completions' | 'messages' | 'responses' | ''>('');
+  const [endpoint, setEndpoint] = useState<ModelEndpoint | ''>('');
   const [currentPage, setCurrentPage] = useState(1);
 
   // Debounce search input
@@ -418,4 +419,3 @@ function ModelRow({ entry, onCopy, isEven }: { entry: ModelCatalogEntry; onCopy:
     </tr>
   );
 }
-

@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react';
+import { useCopy } from '@/hooks/useCopy';
 
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
@@ -110,24 +111,14 @@ function Step({ number, title, children, commands = [] }: StepProps) {
 }
 
 function CommandSnippet({ command }: { command: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(command);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setCopied(false);
-    }
-  };
+  const { copied, copy } = useCopy();
 
   return (
     <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-white border border-gray-200 shadow-sm group">
       <code className="text-sm font-mono text-gray-900">{command}</code>
       <button
         type="button"
-        onClick={copy}
+        onClick={() => copy(command)}
         className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded transition-colors"
         aria-label="Copy command"
         title={copied ? "Copied!" : "Copy to clipboard"}
