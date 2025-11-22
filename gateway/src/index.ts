@@ -29,6 +29,8 @@ import express from 'express';
 import cors from 'cors';
 import { handleOpenAIFormatChat, handleAnthropicFormatChat, handleOpenAIResponses } from './app/handlers/chat-handler.js';
 import { handleUsageRequest } from './app/handlers/usage-handler.js';
+import { handleConfigStatus } from './app/handlers/config-handler.js';
+import { handleModelsRequest } from './app/handlers/models-handler.js';
 import { logger } from './infrastructure/utils/logger.js';
 import { requestContext } from './infrastructure/middleware/request-context.js';
 import { requestLogging } from './infrastructure/middleware/request-logging.js';
@@ -83,7 +85,9 @@ async function bootstrap(): Promise<void> {
   app.post('/v1/chat/completions', handleOpenAIFormatChat);
   app.post('/v1/messages', handleAnthropicFormatChat);
   app.post('/v1/responses', handleOpenAIResponses);
+  app.get('/v1/models', handleModelsRequest);
   app.get('/usage', handleUsageRequest);
+  app.get('/config/status', handleConfigStatus);
 
   // Error handler MUST be last middleware
   app.use(errorHandler);

@@ -68,17 +68,6 @@ models:
     input: 0.60
     cached_input: 0.30
     output: 2.40
-
-  gpt-audio:
-    input: 2.50
-    output: 10.00
-  gpt-4o-audio-preview:
-    input: 2.50
-    output: 10.00
-  gpt-4o-mini-audio-preview:
-    input: 0.15
-    output: 0.60
-
   o1:
     input: 15.00
     cached_input: 7.50

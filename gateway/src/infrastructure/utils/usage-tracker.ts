@@ -69,6 +69,8 @@ export class UsageTracker {
     // For x402 payments, use actual payment amount instead of YAML pricing
     let costCalculation: CostCalculation | null;
     
+    const paymentMethod = x402PaymentAmount ? 'x402' : 'api_key';
+
     if (x402PaymentAmount) {
       // Parse the actual payment amount from x402
       const totalCost = parseFloat(x402PaymentAmount);
@@ -126,7 +128,8 @@ export class UsageTracker {
           cache_read_cost: costCalculation.cacheReadCost,
           output_cost: costCalculation.outputCost,
           total_cost: costCalculation.totalCost,
-          currency: costCalculation.currency
+          currency: costCalculation.currency,
+          payment_method: paymentMethod
         });
 
         logger.info('Usage tracked', {
@@ -197,6 +200,61 @@ export class UsageTracker {
         records: []
       };
     }
+  }
+
+  /**
+   * Export usage records for a date range
+   */
+  getUsageRecords(startDate: string, endDate: string): UsageRecord[] {
+    return dbQueries.getUsageRecordsByDateRange(startDate, endDate);
+  }
+
+  /**
+   * Convert usage records to CSV text
+   */
+  toCsv(records: UsageRecord[]): string {
+    const headers = [
+      'request_id',
+      'provider',
+      'model',
+      'timestamp',
+      'input_tokens',
+      'cache_write_input_tokens',
+      'cache_read_input_tokens',
+      'output_tokens',
+      'total_tokens',
+      'input_cost_usd',
+      'cache_write_cost_usd',
+      'cache_read_cost_usd',
+      'output_cost_usd',
+      'total_cost_usd'
+    ];
+
+    const escape = (value: string | number): string => {
+      const str = String(value ?? '');
+      const needsQuotes = str.includes(',') || str.includes('"') || str.includes('\n');
+      if (!needsQuotes) return str;
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+
+    const rows = records.map(record => [
+      record.request_id,
+      record.provider,
+      record.model,
+      record.timestamp,
+      record.input_tokens,
+      record.cache_write_input_tokens,
+      record.cache_read_input_tokens,
+      record.output_tokens,
+      record.total_tokens,
+      record.input_cost,
+      record.cache_write_cost,
+      record.cache_read_cost,
+      record.output_cost,
+      record.total_cost
+    ].map(escape).join(','));
+
+    return [headers.join(','), ...rows].join('\n');
   }
 
   /**

@@ -1,7 +1,7 @@
 'use client';
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, getProviderName } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/constants';
 import { UsageDataResult } from '@/hooks/useUsageData';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
@@ -20,7 +20,7 @@ export default function ProviderChart({ className = '', usageData }: ProviderCha
   // Convert to chart data format
   const data = Object.entries(costByProvider)
     .map(([provider, cost]) => ({
-      name: provider === 'xAI' ? 'xAI' : provider.charAt(0).toUpperCase() + provider.slice(1),
+      name: getProviderName(provider),
       value: Number(cost.toFixed(6)),
       percentage: totalCost > 0 ? ((cost / totalCost) * 100).toFixed(1) : '0'
     }))

@@ -7,7 +7,6 @@
         "gpt-5-mini",
         "gpt-5-nano",
         "gpt-5-chat-latest",
-        "gpt-5-codex",
         "gpt-4.1",
         "gpt-4.1-mini",
         "gpt-4.1-nano",
@@ -19,9 +18,6 @@
         "gpt-realtime",
         "gpt-4o-realtime-preview",
         "gpt-4o-mini-realtime-preview",
-        "gpt-audio",
-        "gpt-4o-audio-preview",
-        "gpt-4o-mini-audio-preview",
         "o1",
         "o1-pro",
         "o3-pro",
@@ -31,7 +27,6 @@
         "o4-mini-deep-research",
         "o3-mini",
         "o1-mini",
-        "codex-mini-latest",
         "gpt-4o-mini-search-preview",
         "gpt-4o-search-preview",
         "computer-use-preview",
@@ -50,14 +45,38 @@
         "gpt-3.5-turbo-0613",
         "gpt-3.5-0301",
         "gpt-3.5-turbo-instruct",
-        "gpt-3.5-turbo-16k-0613",
-        "davinci-002",
-        "babbage-002"
+        "gpt-3.5-turbo-16k-0613"
       ],
       "chat_completions": {
         "base_url": "https://api.openai.com/v1/chat/completions",
         "auth": {
           "env_var": "OPENAI_API_KEY",
+          "header": "Authorization",
+          "scheme": "Bearer"
+        },
+        "supported_client_formats": ["openai"],
+        "payload_defaults": {
+          "stream_options": {
+            "include_usage": true
+          }
+        },
+        "usage": {
+          "format": "openai_chat"
+        }
+      }
+    },
+    {
+      "provider": "google",
+      "models": [
+        "gemini-2.5-pro",
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-3.0-pro-preview"
+      ],
+      "chat_completions": {
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+        "auth": {
+          "env_var": "GOOGLE_API_KEY",
           "header": "Authorization",
           "scheme": "Bearer"
         },

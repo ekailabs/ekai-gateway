@@ -1,4 +1,5 @@
 gateway/html/
+gateway/costs/generated/
 
 # Dependencies
 node_modules/
