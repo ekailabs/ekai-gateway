@@ -27,7 +27,8 @@ export class ModelUtils {
       .replace(/-\d{8}$/, '')          // Remove Anthropic dates: -20250514
       .replace(/-\d{4}-\d{2}-\d{2}$/, '') // Remove OpenAI dates: -2024-08-06
       .replace(/-(latest|preview|beta|alpha)$/, '') // Remove versions
-      .replace(/-\d+k$/, '');          // Remove context: -32k
+      .replace(/-\d+k$/, '')           // Remove context: -32k
+      .replace(/claude-sonnet-4-5$/, 'claude-sonnet-4.5'); // Normalize claude-sonnet-4-5 to claude-sonnet-4.5
   }
 
   /**

@@ -106,6 +106,7 @@ export class ChatHandler {
       });
 
       if (passThrough) {
+        
         await this.handlePassThrough(originalRequest, res, clientFormat, providerName, clientIp);
         return;
       }
