@@ -1,63 +1,18 @@
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
-import { AIProvider } from '../types/provider.js';
-import { AnthropicProvider } from '../providers/anthropic-provider.js';
-import { OpenAIProvider } from '../providers/openai-provider.js';
-import { OpenRouterProvider } from '../providers/openrouter-provider.js';
-import { XAIProvider } from '../providers/xai-provider.js';
-import { ZAIProvider } from '../providers/zai-provider.js';
-import { GoogleProvider } from '../providers/google-provider.js';
 import { logger } from '../../infrastructure/utils/logger.js';
-import { pricingLoader, ModelPricing } from '../../infrastructure/utils/pricing-loader.js';
+import { pricingLoader } from '../../infrastructure/utils/pricing-loader.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
-
-enum Provider {
-  ANTHROPIC = 'anthropic',
-  OPENAI = 'openai',
-  OPENROUTER = 'openrouter',
-  XAI = 'xAI',
-  ZAI = 'zai',
-  GOOGLE = 'google'
-}
+import {
+  Provider,
+  ProviderRegistry,
+  createDefaultProviderRegistry
+} from './provider-registry.js';
 
 export class ProviderService {
-  private providers = new Map<Provider, AIProvider>();
-
-  private createAdapter(name: Provider): AIProvider {
-    const adapterMap = {
-      [Provider.ANTHROPIC]: () => new AnthropicProvider(),
-      [Provider.OPENAI]: () => new OpenAIProvider(),
-      [Provider.OPENROUTER]: () => new OpenRouterProvider(),
-      [Provider.XAI]: () => new XAIProvider(),
-      [Provider.ZAI]: () => new ZAIProvider(),
-      [Provider.GOOGLE]: () => new GoogleProvider()
-    };
-
-    const factory = adapterMap[name];
-    if (!factory) {
-      throw new Error(`Unknown provider: ${name}`);
-    }
-
-    return factory();
-  }
-
-  private getOrCreateProvider(name: Provider): AIProvider {
-    if (!this.providers.has(name)) {
-      this.providers.set(name, this.createAdapter(name));
-    }
-
-    const provider = this.providers.get(name);
-    if (!provider) {
-      throw new Error(`Failed to create provider: ${name}`);
-    }
-
-    return provider;
-  }
+  constructor(private readonly registry: ProviderRegistry = createDefaultProviderRegistry()) {}
 
   getAvailableProviders(): Provider[] {
-    return Object.values(Provider).filter(name => {
-      const provider = this.getOrCreateProvider(name);
-      return provider.isConfigured();
-    });
+    return this.registry.getAvailableProviders();
   }
 
   getMostOptimalProvider(modelName: string, requestId?: string): { provider: Provider; error?: never } | { provider?: never; error: { code: string; message: string } } {
@@ -74,17 +29,10 @@ export class ProviderService {
       };
     }
 
-    // Check for explicit provider matches first
-    if (modelName.includes('grok-') || modelName.includes('grok_beta')) {
-      if (availableProviders.includes(Provider.XAI)) {
-        return { provider: Provider.XAI };
-      }
-    }
-
-    if (modelName.toLowerCase().includes('gemini')) {
-      if (availableProviders.includes(Provider.GOOGLE)) {
-        return { provider: Provider.GOOGLE };
-      }
+    // Check for explicit provider matches first via registry rules
+    const preferred = this.registry.findPreferredProvider(modelName, availableProviders);
+    if (preferred) {
+      return { provider: preferred };
     }
 
     // Find cheapest available provider that supports this model
@@ -134,7 +82,7 @@ export class ProviderService {
     requestId?: string,
     clientIp?: string
   ): Promise<CanonicalResponse> {
-    const provider = this.getOrCreateProvider(providerName);
+    const provider = this.registry.getOrCreateProvider(providerName);
 
     // Ensure Anthropic models have required suffixes
     if (providerName === Provider.ANTHROPIC) {
@@ -163,7 +111,7 @@ export class ProviderService {
     requestId?: string,
     clientIp?: string
   ): Promise<any> {
-    const provider = this.getOrCreateProvider(providerName);
+    const provider = this.registry.getOrCreateProvider(providerName);
 
     // Ensure Anthropic models have required suffixes
     if (providerName === Provider.ANTHROPIC) {
