@@ -4,7 +4,7 @@ services:
     environment:
       PORT: ${PORT:-3001}
       UI_PORT: ${UI_PORT:-3000}
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://p3001.m1054.opf-testnet-rofl-25.rofl.app}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3001}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       XAI_API_KEY: ${XAI_API_KEY:-}

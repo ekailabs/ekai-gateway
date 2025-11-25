@@ -1,5 +1,26 @@
-// API Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+// API Configuration with smart runtime detection
+const API_BASE_URL = (() => {
+  // Server-side: use env var
+  if (typeof window === 'undefined') {
+    return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+  }
+  
+  // Client-side: check if placeholder wasn't replaced
+  const envUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (envUrl && envUrl !== '__API_URL_PLACEHOLDER__') {
+    return envUrl;
+  }
+  
+  // Smart fallback: derive from browser location (works for ROFL and proxies)
+  const { protocol, hostname } = window.location;
+  if (hostname.includes('p3000')) {
+    // ROFL-style proxy URL pattern (p3000 -> p3001)
+    return `${protocol}//${hostname.replace('p3000', 'p3001')}`;
+  }
+  
+  // Default for local dev
+  return 'http://localhost:3001';
+})();
 
 // Types based on your backend response
 export interface UsageRecord {
