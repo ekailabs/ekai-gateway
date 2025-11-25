@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js';
 import { AuthenticationError, PaymentError, ProviderError } from '../../shared/errors/index.js';
 import { CONTENT_TYPES } from '../../domain/types/provider.js';
 import { ModelUtils } from '../utils/model-utils.js';
+import { injectMemoryContext, persistMemory } from '../memory/memory-helper.js';
 
 type UsageFormat = 'anthropic_messages';
 
@@ -45,6 +46,7 @@ export class MessagesPassthrough {
   private x402FetchFunction: typeof fetch | null = null;
   private x402Initialized = false;
   private lastX402PaymentAmount: string | undefined = undefined;
+  private assistantResponseBuffer = '';
 
   constructor(private readonly config: MessagesPassthroughConfig) {
     // Initialize x402 payment wrapper once if needed
@@ -278,6 +280,8 @@ export class MessagesPassthrough {
         if (!payload.startsWith('{')) continue;
 
         const data = JSON.parse(payload);
+        
+        // Don't accumulate from content_block_delta - we'll get the final response from message_delta/message_stop
 
         if (data.type === 'message_start' && data.message?.usage) {
           this.initialUsage = {
@@ -297,6 +301,18 @@ export class MessagesPassthrough {
 
         if (data.type === 'message_delta' || data.type === 'message_stop') {
           const usageData = data.usage;
+          
+          // Extract final response text from message_delta/message_stop event
+          // Check if there's a message field with content
+          if (data.message?.content && Array.isArray(data.message.content)) {
+            const textContent = data.message.content
+              .filter((c: any) => c.type === 'text')
+              .map((c: any) => c.text || '')
+              .join('');
+            if (textContent) {
+              this.assistantResponseBuffer = textContent;
+            }
+          }
 
           if (usageData) {
             const inputTokens = usageData.input_tokens ?? this.initialUsage?.inputTokens ?? 0;
@@ -379,7 +395,22 @@ export class MessagesPassthrough {
   async handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string): Promise<void> {
     this.initialUsage = null;
     this.streamBuffer = '';
+    this.assistantResponseBuffer = '';
     this.lastX402PaymentAmount = undefined; // Reset payment amount for new request
+
+    // Retrieve and inject memory context
+    injectMemoryContext(request, {
+      provider: this.config.provider,
+      defaultUserId: 'default',
+      extractCurrentUserInputs: req => extractAnthropicUserMessages(req),
+      applyMemoryContext: (req, context) => {
+        if (req.system) {
+          req.system = `${context}\n\n---\n\n${req.system}`;
+        } else {
+          req.system = context;
+        }
+      }
+    });
 
     this.applyModelOptions(request);
 
@@ -404,6 +435,21 @@ export class MessagesPassthrough {
         res.write(value);
       }
       res.end();
+      
+      // Persist memory after streaming completes
+      persistMemory(request, this.assistantResponseBuffer, {
+        provider: this.config.provider,
+        defaultUserId: 'default',
+        minAssistantResponseLength: 3,
+        filteredPatterns: [
+          'User: test\n\nAssistant: Hello',
+        ],
+        extractUserContent: req => extractAnthropicLastUserContent(req),
+        metadataBuilder: req => ({
+          model: req.model,
+          provider: this.config.provider,
+        })
+      });
       return;
     }
 
@@ -452,6 +498,58 @@ export class MessagesPassthrough {
         });
     }
 
+    // Extract assistant response from non-streaming response
+    const assistantResponse = json?.content?.[0]?.text || '';
+    persistMemory(request, assistantResponse, {
+      provider: this.config.provider,
+      defaultUserId: 'default',
+      minAssistantResponseLength: 3,
+      filteredPatterns: [
+        'User: test\n\nAssistant: Hello',
+      ],
+      extractUserContent: req => extractAnthropicLastUserContent(req),
+      metadataBuilder: req => ({
+        model: req.model,
+        provider: this.config.provider,
+      })
+    });
+
     res.json(json);
   }
+  
+}
+
+function formatAnthropicMessageContent(content: any): string {
+  let raw: string;
+  if (typeof content === 'string') {
+    raw = content;
+  } else if (Array.isArray(content)) {
+    raw = content.map((c: any) => (c.type === 'text' ? c.text : `[${c.type}]`)).join(' ');
+  } else {
+    raw = JSON.stringify(content);
+  }
+  return stripSystemReminders(raw).trim();
+}
+
+function extractAnthropicUserMessages(request: any): string[] {
+  const currentMessages = request.messages || [];
+  return currentMessages
+    .filter((msg: any) => msg.role === 'user')
+    .map((msg: any) => formatAnthropicMessageContent(msg.content))
+    .filter(Boolean);
+}
+
+function extractAnthropicLastUserContent(request: any): string | null {
+  const messages = request.messages || [];
+  const userMessages = messages.filter((msg: any) => msg.role === 'user');
+  if (!userMessages.length) {
+    return null;
+  }
+  const lastUserMessage = userMessages[userMessages.length - 1];
+  const formatted = formatAnthropicMessageContent(lastUserMessage.content);
+  return formatted || null;
+}
+
+function stripSystemReminders(text: string): string {
+  return text.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/gi, '').trim();
 }

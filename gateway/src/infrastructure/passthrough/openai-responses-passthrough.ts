@@ -4,6 +4,7 @@ import { AuthenticationError, ProviderError } from '../../shared/errors/index.js
 import { CONTENT_TYPES } from '../../domain/types/provider.js';
 import { getConfig } from '../config/app-config.js';
 import { ResponsesPassthrough, ResponsesPassthroughConfig } from './responses-passthrough.js';
+import { injectMemoryContext, persistMemory } from '../memory/memory-helper.js';
 
 export class OpenAIResponsesPassthrough implements ResponsesPassthrough {
   constructor(private readonly config: ResponsesPassthroughConfig) {}
@@ -63,6 +64,7 @@ export class OpenAIResponsesPassthrough implements ResponsesPassthrough {
 
   // Buffer to handle multi-chunk SSE events
   private eventBuffer: string = '';
+  private assistantResponseBuffer: string = '';
 
   private async makeRequest(body: any, stream: boolean): Promise<globalThis.Response> {
     const response = await fetch(this.baseUrl, {
@@ -83,6 +85,13 @@ export class OpenAIResponsesPassthrough implements ResponsesPassthrough {
     try {
       // Add to buffer to handle multi-chunk events
       this.eventBuffer += text;
+      
+      // Extract assistant response content from text.delta events
+      const textDeltaMatch = /"type":"response\.text\.delta"[^}]*"text":"([^"]+)"/g;
+      let match;
+      while ((match = textDeltaMatch.exec(text)) !== null) {
+        this.assistantResponseBuffer += match[1];
+      }
       
       // Look for the exact response.completed event
       if (this.eventBuffer.includes('"type":"response.completed"')) {
@@ -171,6 +180,20 @@ export class OpenAIResponsesPassthrough implements ResponsesPassthrough {
     // Reset usage tracking for new request
     this.usage = null;
     this.eventBuffer = '';
+    this.assistantResponseBuffer = '';
+
+    injectMemoryContext(request, {
+      provider: this.config.provider,
+      defaultUserId: 'default',
+      extractCurrentUserInputs: req => extractResponsesUserInputs(req),
+      applyMemoryContext: (req, context) => {
+        if (req.instructions) {
+          req.instructions = `${context}\n\n---\n\n${req.instructions}`;
+        } else {
+          req.instructions = context;
+        }
+      }
+    });
 
     if (request.stream) {
       const response = await this.makeRequest(request, true);
@@ -195,6 +218,16 @@ export class OpenAIResponsesPassthrough implements ResponsesPassthrough {
         res.write(value);
       }
       res.end();
+
+      persistMemory(request, this.assistantResponseBuffer, {
+        provider: this.config.provider,
+        defaultUserId: 'default',
+        extractUserContent: req => req.input || '',
+        metadataBuilder: req => ({
+          model: req.model,
+          provider: this.config.provider,
+        }),
+      });
     } else {
       const response = await this.makeRequest(request, false);
       const json = await response.json();
@@ -225,7 +258,23 @@ export class OpenAIResponsesPassthrough implements ResponsesPassthrough {
         }).catch(() => {});
       }
 
+      const assistantResponse = json?.output?.[0]?.content?.[0]?.text || '';
+      persistMemory(request, assistantResponse, {
+        provider: this.config.provider,
+        defaultUserId: 'default',
+        extractUserContent: req => req.input || '',
+        metadataBuilder: req => ({
+          model: req.model,
+          provider: this.config.provider,
+        }),
+      });
+
       res.json(json);
     }
   }
+}
+
+function extractResponsesUserInputs(request: any): string[] {
+  const content = (request.input || '').trim();
+  return content ? [content] : [];
 }
