@@ -28,3 +28,13 @@ CREATE INDEX IF NOT EXISTS idx_usage_timestamp ON usage_records(timestamp);
 CREATE INDEX IF NOT EXISTS idx_usage_provider ON usage_records(provider);
 CREATE INDEX IF NOT EXISTS idx_usage_model ON usage_records(model);
 CREATE INDEX IF NOT EXISTS idx_usage_cost ON usage_records(total_cost);
+
+-- Global spend limit (single-row table)
+CREATE TABLE IF NOT EXISTS spend_limits (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  scope TEXT NOT NULL DEFAULT 'global',
+  amount_usd REAL,
+  alert_only INTEGER DEFAULT 0,
+  window TEXT NOT NULL DEFAULT 'monthly',
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

@@ -50,7 +50,7 @@ export const useModels = (filter: ModelsFilter = {}) => {
   const isInitialLoadRef = useRef(true);
   const dataRef = useRef<ModelsResponse | null>(null);
 
-  const normalizedFilter = useMemo(() => normalizeModelsFilter(filter), [filter.provider, filter.endpoint, filter.search]);
+  const normalizedFilter = useMemo(() => normalizeModelsFilter(filter), [filter]);
   const normalizedKey = useMemo(() => filterKey(normalizedFilter), [normalizedFilter]);
 
   useEffect(() => {

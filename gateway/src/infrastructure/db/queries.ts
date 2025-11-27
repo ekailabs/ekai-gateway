@@ -21,6 +21,14 @@ export interface UsageRecord {
   created_at: string;
 }
 
+export interface SpendLimitRecord {
+  amount_usd: number | null;
+  alert_only: boolean;
+  window: string;
+  scope: string;
+  updated_at: string;
+}
+
 export class DatabaseQueries {
   private db = dbConnection.getDatabase();
 
@@ -141,6 +149,40 @@ export class DatabaseQueries {
     });
     
     return costByModel;
+  }
+
+  // Get global spend limit (single row)
+  getGlobalSpendLimit(): SpendLimitRecord | null {
+    const stmt = this.db.prepare(`
+      SELECT scope, amount_usd, alert_only, window, updated_at
+      FROM spend_limits
+      WHERE id = 1
+      LIMIT 1
+    `);
+    const result = stmt.get() as { scope: string; amount_usd: number | null; alert_only: number; window: string; updated_at: string } | undefined;
+    if (!result) return null;
+    return {
+      scope: result.scope,
+      amount_usd: result.amount_usd,
+      alert_only: Boolean(result.alert_only),
+      window: result.window,
+      updated_at: result.updated_at
+    };
+  }
+
+  // Upsert global spend limit
+  upsertGlobalSpendLimit(amountUsd: number | null, alertOnly: boolean): void {
+    const stmt = this.db.prepare(`
+      INSERT INTO spend_limits (id, scope, amount_usd, alert_only, window, updated_at)
+      VALUES (1, 'global', ?, ?, 'monthly', CURRENT_TIMESTAMP)
+      ON CONFLICT(id) DO UPDATE SET
+        amount_usd = excluded.amount_usd,
+        alert_only = excluded.alert_only,
+        window = excluded.window,
+        updated_at = excluded.updated_at
+    `);
+
+    stmt.run(amountUsd, alertOnly ? 1 : 0);
   }
 
 }

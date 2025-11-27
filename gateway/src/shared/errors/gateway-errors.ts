@@ -83,6 +83,15 @@ export class PaymentError extends GatewayError {
 }
 
 /**
+ * Budget exceeded errors
+ */
+export class BudgetExceededError extends GatewayError {
+  constructor(message: string, context?: ErrorContext) {
+    super(message, 'BUDGET_EXCEEDED', 402, context);
+  }
+}
+
+/**
  * Validation errors (invalid request format, missing required fields, etc.)
  */
 export class ValidationError extends GatewayError {
