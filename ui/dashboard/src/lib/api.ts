@@ -65,6 +65,14 @@ export interface ModelsResponse {
   items: ModelCatalogEntry[];
 }
 
+export interface BudgetResponse {
+  amountUsd: number | null;
+  alertOnly: boolean;
+  window: 'monthly';
+  spentMonthToDate: number;
+  remaining: number | null;
+}
+
 // API service functions
 export const apiService = {
   // Fetch usage data
@@ -146,6 +154,28 @@ export const apiService = {
     if (!response.ok) {
       throw new Error(`Failed to fetch models: ${response.statusText}`);
     }
+    return response.json();
+  },
+
+  async getBudget(): Promise<BudgetResponse> {
+    const response = await fetch(`${API_BASE_URL}/budget`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch budget: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  async updateBudget(payload: { amountUsd: number | null; alertOnly?: boolean }): Promise<BudgetResponse> {
+    const response = await fetch(`${API_BASE_URL}/budget`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update budget: ${response.statusText}`);
+    }
+
     return response.json();
   }
 };

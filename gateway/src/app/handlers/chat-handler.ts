@@ -12,6 +12,7 @@ import { CanonicalRequest } from 'shared/types/index.js';
 import { createChatCompletionsPassthroughRegistry } from '../../infrastructure/passthrough/chat-completions-passthrough-registry.js';
 import { createMessagesPassthroughRegistry } from '../../infrastructure/passthrough/messages-passthrough-registry.js';
 import { createResponsesPassthroughRegistry } from '../../infrastructure/passthrough/responses-passthrough-registry.js';
+import { budgetService } from '../../domain/services/budget-service.js';
 
 type ClientFormat = 'openai' | 'anthropic' | 'openai_responses';
 type ProviderName = string;
@@ -85,6 +86,9 @@ export class ChatHandler {
         providerName = result.provider;
         canonicalRequest = this.adapters[clientFormat].toCanonical(req.body);
       }
+
+      // Enforce global monthly budget (disabled when no cap is set)
+      budgetService.enforceBudget(0, req.requestId);
 
       // Normalize model name, example: anthropic/claude-3-5-sonnet → claude-3-5-sonnet.
       // will need to move it to normalization canonical step in future

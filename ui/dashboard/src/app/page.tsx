@@ -10,6 +10,8 @@ import { useUsageData } from '@/hooks/useUsageData';
 import { useConfigStatus } from '@/hooks/useConfigStatus';
 import ConfigStatus from '@/components/ConfigStatus';
 import FirstRunModal from '@/components/FirstRunModal';
+import BudgetCard from '@/components/BudgetCard';
+import { useBudget } from '@/hooks/useBudget';
 import { apiService } from '@/lib/api';
 import Link from 'next/link';
 
@@ -18,6 +20,7 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false);
   const usageData = useUsageData(dateRange?.from, dateRange?.to);
   const configStatus = useConfigStatus();
+  const budget = useBudget();
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(true);
@@ -102,23 +105,36 @@ export default function Dashboard() {
         />
 
         {/* Model Catalog Link */}
-        <div className="card p-6 mb-8 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">Browse Available Models</h3>
-              <p className="text-sm text-gray-600">View the full catalog of models across all providers with pricing information</p>
+        <div className="mt-6 mb-6">
+          <div className="card p-6 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Browse Available Models</h3>
+                <p className="text-sm text-gray-600">View the full catalog of models across all providers with pricing information</p>
+              </div>
+              <Link 
+                href="/models"
+                className="flex-shrink-0 inline-flex items-center gap-2 px-6 py-3 text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
+                style={{ backgroundColor: '#004f4f' }}
+              >
+                View Model Catalog
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
             </div>
-            <Link 
-              href="/models"
-              className="flex-shrink-0 inline-flex items-center gap-2 px-6 py-3 text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
-              style={{ backgroundColor: '#004f4f' }}
-            >
-              View Model Catalog
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
           </div>
+        </div>
+
+        {/* Budget Control */}
+        <div className="mb-8">
+          <BudgetCard 
+            data={budget.data}
+            loading={budget.loading}
+            error={budget.error}
+            onSave={budget.saveBudget}
+            onRetry={budget.refetch}
+          />
         </div>
 
         <div className="space-y-12">

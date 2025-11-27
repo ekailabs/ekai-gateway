@@ -31,6 +31,7 @@ import { handleOpenAIFormatChat, handleAnthropicFormatChat, handleOpenAIResponse
 import { handleUsageRequest } from './app/handlers/usage-handler.js';
 import { handleConfigStatus } from './app/handlers/config-handler.js';
 import { handleModelsRequest } from './app/handlers/models-handler.js';
+import { handleGetBudget, handleUpdateBudget } from './app/handlers/budget-handler.js';
 import { logger } from './infrastructure/utils/logger.js';
 import { requestContext } from './infrastructure/middleware/request-context.js';
 import { requestLogging } from './infrastructure/middleware/request-logging.js';
@@ -88,6 +89,8 @@ async function bootstrap(): Promise<void> {
   app.get('/v1/models', handleModelsRequest);
   app.get('/usage', handleUsageRequest);
   app.get('/config/status', handleConfigStatus);
+  app.get('/budget', handleGetBudget);
+  app.put('/budget', handleUpdateBudget);
 
   // Error handler MUST be last middleware
   app.use(errorHandler);
