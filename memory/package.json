@@ -1,7 +1,7 @@
 {
   "name": "memory",
   "version": "0.1.0",
-  "description": "Neuroscience-oriented cognitive memory kernel",
+  "description": "Neuroscience-inspired cognitive memory kernel",
   "private": true,
   "type": "module",
   "main": "dist/index.js",

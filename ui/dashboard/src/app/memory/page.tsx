@@ -30,13 +30,6 @@ const sectorColors: Record<MemorySectorSummary['sector'], string> = {
   affective: 'bg-rose-100 text-rose-700 border-rose-200',
 };
 
-const sectorHexColors: Record<MemorySectorSummary['sector'], string> = {
-  episodic: '#4338ca', // indigo-700
-  semantic: '#047857', // emerald-700
-  procedural: '#b45309', // amber-700
-  affective: '#be123c', // rose-700
-};
-
 const sectorDescriptions: Record<MemorySectorSummary['sector'], string> = {
   episodic: 'Personal events and experiences the system has encountered.',
   semantic: 'Facts, concepts, and general knowledge extracted from interactions.',
@@ -72,6 +65,87 @@ const SectorTooltip = ({ sector, children }: { sector: MemorySectorSummary['sect
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// Procedural Card Component
+const ProceduralCard = ({ details }: { details: NonNullable<MemoryRecentItem['details']> }) => {
+  // Safely handle steps - could be array or string
+  const steps = Array.isArray(details.steps) 
+    ? details.steps 
+    : (typeof details.steps === 'string' ? JSON.parse(details.steps) : []);
+
+  return (
+    <div className="mt-4 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-amber-50/50 px-4 py-2 border-b border-amber-100 flex items-center gap-2">
+        <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+        </svg>
+        <span className="text-xs font-bold text-amber-800 uppercase tracking-wide">Procedure Workflow</span>
+      </div>
+      
+      <div className="p-5 space-y-6">
+        {/* Goal Section */}
+        {details.goal && (
+          <div className="flex gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Goal</div>
+              <div className="text-sm text-gray-900 font-medium">{details.goal}</div>
+            </div>
+          </div>
+        )}
+        
+        {/* Steps Section */}
+        {steps && Array.isArray(steps) && steps.length > 0 && (
+          <div className="flex gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Execution Steps</div>
+              <div className="relative">
+                <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-gray-100"></div>
+                <ul className="space-y-3 relative">
+                  {steps.map((step, idx) => (
+                    <li key={idx} className="flex gap-3 items-start group">
+                      <div className="flex-shrink-0 w-4 h-4 rounded-full bg-white border-2 border-gray-300 text-[10px] font-bold text-gray-500 flex items-center justify-center mt-0.5 group-hover:border-emerald-400 group-hover:text-emerald-600 transition-colors">
+                        {idx + 1}
+                      </div>
+                      <span className="text-sm text-gray-700 leading-relaxed">{step}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Context & Result Grid */}
+        {(details.result || details.context) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+            {details.result && (
+              <div className="bg-gray-50 rounded-md p-3">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Outcome</div>
+                <div className="text-sm text-gray-800">{details.result}</div>
+              </div>
+            )}
+            {details.context && (
+              <div className="bg-gray-50 rounded-md p-3">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Context</div>
+                <div className="text-sm text-gray-600 italic">{details.context}</div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -408,10 +482,17 @@ export default function MemoryVaultPage() {
                           <div className={`text-sm text-gray-900 transition-all ${expandedId === item.id ? '' : 'line-clamp-2'}`}>
                             {item.preview}
                           </div>
+                          
                           {expandedId === item.id && (
-                            <div className="mt-2 text-xs text-gray-500 flex gap-4">
-                              <span>ID: <span className="font-mono">{item.id.slice(0, 8)}...</span></span>
-                              <span>Last Accessed: {new Date(item.lastAccessed).toLocaleString()}</span>
+                            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                              {item.sector === 'procedural' && item.details ? (
+                                <ProceduralCard details={item.details} />
+                              ) : null}
+                              
+                              <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500 flex gap-4">
+                                <span>ID: <span className="font-mono select-all">{item.id}</span></span>
+                                <span>Last Accessed: {new Date(item.lastAccessed).toLocaleString()}</span>
+                              </div>
                             </div>
                           )}
                         </td>

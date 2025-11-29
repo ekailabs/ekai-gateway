@@ -20,8 +20,8 @@ export function scoreRowPBWM(
 ): QueryResult & { gateScore: number } {
   const relevance = cosineSimilarity(queryEmbedding, row.embedding);
 
-  const expectedValue = 1;
-  const controlSignal = 1;
+  const expectedValue = 0.5;
+  const controlSignal = 0.5;
   const noise = gaussianNoise(0, 0.05);
 
   const x =
