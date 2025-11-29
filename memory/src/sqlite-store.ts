@@ -1,6 +1,8 @@
 import Database from 'better-sqlite3';
 import { randomUUID } from 'crypto';
 import type { EmbedFn, IngestComponents, MemoryRecord, QueryResult, SectorName } from './types.js';
+import { PBWM_SECTOR_WEIGHTS, scoreRowPBWM } from './scoring.js';
+import { filterAndCapWorkingMemory } from './wm.js';
 
 const SECTORS: SectorName[] = ['episodic', 'semantic', 'procedural', 'affective'];
 const DEFAULT_WEIGHTS: Record<SectorName, number> = {
@@ -8,12 +10,6 @@ const DEFAULT_WEIGHTS: Record<SectorName, number> = {
   semantic: 1,
   procedural: 1,
   affective: 1,
-};
-const DEFAULT_DECAY: Record<SectorName, number> = {
-  episodic: 0.000015, // per second
-  semantic: 0.00001,
-  procedural: 0.000008,
-  affective: 0.00002,
 };
 const PER_SECTOR_K = 4;
 const WORKING_MEMORY_CAP = 8;
@@ -71,14 +67,14 @@ export class SqliteMemoryStore {
     for (const sector of SECTORS) {
       const candidates = this.getRowsForSector(sector, SECTOR_SCAN_LIMIT);
       const scored = candidates
-        .map((row) => scoreRow(row, queryEmbeddings[sector], DEFAULT_WEIGHTS[sector], DEFAULT_DECAY[sector], this.now()))
-        .sort((a, b) => b.score - a.score)
+        .map((row) => scoreRowPBWM(row, queryEmbeddings[sector], PBWM_SECTOR_WEIGHTS[sector]))
+        .sort((a, b) => b.gateScore - a.gateScore)
         .slice(0, PER_SECTOR_K);
       perSectorResults[sector] = scored;
       this.touchRows(scored.map((r) => r.id));
     }
 
-    const workingMemory = buildWorkingMemory(perSectorResults, WORKING_MEMORY_CAP);
+    const workingMemory = filterAndCapWorkingMemory(perSectorResults, WORKING_MEMORY_CAP);
     return { workingMemory, perSector: perSectorResults };
   }
 
@@ -231,50 +227,4 @@ function normalizeComponents(input: IngestComponents): Record<SectorName, string
     procedural: input.procedural ?? '',
     affective: input.affective ?? '',
   };
-}
-
-function scoreRow(
-  row: MemoryRecord,
-  queryEmbedding: number[],
-  sectorWeight: number,
-  decayLambda: number,
-  now: number,
-): QueryResult {
-  const similarity = cosineSimilarity(queryEmbedding, row.embedding);
-  const ageSeconds = Math.max(0, (now - row.lastAccessed) / 1000);
-  const decay = Math.exp(-decayLambda * ageSeconds);
-  const score = similarity * sectorWeight * decay;
-  return {
-    sector: row.sector,
-    id: row.id,
-    content: row.content,
-    score,
-    similarity,
-    decay,
-    createdAt: row.createdAt,
-    lastAccessed: row.lastAccessed,
-  };
-}
-
-function buildWorkingMemory(
-  perSector: Record<SectorName, QueryResult[]>,
-  cap: number,
-): QueryResult[] {
-  const merged = Object.values(perSector).flat();
-  const sorted = merged.sort((a, b) => b.score - a.score);
-  return sorted.slice(0, cap);
-}
-
-function cosineSimilarity(a: number[], b: number[]): number {
-  if (!a.length || !b.length || a.length !== b.length) return 0;
-  let dot = 0;
-  let na = 0;
-  let nb = 0;
-  for (let i = 0; i < a.length; i += 1) {
-    dot += a[i] * b[i];
-    na += a[i] * a[i];
-    nb += b[i] * b[i];
-  }
-  if (na === 0 || nb === 0) return 0;
-  return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
