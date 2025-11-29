@@ -1,5 +1,6 @@
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+export const MEMORY_BASE_URL = process.env.NEXT_PUBLIC_MEMORY_BASE_URL || 'http://localhost:4005';
 
 // Types based on your backend response
 export interface UsageRecord {
@@ -71,6 +72,25 @@ export interface BudgetResponse {
   window: 'monthly';
   spentMonthToDate: number;
   remaining: number | null;
+}
+
+export interface MemorySectorSummary {
+  sector: 'episodic' | 'semantic' | 'procedural' | 'affective';
+  count: number;
+  lastCreatedAt: number | null;
+}
+
+export interface MemoryRecentItem {
+  id: string;
+  sector: 'episodic' | 'semantic' | 'procedural' | 'affective';
+  createdAt: number;
+  lastAccessed: number;
+  preview: string;
+}
+
+export interface MemorySummaryResponse {
+  summary: MemorySectorSummary[];
+  recent: MemoryRecentItem[];
 }
 
 // API service functions
@@ -176,6 +196,61 @@ export const apiService = {
       throw new Error(`Failed to update budget: ${response.statusText}`);
     }
 
+    return response.json();
+  },
+
+  async getMemorySummary(limit = 50): Promise<MemorySummaryResponse> {
+    const response = await fetch(`${MEMORY_BASE_URL}/v1/summary?limit=${limit}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch memory summary: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  async updateMemory(id: string, content: string, sector?: string): Promise<{ updated: boolean; id: string }> {
+    const response = await fetch(`${MEMORY_BASE_URL}/v1/memory/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, sector }),
+    });
+    if (!response.ok) {
+      let errorMessage = `Failed to update memory: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.error) {
+          errorMessage = `Failed to update memory: ${errorData.error}`;
+        }
+      } catch {
+        // If response is not JSON, use statusText
+      }
+      throw new Error(errorMessage);
+    }
+    return response.json();
+  },
+
+  async deleteMemory(id: string): Promise<void> {
+    const response = await fetch(`${MEMORY_BASE_URL}/v1/memory/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      let errorMessage = `Failed to delete memory: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.error) {
+          errorMessage = `Failed to delete memory: ${errorData.error}`;
+        }
+      } catch {
+        // If response is not JSON, use statusText
+      }
+      throw new Error(errorMessage);
+    }
+  },
+
+  async deleteAllMemories(): Promise<{ deleted: number }> {
+    const response = await fetch(`${MEMORY_BASE_URL}/v1/memory`, { method: 'DELETE' });
+    if (!response.ok) {
+      throw new Error(`Failed to delete all memories: ${response.statusText}`);
+    }
     return response.json();
   }
 };
