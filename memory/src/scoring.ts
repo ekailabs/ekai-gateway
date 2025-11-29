@@ -46,5 +46,4 @@ export function scoreRowPBWM(
   };
 }
 
-export const PBWM_GATE_THRESHOLD = 0.6;
 export const PBWM_SECTOR_WEIGHTS = DEFAULT_SECTOR_WEIGHTS;

@@ -16,6 +16,18 @@ export interface MemoryRecord {
   lastAccessed: number;
 }
 
+export interface ProceduralMemoryRecord {
+  id: string;
+  trigger: string;
+  goal?: string;
+  context?: string;
+  result?: string;
+  steps: string[];
+  embedding: number[];
+  createdAt: number;
+  lastAccessed: number;
+}
+
 export interface QueryResult {
   sector: SectorName;
   id: string;
@@ -28,4 +40,3 @@ export interface QueryResult {
 }
 
 export type EmbedFn = (input: string, sector: SectorName) => Promise<number[]>;
-

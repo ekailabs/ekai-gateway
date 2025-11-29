@@ -1,6 +1,13 @@
 import Database from 'better-sqlite3';
 import { randomUUID } from 'crypto';
-import type { EmbedFn, IngestComponents, MemoryRecord, QueryResult, SectorName } from './types.js';
+import type {
+  EmbedFn,
+  IngestComponents,
+  MemoryRecord,
+  ProceduralMemoryRecord,
+  QueryResult,
+  SectorName,
+} from './types.js';
 import { PBWM_SECTOR_WEIGHTS, scoreRowPBWM } from './scoring.js';
 import { filterAndCapWorkingMemory } from './wm.js';
 
@@ -35,16 +42,39 @@ export class SqliteMemoryStore {
     for (const [sector, content] of Object.entries(normalized) as Array<[SectorName, string]>) {
       if (!content.trim()) continue;
       const embedding = await this.embed(content, sector);
-      const row: MemoryRecord = {
-        id: randomUUID(),
-        sector,
-        content,
-        embedding,
-        createdAt,
-        lastAccessed: createdAt,
-      };
-      this.insertRow(row);
-      rows.push(row);
+      if (sector === 'procedural') {
+        const procRow: ProceduralMemoryRecord = {
+          id: randomUUID(),
+          trigger: content,
+          goal: '',
+          context: '',
+          result: '',
+          steps: [content],
+          embedding,
+          createdAt,
+          lastAccessed: createdAt,
+        };
+        this.insertProceduralRow(procRow);
+        rows.push({
+          id: procRow.id,
+          sector,
+          content: procRow.trigger,
+          embedding: procRow.embedding,
+          createdAt,
+          lastAccessed: createdAt,
+        });
+      } else {
+        const row: MemoryRecord = {
+          id: randomUUID(),
+          sector,
+          content,
+          embedding,
+          createdAt,
+          lastAccessed: createdAt,
+        };
+        this.insertRow(row);
+        rows.push(row);
+      }
     }
     return rows;
   }
@@ -65,7 +95,17 @@ export class SqliteMemoryStore {
     };
 
     for (const sector of SECTORS) {
-      const candidates = this.getRowsForSector(sector, SECTOR_SCAN_LIMIT);
+      const candidates =
+        sector === 'procedural'
+          ? this.getProceduralRows(SECTOR_SCAN_LIMIT).map((r) => ({
+              id: r.id,
+              sector: 'procedural' as SectorName,
+              content: r.trigger,
+              embedding: r.embedding,
+              createdAt: r.createdAt,
+              lastAccessed: r.lastAccessed,
+            }))
+          : this.getRowsForSector(sector, SECTOR_SCAN_LIMIT);
       const scored = candidates
         .map((row) => scoreRowPBWM(row, queryEmbeddings[sector], PBWM_SECTOR_WEIGHTS[sector]))
         .sort((a, b) => b.gateScore - a.gateScore)
@@ -87,6 +127,13 @@ export class SqliteMemoryStore {
       )
       .all() as Array<{ sector: SectorName; count: number; lastCreatedAt: number | null }>;
 
+    const proceduralRow = this.db
+      .prepare(
+        `select 'procedural' as sector, count(*) as count, max(created_at) as lastCreatedAt
+         from procedural_memory`,
+      )
+      .get() as { sector: SectorName; count: number; lastCreatedAt: number | null };
+
     const defaults = SECTORS.map((s) => ({
       sector: s,
       count: 0,
@@ -94,23 +141,49 @@ export class SqliteMemoryStore {
     }));
 
     const map = new Map(rows.map((r) => [r.sector, r]));
+    if (proceduralRow) {
+      map.set('procedural', proceduralRow);
+    }
     return defaults.map((d) => map.get(d.sector) ?? d);
   }
 
-  getRecent(limit: number): MemoryRecord[] {
+  getRecent(limit: number): (MemoryRecord & { details?: any })[] {
     const rows = this.db
       .prepare(
-        `select id, sector, content, embedding, created_at as createdAt, last_accessed as lastAccessed
+        `select id, sector, content, embedding, created_at as createdAt, last_accessed as lastAccessed, '{}' as details
          from memory
-         order by created_at desc
+         union all
+         select id, 'procedural' as sector, trigger as content, embedding, created_at as createdAt, last_accessed as lastAccessed,
+                json_object('trigger', trigger, 'goal', goal, 'context', context, 'result', result, 'steps', json(steps)) as details
+         from procedural_memory
+         order by createdAt desc
          limit @limit`,
       )
-      .all({ limit }) as Array<Omit<MemoryRecord, 'embedding'>>;
+      .all({ limit }) as Array<Omit<MemoryRecord, 'embedding'> & { details: string }>;
 
-    return rows.map((row) => ({
-      ...row,
-      embedding: JSON.parse((row as any).embedding) as number[],
-    }));
+    return rows.map((row) => {
+      const parsed = {
+        ...row,
+        embedding: JSON.parse((row as any).embedding) as number[],
+        details: row.details ? JSON.parse(row.details) : undefined,
+      };
+      
+      // Ensure steps is always an array if it exists
+      if (parsed.details && parsed.details.steps) {
+        if (typeof parsed.details.steps === 'string') {
+          try {
+            parsed.details.steps = JSON.parse(parsed.details.steps);
+          } catch {
+            parsed.details.steps = [];
+          }
+        }
+        if (!Array.isArray(parsed.details.steps)) {
+          parsed.details.steps = [];
+        }
+      }
+      
+      return parsed;
+    });
   }
 
   private insertRow(row: MemoryRecord) {
@@ -132,6 +205,28 @@ export class SqliteMemoryStore {
       });
   }
 
+  private insertProceduralRow(row: ProceduralMemoryRecord) {
+    this.db
+      .prepare(
+        `insert into procedural_memory (
+          id, trigger, goal, context, result, steps, embedding, created_at, last_accessed
+        ) values (
+          @id, @trigger, @goal, @context, @result, json(@steps), json(@embedding), @createdAt, @lastAccessed
+        )`,
+      )
+      .run({
+        id: row.id,
+        trigger: row.trigger,
+        goal: row.goal ?? '',
+        context: row.context ?? '',
+        result: row.result ?? '',
+        steps: JSON.stringify(row.steps),
+        embedding: JSON.stringify(row.embedding),
+        createdAt: row.createdAt,
+        lastAccessed: row.lastAccessed,
+      });
+  }
+
   private getRowsForSector(sector: SectorName, limit: number): MemoryRecord[] {
     const rows = this.db
       .prepare(
@@ -145,6 +240,23 @@ export class SqliteMemoryStore {
 
     return rows.map((row) => ({
       ...row,
+      embedding: JSON.parse((row as any).embedding) as number[],
+    }));
+  }
+
+  private getProceduralRows(limit: number): ProceduralMemoryRecord[] {
+    const rows = this.db
+      .prepare(
+        `select id, trigger, goal, context, result, steps, embedding, created_at as createdAt, last_accessed as lastAccessed
+         from procedural_memory
+         order by last_accessed desc
+         limit @limit`,
+      )
+      .all({ limit }) as Array<Omit<ProceduralMemoryRecord, 'embedding' | 'steps'>>;
+
+    return rows.map((row) => ({
+      ...row,
+      steps: JSON.parse((row as any).steps) as string[],
       embedding: JSON.parse((row as any).embedding) as number[],
     }));
   }
@@ -176,6 +288,23 @@ export class SqliteMemoryStore {
       .run();
     this.db.prepare('create index if not exists idx_memory_sector on memory(sector)').run();
     this.db.prepare('create index if not exists idx_memory_last_accessed on memory(last_accessed)').run();
+
+    this.db
+      .prepare(
+        `create table if not exists procedural_memory (
+          id text primary key,
+          trigger text not null,
+          goal text,
+          context text,
+          result text,
+          steps json not null,
+          embedding json not null,
+          created_at integer not null,
+          last_accessed integer not null
+        )`,
+      )
+      .run();
+    this.db.prepare('create index if not exists idx_proc_last_accessed on procedural_memory(last_accessed)').run();
   }
 
   async updateById(id: string, content: string, sector?: SectorName): Promise<boolean> {
@@ -209,14 +338,15 @@ export class SqliteMemoryStore {
   }
 
   deleteById(id: string): number {
-    const stmt = this.db.prepare('delete from memory where id = ?');
-    const res = stmt.run(id);
-    return res.changes;
+    const res1 = this.db.prepare('delete from memory where id = ?').run(id);
+    const res2 = this.db.prepare('delete from procedural_memory where id = ?').run(id);
+    return (res1.changes ?? 0) + (res2.changes ?? 0);
   }
 
   deleteAll(): number {
-    const res = this.db.prepare('delete from memory').run();
-    return res.changes;
+    const res1 = this.db.prepare('delete from memory').run();
+    const res2 = this.db.prepare('delete from procedural_memory').run();
+    return (res1.changes ?? 0) + (res2.changes ?? 0);
   }
 }
 

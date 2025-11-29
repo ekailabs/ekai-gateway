@@ -75,7 +75,8 @@ async function main() {
         sector: r.sector,
         createdAt: r.createdAt,
         lastAccessed: r.lastAccessed,
-        preview: r.content, // Send full content for client-side truncation/expansion
+        preview: r.content,
+        details: (r as any).details,
       }));
       res.json({ summary, recent });
     } catch (err: any) {
