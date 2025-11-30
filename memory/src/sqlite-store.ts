@@ -39,27 +39,58 @@ export class SqliteMemoryStore {
     const rows: MemoryRecord[] = [];
     const normalized = normalizeComponents(components);
 
-    for (const [sector, content] of Object.entries(normalized) as Array<[SectorName, string]>) {
-      if (!content.trim()) continue;
-      const embedding = await this.embed(content, sector);
+    for (const [sector, content] of Object.entries(normalized) as Array<[SectorName, string | any]>) {
+      // Skip empty content
+      if (!content) continue;
+      if (typeof content === 'string' && !content.trim()) continue;
+      if (typeof content === 'object' && !content.trigger?.trim()) continue;
+
+      // Prepare content for embedding and storage
+      let textToEmbed = '';
+      let procRow: ProceduralMemoryRecord | undefined;
+
       if (sector === 'procedural') {
-        const procRow: ProceduralMemoryRecord = {
-          id: randomUUID(),
-          trigger: content,
-          goal: '',
-          context: '',
-          result: '',
-          steps: [content],
-          embedding,
-          createdAt,
-          lastAccessed: createdAt,
-        };
+        if (typeof content === 'string') {
+          textToEmbed = content;
+          procRow = {
+            id: randomUUID(),
+            trigger: content,
+            goal: '',
+            context: '',
+            result: '',
+            steps: [content],
+            embedding: [], // Will be set later
+            createdAt,
+            lastAccessed: createdAt,
+          };
+        } else {
+          textToEmbed = content.trigger;
+          procRow = {
+            id: randomUUID(),
+            trigger: content.trigger,
+            goal: content.goal ?? '',
+            context: content.context ?? '',
+            result: content.result ?? '',
+            steps: Array.isArray(content.steps) ? content.steps : [],
+            embedding: [], // Will be set later
+            createdAt,
+            lastAccessed: createdAt,
+          };
+        }
+      } else {
+        textToEmbed = content as string;
+      }
+
+      const embedding = await this.embed(textToEmbed, sector);
+
+      if (sector === 'procedural' && procRow) {
+        procRow.embedding = embedding;
         this.insertProceduralRow(procRow);
         rows.push({
           id: procRow.id,
           sector,
           content: procRow.trigger,
-          embedding: procRow.embedding,
+          embedding,
           createdAt,
           lastAccessed: createdAt,
         });
@@ -67,7 +98,7 @@ export class SqliteMemoryStore {
         const row: MemoryRecord = {
           id: randomUUID(),
           sector,
-          content,
+          content: textToEmbed,
           embedding,
           createdAt,
           lastAccessed: createdAt,
@@ -350,7 +381,7 @@ export class SqliteMemoryStore {
   }
 }
 
-function normalizeComponents(input: IngestComponents): Record<SectorName, string> {
+function normalizeComponents(input: IngestComponents): Record<SectorName, string | any> {
   return {
     episodic: input.episodic ?? '',
     semantic: input.semantic ?? '',

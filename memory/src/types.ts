@@ -3,7 +3,13 @@ export type SectorName = 'episodic' | 'semantic' | 'procedural' | 'affective';
 export interface IngestComponents {
   episodic?: string;
   semantic?: string;
-  procedural?: string;
+  procedural?: string | {
+    trigger: string;
+    goal?: string;
+    steps?: string[];
+    result?: string;
+    context?: string;
+  };
   affective?: string;
 }
 

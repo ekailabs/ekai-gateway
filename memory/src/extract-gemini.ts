@@ -10,16 +10,22 @@ Return ONLY valid JSON with these keys:
 {
   "episodic": "",     // past events or experiences (who/what/when/where)
   "semantic": "",     // stable facts, definitions, or general knowledge
-  "procedural": "",   // multi-step actions or instructions
+  "procedural": {     // multi-step actions or instructions
+    "trigger": "",    // the condition or event that starts the process
+    "goal": "",       // the objective of the workflow
+    "steps": [],      // ordered array of strings describing the actions
+    "result": "",     // the expected outcome
+    "context": ""     // optional notes or conditions
+  },
   "affective": ""     // likes, dislikes, preferences, or emotional tone
 }
 
 RULES:
-- If a field does not apply, return "".
+- If a field does not apply, return "" (or empty object/array for procedural).
 - Do NOT repeat the same information in multiple fields.
 - Episodic = event with time context. If no time is implied, leave it empty.
 - Semantic = a fact extracted from the statement, not the event itself.
-- Procedural = only if the text suggests a "how to" or workflow.
+- Procedural = MUST be a workflow or "how to". If it's just a simple statement, use Semantic.
 - Affective = ONLY preferences, sentiment, or emotional stance.
 - NEVER output anything outside the JSON.
 `;
@@ -53,7 +59,7 @@ export async function extractWithGemini(text: string): Promise<IngestComponents>
   };
 
   const content = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
-  const parsed = JSON.parse(content) as Partial<IngestComponents>;
+  const parsed = JSON.parse(content) as any;
 
   return {
     episodic: parsed.episodic ?? '',

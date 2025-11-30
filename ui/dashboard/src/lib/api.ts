@@ -86,6 +86,13 @@ export interface MemoryRecentItem {
   createdAt: number;
   lastAccessed: number;
   preview: string;
+  details?: {
+    trigger?: string;
+    goal?: string;
+    context?: string;
+    result?: string;
+    steps?: string[];
+  };
 }
 
 export interface MemorySummaryResponse {
