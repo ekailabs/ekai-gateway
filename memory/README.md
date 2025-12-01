@@ -43,8 +43,57 @@ Env (root `.env` or `memory/.env`):
   - `gate_score = sigmoid(x)`
   - We currently fix `expected_value = control = 0.5` and use small Gaussian noise; candidates are sorted by `gate_score`, top-k per sector are kept, then merged and capped to a working-memory size of 8.
 
+## Architecture (v0)
+```mermaid
+graph TB
+  classDef inputStyle fill:#eceff1,stroke:#546e7a,stroke-width:2px,color:#37474f
+  classDef processStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#0d47a1
+  classDef sectorStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#e65100
+  classDef storageStyle fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#880e4f
+  classDef engineStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c
+  classDef outputStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#1b5e20
+
+  EXP[Experience Ingest<br/>(messages + optional reasoning/feedback)]:::inputStyle
+  EXTRACT[Extractor (Gemini)<br/>Sectorize: episodic / semantic / procedural / affective]:::processStyle
+
+  EPISODIC[Episodic]:::sectorStyle
+  SEMANTIC[Semantic]:::sectorStyle
+  PROCEDURAL[Procedural<br/>structured: trigger/goal/steps]:::sectorStyle
+  AFFECTIVE[Affective]:::sectorStyle
+
+  EMBED[Embedder (Gemini<br/>text-embedding-004)]:::processStyle
+
+  STORE[(SQLite)<br/>memory table<br/>(event_start/end)<br/>procedural_memory table]:::storageStyle
+
+  QUERY[Search Query]:::inputStyle
+  QEMBED[Query Embeds<br/>per sector]:::processStyle
+  CANDIDATES[Candidates<br/>(cosine ≥ 0.2)]:::engineStyle
+  PBWM[PBWM Gate<br/>gate_score = sigmoid(0.5*rel + 0.25*exp + 0.2*ctrl - 0.05*noise)]:::engineStyle
+  WM[Working Memory<br/>top-k per sector → cap 8]:::engineStyle
+
+  OUTPUT[Recall Response<br/>(workingMemory + perSector)]:::outputStyle
+  UI[Dashboard Memory Vault<br/>summary + recent + delete]:::outputStyle
+
+  EXP --> EXTRACT
+  EXTRACT --> EPISODIC
+  EXTRACT --> SEMANTIC
+  EXTRACT --> PROCEDURAL
+  EXTRACT --> AFFECTIVE
+
+  EPISODIC --> EMBED
+  SEMANTIC --> EMBED
+  PROCEDURAL --> EMBED
+  AFFECTIVE --> EMBED
+
+  EMBED --> STORE
+
+  QUERY --> QEMBED --> CANDIDATES --> PBWM --> WM --> OUTPUT
+  STORE --> CANDIDATES
+
+  OUTPUT --> UI
+```
+
 ## Notes / Limitations
 - Only Gemini provider is wired (provider abstraction is pending); OpenAI would need wiring.
 - `reasoning/feedback` are accepted in ingest but not yet used to populate sectors.
 - No ANN/VSS; scans are capped for v0.
-- No auth; intended for local/dev use.
