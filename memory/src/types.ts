@@ -20,6 +20,8 @@ export interface MemoryRecord {
   embedding: number[];
   createdAt: number;
   lastAccessed: number;
+  eventStart?: number | null;
+  eventEnd?: number | null;
 }
 
 export interface ProceduralMemoryRecord {

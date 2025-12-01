@@ -102,6 +102,8 @@ export class SqliteMemoryStore {
           embedding,
           createdAt,
           lastAccessed: createdAt,
+          eventStart: sector === 'episodic' ? createdAt : null,
+          eventEnd: null,
         };
         this.insertRow(row);
         rows.push(row);
@@ -181,7 +183,7 @@ export class SqliteMemoryStore {
   getRecent(limit: number): (MemoryRecord & { details?: any })[] {
     const rows = this.db
       .prepare(
-        `select id, sector, content, embedding, created_at as createdAt, last_accessed as lastAccessed, '{}' as details
+        `select id, sector, content, embedding, created_at as createdAt, last_accessed as lastAccessed, '{}' as details, event_start as eventStart, event_end as eventEnd
          from memory
          union all
          select id, 'procedural' as sector, trigger as content, embedding, created_at as createdAt, last_accessed as lastAccessed,
@@ -221,9 +223,9 @@ export class SqliteMemoryStore {
     this.db
       .prepare(
         `insert into memory (
-          id, sector, content, embedding, created_at, last_accessed
+          id, sector, content, embedding, created_at, last_accessed, event_start, event_end
         ) values (
-          @id, @sector, @content, json(@embedding), @createdAt, @lastAccessed
+          @id, @sector, @content, json(@embedding), @createdAt, @lastAccessed, @eventStart, @eventEnd
         )`,
       )
       .run({
@@ -233,6 +235,8 @@ export class SqliteMemoryStore {
         embedding: JSON.stringify(row.embedding),
         createdAt: row.createdAt,
         lastAccessed: row.lastAccessed,
+        eventStart: row.eventStart ?? null,
+        eventEnd: row.eventEnd ?? null,
       });
   }
 
@@ -313,7 +317,9 @@ export class SqliteMemoryStore {
           content text not null,
           embedding json not null,
           created_at integer not null,
-          last_accessed integer not null
+          last_accessed integer not null,
+          event_start integer,
+          event_end integer
         )`,
       )
       .run();
