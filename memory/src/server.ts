@@ -38,25 +38,32 @@ async function main() {
   });
 
   app.post('/v1/ingest', async (req, res) => {
-    const { query, components } = req.body as {
-      query?: string;
-      components?: IngestComponents;
+    const { messages, reasoning, feedback, metadata } = req.body as {
+      messages?: Array<{ role: 'user' | 'assistant' | string; content: string }>;
+      reasoning?: string;
+      feedback?: Record<string, any>;
+      metadata?: Record<string, any>;
     };
 
-    const sourceText = query;
+    if (!messages || !messages.length) {
+      return res.status(400).json({ error: 'messages is required and must include at least one item' });
+    }
+    const lastUser = [...messages].reverse().find((m) => m.role === 'user');
+    if (!lastUser || !lastUser.content?.trim()) {
+      return res.status(400).json({ error: 'at least one user message with content is required' });
+    }
 
-    let finalComponents: IngestComponents | undefined = components;
+    const sourceText = lastUser.content;
+    let finalComponents: IngestComponents | undefined;
 
-    if (!finalComponents && sourceText) {
-      try {
-        finalComponents = await extractWithGemini(sourceText);
-      } catch (err: any) {
-        return res.status(500).json({ error: err.message ?? 'extraction failed' });
-      }
+    try {
+      finalComponents = await extractWithGemini(sourceText);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message ?? 'extraction failed' });
     }
 
     if (!finalComponents) {
-      return res.status(400).json({ error: 'components or query is required' });
+      return res.status(400).json({ error: 'unable to extract components from messages' });
     }
     try {
       const rows = await store.ingest(finalComponents);
