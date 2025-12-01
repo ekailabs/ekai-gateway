@@ -53,8 +53,8 @@ graph TB
   classDef engineStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c
   classDef outputStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#1b5e20
 
-  EXP[Experience Ingest<br/>(messages + optional reasoning/feedback)]:::inputStyle
-  EXTRACT[Extractor (Gemini)<br/>Sectorize: episodic / semantic / procedural / affective]:::processStyle
+  EXP[Experience Ingest<br/>messages + reasoning/feedback]:::inputStyle
+  EXTRACT[Extractor (Gemini)<br/>episodic / semantic / procedural / affective]:::processStyle
 
   EPISODIC[Episodic]:::sectorStyle
   SEMANTIC[Semantic]:::sectorStyle
