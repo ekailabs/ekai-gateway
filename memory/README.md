@@ -78,26 +78,26 @@ graph TB
   classDef engineStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c
   classDef outputStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#1b5e20
 
-  EXP["Experience Ingest\nmessages + reasoning/feedback"]:::inputStyle
-  EXTRACT["Extractor (Gemini)\nepisodic / semantic / procedural / affective"]:::processStyle
+  EXP["Experience Ingest<br>messages + reasoning/feedback"]:::inputStyle
+  EXTRACT["Extractor (Gemini)<br>episodic / semantic / procedural / affective"]:::processStyle
 
   EPISODIC["Episodic"]:::sectorStyle
   SEMANTIC["Semantic"]:::sectorStyle
-  PROCEDURAL["Procedural\nstructured: trigger / goal / steps"]:::sectorStyle
+  PROCEDURAL["Procedural<br>structured: trigger / goal / steps"]:::sectorStyle
   AFFECTIVE["Affective"]:::sectorStyle
 
-  EMBED["Embedder (Gemini\ntext-embedding-004)"]:::processStyle
+  EMBED["Embedder (Gemini)<br>text-embedding-004"]:::processStyle
 
-  STORE["(SQLite)\nmemory table (event_start/end)\nprocedural_memory table"]:::storageStyle
+  STORE["(SQLite)<br>memory table (event_start/end)<br>procedural_memory table"]:::storageStyle
 
   QUERY["Search Query"]:::inputStyle
-  QEMBED["Query Embeds\nper sector"]:::processStyle
-  CANDIDATES["Candidates\n(cosine ≥ 0.2)"]:::engineStyle
-  PBWM["PBWM Gate\nsigmoid(0.5*rel + 0.25*exp + 0.2*ctrl - 0.05*noise)"]:::engineStyle
-  WM["Working Memory\ntop-k per sector → cap 8"]:::engineStyle
+  QEMBED["Query Embeds<br>per sector"]:::processStyle
+  CANDIDATES["Candidates<br>(cosine ≥ 0.2)"]:::engineStyle
+  PBWM["PBWM Gate<br>sigmoid(0.5*rel + 0.25*exp + 0.2*ctrl - 0.05*noise)"]:::engineStyle
+  WM["Working Memory<br>top-k per sector → cap 8"]:::engineStyle
 
-  OUTPUT["Recall Response\n(workingMemory + perSector)"]:::outputStyle
-  UI["Dashboard Memory Vault\nsummary + recent + delete"]:::outputStyle
+  OUTPUT["Recall Response<br>(workingMemory + perSector)"]:::outputStyle
+  UI["Dashboard Memory Vault<br>summary + recent + delete"]:::outputStyle
 
   EXP --> EXTRACT
   EXTRACT --> EPISODIC
