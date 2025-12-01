@@ -201,6 +201,8 @@ export class SqliteMemoryStore {
         ...row,
         embedding: JSON.parse((row as any).embedding) as number[],
         details: row.details ? JSON.parse(row.details) : undefined,
+        eventStart: row.eventStart ?? null,
+        eventEnd: row.eventEnd ?? null,
       };
       
       // Ensure steps is always an array if it exists
