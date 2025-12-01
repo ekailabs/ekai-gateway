@@ -38,7 +38,10 @@ Env (root `.env` or `memory/.env`):
 
 ## Retrieval
 - Query is embedded per sector.
-- Candidates with cosine < 0.2 are dropped, PBWM gate ranks/filters, top-k per sector merged and capped to WM=8.
+- Candidates with cosine < 0.2 are dropped. A PBWM-inspired gate (prefrontal–basal ganglia model) scores the rest:
+  - `x = 0.5 * relevance + 0.25 * expected_value + 0.2 * control - 0.05 * noise`
+  - `gate_score = sigmoid(x)`
+  - We currently fix `expected_value = control = 0.5` and use small Gaussian noise; candidates are sorted by `gate_score`, top-k per sector are kept, then merged and capped to a working-memory size of 8.
 
 ## Notes / Limitations
 - Only Gemini provider is wired (provider abstraction is pending); OpenAI would need wiring.
