@@ -356,11 +356,14 @@ export default function MemoryVaultPage() {
             {/* Brain Composition Chart */}
             <div className="lg:col-span-1 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Brain Composition</h3>
-              <div className="h-[300px] w-full flex items-center justify-center">
+              <div className="h-[300px] w-full flex items-center justify-center p-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                  <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
                     <PolarGrid stroke="#e5e7eb" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#6b7280', fontSize: 12 }} />
+                    <PolarAngleAxis 
+                      dataKey="subject" 
+                      tick={{ fill: '#6b7280', fontSize: 12 }} 
+                    />
                     <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} axisLine={false} />
                     <Radar
                       name="Memories"
