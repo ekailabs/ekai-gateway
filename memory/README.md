@@ -31,7 +31,7 @@ Env (root `.env` or `memory/.env`):
     ],
     "reasoning": "optional",
     "feedback": {
-      "type": "success|failure|like|dislike|correction|none",
+      "type": "success|failure",
       "value": 0
     },
     "metadata": {}

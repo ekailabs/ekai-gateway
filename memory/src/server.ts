@@ -41,7 +41,7 @@ async function main() {
     const { messages, reasoning, feedback, metadata } = req.body as {
       messages?: Array<{ role: 'user' | 'assistant' | string; content: string }>;
       reasoning?: string;
-      feedback?: Record<string, any>;
+      feedback?: { type?: 'success' | 'failure'; value?: number; [key: string]: any };
       metadata?: Record<string, any>;
     };
 
@@ -58,6 +58,7 @@ async function main() {
 
     try {
       finalComponents = await extract(sourceText);
+      // TODO: incorporate reasoning/feedback into sector construction instead of ignoring them
     } catch (err: any) {
       return res.status(500).json({ error: err.message ?? 'extraction failed' });
     }
