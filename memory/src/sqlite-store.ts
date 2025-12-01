@@ -189,7 +189,8 @@ export class SqliteMemoryStore {
          from memory
          union all
          select id, 'procedural' as sector, trigger as content, embedding, created_at as createdAt, last_accessed as lastAccessed,
-                json_object('trigger', trigger, 'goal', goal, 'context', context, 'result', result, 'steps', json(steps)) as details
+                json_object('trigger', trigger, 'goal', goal, 'context', context, 'result', result, 'steps', json(steps)) as details,
+                null as eventStart, null as eventEnd
          from procedural_memory
          order by createdAt desc
          limit @limit`,
