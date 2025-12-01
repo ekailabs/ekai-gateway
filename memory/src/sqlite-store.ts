@@ -9,6 +9,7 @@ import type {
   SectorName,
 } from './types.js';
 import { PBWM_SECTOR_WEIGHTS, scoreRowPBWM } from './scoring.js';
+import { cosineSimilarity } from './utils.js';
 import { filterAndCapWorkingMemory } from './wm.js';
 
 const SECTORS: SectorName[] = ['episodic', 'semantic', 'procedural', 'affective'];
@@ -140,6 +141,7 @@ export class SqliteMemoryStore {
             }))
           : this.getRowsForSector(sector, SECTOR_SCAN_LIMIT);
       const scored = candidates
+        .filter((row) => cosineSimilarity(queryEmbeddings[sector], row.embedding) >= 0.2)
         .map((row) => scoreRowPBWM(row, queryEmbeddings[sector], PBWM_SECTOR_WEIGHTS[sector]))
         .sort((a, b) => b.gateScore - a.gateScore)
         .slice(0, PER_SECTOR_K);
