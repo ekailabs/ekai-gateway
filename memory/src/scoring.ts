@@ -7,10 +7,11 @@ const DEFAULT_SECTOR_WEIGHTS: Record<SectorName, number> = {
   procedural: 1,
   affective: 1,
 };
+const RETRIEVAL_SOFTCAP = 10; // for normalization
 
 /**
  * Minimal PBWM-inspired gate.
- * expected_value and control are fixed at 1; noise is small Gaussian.
+ * expected_value uses retrieval_count; control fixed for now; noise is small Gaussian.
  * Returns QueryResult plus gateScore for downstream gating.
  */
 export function scoreRowPBWM(
@@ -20,7 +21,7 @@ export function scoreRowPBWM(
 ): QueryResult & { gateScore: number } {
   const relevance = cosineSimilarity(queryEmbedding, row.embedding);
 
-  const expectedValue = 0.5;
+  const expectedValue = normalizeRetrieval(row);
   const controlSignal = 0.5;
   const noise = gaussianNoise(0, 0.05);
 
@@ -47,3 +48,10 @@ export function scoreRowPBWM(
 }
 
 export const PBWM_SECTOR_WEIGHTS = DEFAULT_SECTOR_WEIGHTS;
+
+function normalizeRetrieval(row: MemoryRecord): number {
+  const count = (row as any).retrievalCount ?? 0;
+  if (count <= 0) return 0;
+  // log-style normalization to [0,1] with a soft cap
+  return Math.min(1, Math.log(1 + count) / Math.log(1 + RETRIEVAL_SOFTCAP));
+}

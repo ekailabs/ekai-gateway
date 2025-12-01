@@ -455,6 +455,9 @@ export default function MemoryVaultPage() {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
                       Created
                     </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                      Retrievals
+                    </th>
                     <th scope="col" className="relative px-6 py-3 w-16">
                       <span className="sr-only">Actions</span>
                     </th>
@@ -463,7 +466,7 @@ export default function MemoryVaultPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredMemories.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-6 py-12 text-center text-gray-500 text-sm">
+                      <td colSpan={5} className="px-6 py-12 text-center text-gray-500 text-sm">
                         No memories found matching your criteria.
                       </td>
                     </tr>
@@ -492,9 +495,10 @@ export default function MemoryVaultPage() {
                                 <ProceduralCard details={item.details} />
                               ) : null}
                               
-                              <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500 flex gap-4">
+                              <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500 flex gap-4 flex-wrap">
                                 <span>ID: <span className="font-mono select-all">{item.id}</span></span>
                                 <span>Last Accessed: {new Date(item.lastAccessed).toLocaleString()}</span>
+                                <span>Retrievals: <span className="font-semibold">{item.retrievalCount ?? 0}</span></span>
                               </div>
                             </div>
                           )}
@@ -506,6 +510,11 @@ export default function MemoryVaultPage() {
                             hour: '2-digit', 
                             minute: '2-digit' 
                           })}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 align-top">
+                          <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-xs font-medium">
+                            {item.retrievalCount ?? 0}
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium align-top">
                           <div className="flex items-center justify-end gap-2">

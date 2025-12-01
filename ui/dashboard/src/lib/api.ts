@@ -86,6 +86,7 @@ export interface MemoryRecentItem {
   createdAt: number;
   lastAccessed: number;
   preview: string;
+  retrievalCount?: number;
   details?: {
     trigger?: string;
     goal?: string;

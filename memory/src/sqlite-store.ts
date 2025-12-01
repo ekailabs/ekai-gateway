@@ -22,6 +22,7 @@ const DEFAULT_WEIGHTS: Record<SectorName, number> = {
 const PER_SECTOR_K = 4;
 const WORKING_MEMORY_CAP = 8;
 const SECTOR_SCAN_LIMIT = 200; // simple scan instead of ANN for v0
+const DEFAULT_RETRIEVAL_COUNT = 0;
 
 export class SqliteMemoryStore {
   private db: Database.Database;
@@ -164,6 +165,7 @@ export class SqliteMemoryStore {
     }
 
     const workingMemory = filterAndCapWorkingMemory(perSectorResults, WORKING_MEMORY_CAP);
+    this.bumpRetrievalCounts(workingMemory.map((r) => r.id));
     return { workingMemory, perSector: perSectorResults };
   }
 
@@ -199,12 +201,12 @@ export class SqliteMemoryStore {
   getRecent(limit: number): (MemoryRecord & { details?: any })[] {
     const rows = this.db
       .prepare(
-        `select id, sector, content, embedding, created_at as createdAt, last_accessed as lastAccessed, '{}' as details, event_start as eventStart, event_end as eventEnd
+        `select id, sector, content, embedding, created_at as createdAt, last_accessed as lastAccessed, '{}' as details, event_start as eventStart, event_end as eventEnd, retrieval_count as retrievalCount
          from memory
          union all
          select id, 'procedural' as sector, trigger as content, embedding, created_at as createdAt, last_accessed as lastAccessed,
                 json_object('trigger', trigger, 'goal', goal, 'context', context, 'result', result, 'steps', json(steps)) as details,
-                null as eventStart, null as eventEnd
+                null as eventStart, null as eventEnd, 0 as retrievalCount
          from procedural_memory
          order by createdAt desc
          limit @limit`,
@@ -242,9 +244,9 @@ export class SqliteMemoryStore {
     this.db
       .prepare(
         `insert into memory (
-          id, sector, content, embedding, created_at, last_accessed, event_start, event_end
+          id, sector, content, embedding, created_at, last_accessed, event_start, event_end, retrieval_count
         ) values (
-          @id, @sector, @content, json(@embedding), @createdAt, @lastAccessed, @eventStart, @eventEnd
+          @id, @sector, @content, json(@embedding), @createdAt, @lastAccessed, @eventStart, @eventEnd, @retrievalCount
         )`,
       )
       .run({
@@ -256,6 +258,7 @@ export class SqliteMemoryStore {
         lastAccessed: row.lastAccessed,
         eventStart: row.eventStart ?? null,
         eventEnd: row.eventEnd ?? null,
+        retrievalCount: (row as any).retrievalCount ?? DEFAULT_RETRIEVAL_COUNT,
       });
   }
 
@@ -338,7 +341,8 @@ export class SqliteMemoryStore {
           created_at integer not null,
           last_accessed integer not null,
           event_start integer,
-          event_end integer
+          event_end integer,
+          retrieval_count integer not null default 0
         )`,
       )
       .run();
@@ -403,6 +407,19 @@ export class SqliteMemoryStore {
     const res1 = this.db.prepare('delete from memory').run();
     const res2 = this.db.prepare('delete from procedural_memory').run();
     return (res1.changes ?? 0) + (res2.changes ?? 0);
+  }
+
+  private bumpRetrievalCounts(ids: string[]) {
+    if (!ids.length) return;
+    const placeholders = ids.map(() => '?').join(',');
+    this.db
+      .prepare(
+        `update memory
+         set retrieval_count = retrieval_count + 1,
+             last_accessed = ?
+         where id in (${placeholders})`,
+      )
+      .run(this.now(), ...ids);
   }
 }
 

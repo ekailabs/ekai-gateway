@@ -83,6 +83,7 @@ async function main() {
         createdAt: r.createdAt,
         lastAccessed: r.lastAccessed,
         preview: r.content,
+        retrievalCount: (r as any).retrievalCount ?? 0,
         details: (r as any).details,
       }));
       res.json({ summary, recent });

@@ -53,6 +53,7 @@ Env (root `.env` or `memory/.env`):
   `id, sector, content, embedding, created_at, last_accessed, event_start, event_end`.
 - `procedural_memory` table for structured procedures:  
   `trigger, goal, context, result, steps[], embedding, timestamps`.
+- `retrieval_count` tracks how often a memory enters working memory; used in PBWM expected_value.
 
 ## Retrieval
 
@@ -64,7 +65,7 @@ Env (root `.env` or `memory/.env`):
   x = 0.5 * relevance + 0.25 * expected_value + 0.2 * control - 0.05 * noise
   gate_score = sigmoid(x)
   ```
-- We currently fix `expected_value = control = 0.5` and use small Gaussian noise.
+- We use retrieval_count (log-normalized) for `expected_value` and keep `control = 0.5` for now; small Gaussian noise is applied.
 - Candidates are sorted by `gate_score`, top-k per sector are kept, then merged and capped to a working-memory size of 8.
 
 ## Architecture (v0)
