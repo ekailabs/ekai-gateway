@@ -138,13 +138,27 @@ export class SqliteMemoryStore {
               embedding: r.embedding,
               createdAt: r.createdAt,
               lastAccessed: r.lastAccessed,
+              details: {
+                trigger: r.trigger,
+                goal: r.goal,
+                context: r.context,
+                result: r.result,
+                steps: r.steps,
+              },
             }))
           : this.getRowsForSector(sector, SECTOR_SCAN_LIMIT);
       const scored = candidates
         .filter((row) => cosineSimilarity(queryEmbeddings[sector], row.embedding) >= 0.2)
         .map((row) => scoreRowPBWM(row, queryEmbeddings[sector], PBWM_SECTOR_WEIGHTS[sector]))
         .sort((a, b) => b.gateScore - a.gateScore)
-        .slice(0, PER_SECTOR_K);
+        .slice(0, PER_SECTOR_K)
+        .map((row) => ({
+          ...row,
+          // propagate temporal fields for episodic; procedural has none
+          eventStart: (row as any).eventStart ?? null,
+          eventEnd: (row as any).eventEnd ?? null,
+          details: (row as any).details,
+        }));
       perSectorResults[sector] = scored;
       this.touchRows(scored.map((r) => r.id));
     }
