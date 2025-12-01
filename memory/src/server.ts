@@ -9,8 +9,8 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 import express from 'express';
 import cors from 'cors';
 import { SqliteMemoryStore } from './sqlite-store.js';
-import { embedWithGemini } from './embed-gemini.js';
-import { extractWithGemini } from './extract-gemini.js';
+import { embed } from './providers/embed.js';
+import { extract } from './providers/extract.js';
 import type { IngestComponents } from './types.js';
 
 const PORT = Number(process.env.MEMORY_PORT ?? 4005);
@@ -30,7 +30,7 @@ async function main() {
 
   const store = new SqliteMemoryStore({
     dbPath: DB_PATH,
-    embed: embedWithGemini,
+    embed,
   });
 
   app.get('/health', (_req, res) => {
@@ -57,7 +57,7 @@ async function main() {
     let finalComponents: IngestComponents | undefined;
 
     try {
-      finalComponents = await extractWithGemini(sourceText);
+      finalComponents = await extract(sourceText);
     } catch (err: any) {
       return res.status(500).json({ error: err.message ?? 'extraction failed' });
     }
