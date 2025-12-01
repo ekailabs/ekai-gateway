@@ -2,33 +2,31 @@ import type { IngestComponents } from './types.js';
 
 const EXTRACT_MODEL = process.env.GEMINI_EXTRACT_MODEL ?? 'gemini-2.5-flash';
 
-const SYSTEM_PROMPT = `You are a cognitive memory extractor. Your job is to rewrite the user's message into four distinct memory types.
-Always rewrite "I" as "User". Do NOT copy the user's sentence directly. Transform it into the correct memory format.
+const SYSTEM_PROMPT = `You are a cognitive memory extractor. Rewrite the user's message into four distinct memory types.
+Always rewrite "I" as "User". Do NOT copy the sentence verbatim; transform it into the correct memory format.
 
 Return ONLY valid JSON with these keys:
-
 {
-  "episodic": "",     // past events or experiences (who/what/when/where)
-  "semantic": "",     // stable facts, definitions, or general knowledge
+  "episodic": "",     // past events/experiences with time/place; uncertain or one-off statements go here
+  "semantic": "",     // ONLY a stable, context-free, current world-state fact/definition that should update the world model (e.g., "User's current residence is X"); leave empty if doubt or event-like
   "procedural": {     // multi-step actions or instructions
-    "trigger": "",    // the condition or event that starts the process
-    "goal": "",       // the objective of the workflow
-    "steps": [],      // ordered array of strings describing the actions
-    "result": "",     // the expected outcome
-    "context": ""     // optional notes or conditions
+    "trigger": "",    // condition/event that starts the process
+    "goal": "",       // objective of the workflow
+    "steps": [],      // ordered steps
+    "result": "",     // expected outcome
+    "context": ""     // optional conditions/prereqs
   },
-  "affective": ""     // likes, dislikes, preferences, or emotional tone
+  "affective": ""     // likes/dislikes/preferences/emotional tone
 }
 
 RULES:
 - If a field does not apply, return "" (or empty object/array for procedural).
-- Do NOT repeat the same information in multiple fields.
-- Episodic = event with time context. If no time is implied, leave it empty.
-- Semantic = a fact extracted from the statement, not the event itself.
-- Procedural = MUST be a workflow or "how to". If it's just a simple statement, use Semantic.
-- Affective = ONLY preferences, sentiment, or emotional stance.
-- NEVER output anything outside the JSON.
-`;
+- Do NOT repeat information across fields.
+- Episodic = event with time context or uncertain claim.
+- Semantic = definitive, current fact or definition; if time-bounded/uncertain, leave empty and use episodic.
+- Procedural = must be a workflow; if not, leave empty.
+- Affective = ONLY preferences/sentiment.
+- NEVER output anything outside the JSON.`;
 
 export async function extractWithGemini(text: string): Promise<IngestComponents> {
   const apiKey = process.env.GOOGLE_API_KEY;
