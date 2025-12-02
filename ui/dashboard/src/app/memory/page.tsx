@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo } from 'react';
 import {
   apiService,
   type MemorySummaryResponse,
-  type MemoryRecentItem,
 } from '@/lib/api';
 import Link from 'next/link';
 import { SectorTooltip, sectorColors, capitalizeSector } from '@/components/memory/SectorTooltip';
@@ -258,7 +257,7 @@ export default function MemoryVaultPage() {
               </svg>
               <div className="flex-1">
                 <p className="text-sm text-teal-900 font-medium">Semantic memories are visualized in the Knowledge Graph tab</p>
-                <p className="text-xs text-teal-700 mt-0.5">Switch to the "Knowledge Graph" tab to explore semantic relationships as an interactive graph.</p>
+                <p className="text-xs text-teal-700 mt-0.5">Switch to the &quot;Knowledge Graph&quot; tab to explore semantic relationships as an interactive graph.</p>
               </div>
             </div>
             {/* Enhanced Toolbar */}

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { apiService } from '@/lib/api';
-import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 
 interface GraphDetailsPanelProps {
   entity: string;

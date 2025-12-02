@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
-import { SectorTooltip, sectorColors, capitalizeSector } from './SectorTooltip';
+import { SectorTooltip, capitalizeSector } from './SectorTooltip';
 import type { MemorySummaryResponse } from '@/lib/api';
 
 interface BrainCompositionProps {
