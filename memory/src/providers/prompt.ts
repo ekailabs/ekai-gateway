@@ -4,7 +4,11 @@ Always rewrite "I" as "User". Do NOT copy the sentence verbatim; transform it in
 Return ONLY valid JSON with these keys:
 {
   "episodic": "",     // past events/experiences with time/place; uncertain or one-off statements go here
-  "semantic": "",     // ONLY a stable, context-free, current world-state fact/definition that should update the world model; leave empty if doubt or event-like
+  "semantic": {
+    "subject": "",
+    "predicate": "",
+    "object": ""
+  },                  // ONLY stable, current facts for the knowledge graph; leave fields empty if not applicable
   "procedural": {     // multi-step actions or instructions
     "trigger": "",    // condition/event that starts the process
     "goal": "",       // objective of the workflow

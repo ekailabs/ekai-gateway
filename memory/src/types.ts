@@ -2,7 +2,11 @@ export type SectorName = 'episodic' | 'semantic' | 'procedural' | 'affective';
 
 export interface IngestComponents {
   episodic?: string;
-  semantic?: string;
+  semantic?: string | {
+    subject: string;
+    predicate: string;
+    object: string;
+  };
   procedural?: string | {
     trigger: string;
     goal?: string;
@@ -34,6 +38,20 @@ export interface ProceduralMemoryRecord {
   embedding: number[];
   createdAt: number;
   lastAccessed: number;
+}
+
+export interface SemanticMemoryRecord {
+  id: string;
+  subject: string;
+  predicate: string;
+  object: string;
+  embedding: number[];
+  validFrom: number;
+  validTo: number | null;
+  createdAt: number;
+  updatedAt: number;
+  source?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface QueryResult {

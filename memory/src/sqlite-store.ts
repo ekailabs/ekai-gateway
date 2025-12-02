@@ -5,6 +5,7 @@ import type {
   IngestComponents,
   MemoryRecord,
   ProceduralMemoryRecord,
+  SemanticMemoryRecord,
   QueryResult,
   SectorName,
 } from './types.js';
@@ -50,6 +51,7 @@ export class SqliteMemoryStore {
       // Prepare content for embedding and storage
       let textToEmbed = '';
       let procRow: ProceduralMemoryRecord | undefined;
+      let semanticRow: SemanticMemoryRecord | undefined;
 
       if (sector === 'procedural') {
         if (typeof content === 'string') {
@@ -81,6 +83,35 @@ export class SqliteMemoryStore {
         }
       } else {
         textToEmbed = content as string;
+        if (sector === 'semantic') {
+          if (typeof content === 'string') {
+            // fallback: wrap string into a generic fact
+            semanticRow = {
+              id: randomUUID(),
+              subject: 'User',
+              predicate: 'statement',
+              object: textToEmbed,
+              embedding: [],
+              validFrom: createdAt,
+              validTo: null,
+              createdAt,
+              updatedAt: createdAt,
+            };
+          } else {
+            semanticRow = {
+              id: randomUUID(),
+              subject: content.subject || 'User',
+              predicate: content.predicate || 'statement',
+              object: content.object || textToEmbed,
+              embedding: [],
+              validFrom: createdAt,
+              validTo: null,
+              createdAt,
+              updatedAt: createdAt,
+            };
+            textToEmbed = semanticRow.object;
+          }
+        }
       }
 
       const embedding = await this.embed(textToEmbed, sector);
@@ -95,6 +126,20 @@ export class SqliteMemoryStore {
           embedding,
           createdAt,
           lastAccessed: createdAt,
+        });
+      } else if (sector === 'semantic' && semanticRow) {
+        semanticRow.embedding = embedding;
+        this.insertSemanticRow(semanticRow);
+        // Mirror into rows for compatibility (content = object; embedding still computed)
+        rows.push({
+          id: semanticRow.id,
+          sector,
+          content: semanticRow.object,
+          embedding,
+          createdAt,
+          lastAccessed: createdAt,
+          eventStart: null,
+          eventEnd: null,
         });
       } else {
         const row: MemoryRecord = {
@@ -147,6 +192,22 @@ export class SqliteMemoryStore {
                 steps: r.steps,
               },
             }))
+          : sector === 'semantic'
+            ? this.getSemanticRows(SECTOR_SCAN_LIMIT).map((r) => ({
+                id: r.id,
+                sector: 'semantic' as SectorName,
+                content: r.object,
+                embedding: r.embedding ?? [],
+                createdAt: r.createdAt,
+                lastAccessed: r.updatedAt,
+                details: {
+                  subject: r.subject,
+                  predicate: r.predicate,
+                  object: r.object,
+                  validFrom: r.validFrom,
+                  validTo: r.validTo,
+                },
+              }))
           : this.getRowsForSector(sector, SECTOR_SCAN_LIMIT);
       const scored = candidates
         .filter((row) => cosineSimilarity(queryEmbeddings[sector], row.embedding) >= 0.2)
@@ -185,6 +246,13 @@ export class SqliteMemoryStore {
       )
       .get() as { sector: SectorName; count: number; lastCreatedAt: number | null };
 
+    const semanticRow = this.db
+      .prepare(
+        `select 'semantic' as sector, count(*) as count, max(created_at) as lastCreatedAt
+         from semantic_memory`,
+      )
+      .get() as { sector: SectorName; count: number; lastCreatedAt: number | null };
+
     const defaults = SECTORS.map((s) => ({
       sector: s,
       count: 0,
@@ -192,9 +260,8 @@ export class SqliteMemoryStore {
     }));
 
     const map = new Map(rows.map((r) => [r.sector, r]));
-    if (proceduralRow) {
-      map.set('procedural', proceduralRow);
-    }
+    if (proceduralRow) map.set('procedural', proceduralRow);
+    if (semanticRow) map.set('semantic', semanticRow);
     return defaults.map((d) => map.get(d.sector) ?? d);
   }
 
@@ -208,6 +275,11 @@ export class SqliteMemoryStore {
                 json_object('trigger', trigger, 'goal', goal, 'context', context, 'result', result, 'steps', json(steps)) as details,
                 null as eventStart, null as eventEnd, 0 as retrievalCount
          from procedural_memory
+         union all
+         select id, 'semantic' as sector, object as content, json('[]') as embedding, created_at as createdAt, updated_at as lastAccessed,
+                json_object('subject', subject, 'predicate', predicate, 'object', object, 'validFrom', valid_from, 'validTo', valid_to, 'metadata', metadata) as details,
+                null as eventStart, null as eventEnd, 0 as retrievalCount
+         from semantic_memory
          order by createdAt desc
          limit @limit`,
       )
@@ -284,10 +356,34 @@ export class SqliteMemoryStore {
       });
   }
 
+  private insertSemanticRow(row: SemanticMemoryRecord) {
+    this.db
+      .prepare(
+        `insert into semantic_memory (
+          id, subject, predicate, object, valid_from, valid_to, created_at, updated_at, embedding, metadata
+        ) values (
+          @id, @subject, @predicate, @object, @validFrom, @validTo, @createdAt, @updatedAt, json(@embedding), json(@metadata)
+        )`,
+      )
+      .run({
+        id: row.id,
+        subject: row.subject,
+        predicate: row.predicate,
+        object: row.object,
+        validFrom: row.validFrom,
+        validTo: row.validTo,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        embedding: JSON.stringify(row.embedding),
+        metadata: row.metadata ? JSON.stringify(row.metadata) : null,
+      });
+  }
+
   private getRowsForSector(sector: SectorName, limit: number): MemoryRecord[] {
     const rows = this.db
       .prepare(
-        `select id, sector, content, embedding, created_at as createdAt, last_accessed as lastAccessed
+        `select id, sector, content, embedding, created_at as createdAt, last_accessed as lastAccessed,
+                event_start as eventStart, event_end as eventEnd, retrieval_count as retrievalCount
          from memory
          where sector = @sector
          order by last_accessed desc
@@ -298,6 +394,24 @@ export class SqliteMemoryStore {
     return rows.map((row) => ({
       ...row,
       embedding: JSON.parse((row as any).embedding) as number[],
+    }));
+  }
+
+  private getSemanticRows(limit: number): SemanticMemoryRecord[] {
+    const rows = this.db
+      .prepare(
+        `select id, subject, predicate, object, valid_from as validFrom, valid_to as validTo,
+                created_at as createdAt, updated_at as updatedAt, embedding, metadata
+         from semantic_memory
+         order by updated_at desc
+         limit @limit`,
+      )
+      .all({ limit }) as any[];
+
+    return rows.map((row) => ({
+      ...row,
+      embedding: JSON.parse((row as any).embedding) as number[],
+      metadata: row.metadata ? JSON.parse((row as any).metadata) : undefined,
     }));
   }
 
@@ -365,6 +479,24 @@ export class SqliteMemoryStore {
       )
       .run();
     this.db.prepare('create index if not exists idx_proc_last_accessed on procedural_memory(last_accessed)').run();
+
+    this.db
+      .prepare(
+        `create table if not exists semantic_memory (
+          id text primary key,
+          subject text not null,
+          predicate text not null,
+          object text not null,
+          valid_from integer not null,
+          valid_to integer,
+          created_at integer not null,
+          updated_at integer not null,
+          embedding json not null,
+          metadata json
+        )`,
+      )
+      .run();
+    this.db.prepare('create index if not exists idx_semantic_subject_pred on semantic_memory(subject, predicate)').run();
   }
 
   async updateById(id: string, content: string, sector?: SectorName): Promise<boolean> {
