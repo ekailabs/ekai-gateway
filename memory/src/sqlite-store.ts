@@ -12,6 +12,7 @@ import type {
 import { PBWM_SECTOR_WEIGHTS, scoreRowPBWM } from './scoring.js';
 import { cosineSimilarity } from './utils.js';
 import { filterAndCapWorkingMemory } from './wm.js';
+import { SemanticGraphTraversal } from './semantic-graph.js';
 
 const SECTORS: SectorName[] = ['episodic', 'semantic', 'procedural', 'affective'];
 const DEFAULT_WEIGHTS: Record<SectorName, number> = {
@@ -29,11 +30,13 @@ export class SqliteMemoryStore {
   private db: Database.Database;
   private embed: EmbedFn;
   private now: () => number;
+  public readonly graph: SemanticGraphTraversal;
 
   constructor(opts: { dbPath: string; embed: EmbedFn; now?: () => number }) {
     this.db = new Database(opts.dbPath);
     this.embed = opts.embed;
     this.now = opts.now ?? (() => Date.now());
+    this.graph = new SemanticGraphTraversal(this.db, this.now);
     this.prepareSchema();
   }
 
@@ -46,7 +49,12 @@ export class SqliteMemoryStore {
       // Skip empty content
       if (!content) continue;
       if (typeof content === 'string' && !content.trim()) continue;
-      if (typeof content === 'object' && !content.trigger?.trim()) continue;
+      // For procedural, check trigger; for semantic, check if object has valid fields
+      if (sector === 'procedural' && typeof content === 'object' && !content.trigger?.trim()) continue;
+      if (sector === 'semantic' && typeof content === 'object') {
+        // Skip if all semantic fields are empty
+        if (!content.subject?.trim() && !content.predicate?.trim() && !content.object?.trim()) continue;
+      }
 
       // Prepare content for embedding and storage
       let textToEmbed = '';
@@ -98,11 +106,21 @@ export class SqliteMemoryStore {
               updatedAt: createdAt,
             };
           } else {
+            // Ensure all three fields are populated for semantic triples
+            const subject = content.subject?.trim() || 'User';
+            const predicate = content.predicate?.trim() || 'hasProperty';
+            const object = content.object?.trim();
+            
+            // Skip if object is missing (required for valid triple)
+            if (!object) {
+              continue;
+            }
+            
             semanticRow = {
               id: randomUUID(),
-              subject: content.subject || 'User',
-              predicate: content.predicate || 'statement',
-              object: content.object || textToEmbed,
+              subject,
+              predicate,
+              object,
               embedding: [],
               validFrom: createdAt,
               validTo: null,
@@ -497,6 +515,7 @@ export class SqliteMemoryStore {
       )
       .run();
     this.db.prepare('create index if not exists idx_semantic_subject_pred on semantic_memory(subject, predicate)').run();
+    this.db.prepare('create index if not exists idx_semantic_object on semantic_memory(object)').run();
   }
 
   async updateById(id: string, content: string, sector?: SectorName): Promise<boolean> {

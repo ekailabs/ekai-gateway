@@ -8,7 +8,7 @@ Return ONLY valid JSON with these keys:
     "subject": "",
     "predicate": "",
     "object": ""
-  },                  // ONLY stable, current facts for the knowledge graph; leave fields empty if not applicable
+  },                  // Context-free, stable facts for the knowledge graph (including personal facts about User)
   "procedural": {     // multi-step actions or instructions
     "trigger": "",    // condition/event that starts the process
     "goal": "",       // objective of the workflow
@@ -20,10 +20,21 @@ Return ONLY valid JSON with these keys:
 }
 
 RULES:
-- If a field does not apply, return "" (or empty object/array for procedural).
+- If a field does not apply, return "" (or empty object {} for semantic/procedural).
 - Do NOT repeat information across fields.
-- Episodic = event with time context or uncertain claim.
-- Semantic = definitive, current fact or definition; if time-bounded/uncertain, leave empty and use episodic.
-- Procedural = must be a workflow; if not, leave empty.
-- Affective = ONLY preferences/sentiment.
+- Episodic = event with time context, place, or uncertain/one-off claims.
+- Semantic = stable, context-free facts that can be structured as subject-predicate-object:
+  * Personal facts about User MUST go in semantic:
+    - Identity: names, job titles, roles, affiliations
+    - Relationships: family, friends, colleagues, connections
+    - Attributes: dietary restrictions, allergies, health conditions, fitness routines
+    - Preferences as facts: "User is vegetarian", "User prefers remote work"
+    - Career: job titles, skills, education, career goals (as facts, not aspirations)
+    - Location: where User lives, works, frequently visits
+    - General knowledge: definitions, facts about entities, relationships, properties
+  * MUST have all three fields (subject, predicate, object) populated if used
+  * If time-bounded/uncertain/temporary, leave empty {} and use episodic instead.
+- Procedural = must be a multi-step workflow or process; if not, leave empty {}.
+- Affective = emotional reactions, feelings, or preferences expressed as sentiment
+  * Note: Personal facts go in semantic; emotional reactions go in affective.
 - NEVER output anything outside the JSON.`;

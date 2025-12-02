@@ -66,3 +66,15 @@ export interface QueryResult {
 }
 
 export type EmbedFn = (input: string, sector: SectorName) => Promise<number[]>;
+
+export interface GraphTraversalOptions {
+  maxDepth?: number;
+  maxResults?: number;
+  includeInvalidated?: boolean;
+  predicateFilter?: string;
+}
+
+export interface GraphPath {
+  path: SemanticMemoryRecord[];
+  depth: number;
+}

@@ -13,6 +13,8 @@ import { DeleteModal, EditModal } from '@/components/memory/MemoryModals';
 import { BrainComposition } from '@/components/memory/BrainComposition';
 import { ActivityDistribution } from '@/components/memory/ActivityDistribution';
 import { MemoryStrength } from '@/components/memory/MemoryStrength';
+import { SemanticGraph } from '@/components/memory/SemanticGraph';
+
 
 export default function MemoryVaultPage() {
   const [data, setData] = useState<MemorySummaryResponse | null>(null);
@@ -20,7 +22,7 @@ export default function MemoryVaultPage() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'logs'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'logs' | 'graph'>('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSector, setFilterSector] = useState<string>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -107,7 +109,9 @@ export default function MemoryVaultPage() {
   const filteredMemories = useMemo(() => {
     if (!data?.recent) return [];
     return data.recent.filter((item) => {
-      const matchesSearch = item.preview.toLowerCase().includes(searchTerm.toLowerCase());
+      // Exclude semantic memories - they're better visualized in the Knowledge Graph tab
+      if (item.sector === 'semantic') return false;
+      const matchesSearch = !searchTerm || item.preview.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesSector = filterSector === 'all' || item.sector === filterSector;
       return matchesSearch && matchesSector;
     });
@@ -205,6 +209,19 @@ export default function MemoryVaultPage() {
                 <span className="absolute bottom-[-2px] left-0 right-0 h-[2px] bg-slate-900 rounded-full"></span>
               )}
             </button>
+            <button
+              onClick={() => setActiveTab('graph')}
+              className={`pb-3 text-sm font-semibold transition-all border-b-2 relative ${
+                activeTab === 'graph'
+                  ? 'border-slate-900 text-slate-900'
+                  : 'border-transparent text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              Knowledge Graph
+              {activeTab === 'graph' && (
+                <span className="absolute bottom-[-2px] left-0 right-0 h-[2px] bg-slate-900 rounded-full"></span>
+              )}
+            </button>
           </div>
         </div>
       </header>
@@ -222,14 +239,28 @@ export default function MemoryVaultPage() {
 
         {activeTab === 'overview' ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <BrainComposition data={data} quickStats={quickStats} />
               <ActivityDistribution data={data} quickStats={quickStats} />
             </div>
             <MemoryStrength data={data} />
           </div>
+        ) : activeTab === 'graph' ? (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <SemanticGraph maxDepth={2} maxNodes={50} height={600} />
+          </div>
         ) : (
           <div className="bg-gradient-to-br from-white via-stone-50/20 to-white rounded-2xl border border-stone-200 shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden">
+            {/* Note about semantic memories */}
+            <div className="p-4 bg-teal-50 border-b border-teal-100 flex items-start gap-3">
+              <svg className="w-5 h-5 text-teal-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm text-teal-900 font-medium">Semantic memories are visualized in the Knowledge Graph tab</p>
+                <p className="text-xs text-teal-700 mt-0.5">Switch to the "Knowledge Graph" tab to explore semantic relationships as an interactive graph.</p>
+              </div>
+            </div>
             {/* Enhanced Toolbar */}
             <div className="p-6 border-b border-stone-200/60 flex flex-col sm:flex-row gap-4 justify-between items-center bg-gradient-to-r from-white to-stone-50/30 backdrop-blur-sm">
               <div className="flex items-center gap-3 flex-1">
@@ -256,7 +287,6 @@ export default function MemoryVaultPage() {
                 >
                   <option value="all">All Sectors</option>
                   <option value="episodic">Episodic</option>
-                  <option value="semantic">Semantic</option>
                   <option value="procedural">Procedural</option>
                   <option value="affective">Affective</option>
                 </select>

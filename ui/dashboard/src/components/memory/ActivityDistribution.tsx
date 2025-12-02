@@ -30,7 +30,7 @@ export function ActivityDistribution({ data, quickStats }: ActivityDistributionP
   const colors = ['bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500'];
 
   return (
-    <div className="lg:col-span-2 bg-gradient-to-br from-white to-stone-50/50 p-6 rounded-2xl border border-stone-200 shadow-lg hover:shadow-xl transition-all duration-300">
+    <div className="bg-gradient-to-br from-white to-stone-50/50 p-6 rounded-2xl border border-stone-200 shadow-lg hover:shadow-xl transition-all duration-300">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
           <svg className="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

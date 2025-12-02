@@ -2,7 +2,7 @@
 
 Neuroscience-inspired, sectorized memory kernel. Runs as a standalone service (default port 4005) and is currently opt-in.
 
-## Quickstart
+## Quickstart (standalone)
 
 ```bash
 npm install -w memory
@@ -25,19 +25,19 @@ Env (root `.env` or `memory/.env`):
   Body:
   ```json
   {
-    "messages": [
-      { "role": "user", "content": "..." },
-      { "role": "assistant", "content": "..." }
-    ],
-    "reasoning": "optional",
-    "feedback": {
-      "type": "success|failure",
-      "value": 0
-    },
-    "metadata": {}
+  "messages": [
+    { "role": "user", "content": "..." },
+    { "role": "assistant", "content": "..." }
+  ],
+  "reasoning": "optional",
+  "feedback": {
+    "type": "success|failure",
+    "value": 0
+  },
+  "metadata": {}
   }
   ```
-  Requires at least one user message. Current extractor uses only the latest user content.
+  Requires at least one user message. `reasoning`, `feedback`, and `metadata` are optional and currently not used in extraction/scoring (feedback is not yet applied; retrieval_count drives expected_value).
 
 - `POST /v1/search` — body `{ "query": "..." }` → returns `{ workingMemory, perSector }` with PBWM gating.
 
@@ -54,6 +54,7 @@ Env (root `.env` or `memory/.env`):
 - `procedural_memory` table for structured procedures:  
   `trigger, goal, context, result, steps[], embedding, timestamps`.
 - `retrieval_count` tracks how often a memory enters working memory; used in PBWM expected_value.
+- `semantic_memory` (graph-lite facts): `subject, predicate, object, valid_from, valid_to, embedding, metadata`.
 
 ## Retrieval
 
@@ -90,6 +91,8 @@ graph TB
   EMBED["Embedder (Gemini)<br>text-embedding-004"]:::processStyle
 
   STORE["(SQLite)<br>memory table (event_start/end)<br>procedural_memory table"]:::storageStyle
+  FACTGRAPH["Semantic Facts<br>subject/predicate/object graph"]:::storageStyle
+  STEPGRAPH["Action DAG<br>ordered steps"]:::storageStyle
 
   QUERY["Search Query"]:::inputStyle
   QEMBED["Query Embeds<br>per sector"]:::processStyle
@@ -107,8 +110,10 @@ graph TB
   EXTRACT --> AFFECTIVE
 
   EPISODIC --> EMBED
-  SEMANTIC --> EMBED
-  PROCEDURAL --> EMBED
+  SEMANTIC --> FACTGRAPH
+  FACTGRAPH --> EMBED
+  PROCEDURAL --> STEPGRAPH
+  STEPGRAPH --> EMBED
   AFFECTIVE --> EMBED
 
   EMBED --> STORE

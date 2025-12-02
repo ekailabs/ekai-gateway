@@ -25,7 +25,7 @@ export function BrainComposition({ data, quickStats }: BrainCompositionProps) {
   })) || [];
 
   return (
-    <div className="lg:col-span-1 bg-gradient-to-br from-white via-stone-50/30 to-white p-6 rounded-2xl border border-stone-200 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden">
+    <div className="bg-gradient-to-br from-white via-stone-50/30 to-white p-6 rounded-2xl border border-stone-200 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden">
       {/* Subtle organic background pattern */}
       <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{
         backgroundImage: `radial-gradient(circle at 20% 50%, #0d9488 0%, transparent 50%),
@@ -47,7 +47,7 @@ export function BrainComposition({ data, quickStats }: BrainCompositionProps) {
             </span>
           )}
         </div>
-        <div className="h-[320px] w-full flex items-center justify-center p-4 bg-gradient-to-br from-teal-50/20 via-stone-50/40 to-teal-50/20 rounded-xl border border-stone-100 backdrop-blur-sm">
+        <div className="h-[400px] w-full flex items-center justify-center p-4 bg-gradient-to-br from-teal-50/20 via-stone-50/40 to-teal-50/20 rounded-xl border border-stone-100 backdrop-blur-sm">
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
               <PolarGrid stroke="#d6d3d1" strokeWidth={1.5} />
