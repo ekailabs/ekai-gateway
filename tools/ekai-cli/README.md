@@ -1,4 +1,4 @@
-# ekai-cli
+# Ekai CLI
 
 A clean, interactive CLI launcher for integrating the Ekai Gateway with Claude CLI and Codex CLI.
 
@@ -108,26 +108,6 @@ ekai up --mode prod
 ### Environment Variables
 
 Copy `.env.example` to `.env` in the workspace root and add at least one provider key (Anthropic, OpenAI, Google Gemini, xAI, or OpenRouter). See the root README for full details.
-
-### CLI Config
-
-Optional configuration file at `~/.ekai/config.json`:
-
-```json
-{
-  "gatewayUrl": "http://localhost:3001",
-  "port": "3001",
-  "workspacePath": "/path/to/ekai-gateway"
-}
-```
-
-### Gateway URL
-
-The CLI detects the gateway URL in this order:
-1. `EKAI_GATEWAY_URL` environment variable
-2. `gatewayUrl` in `~/.ekai/config.json`
-3. `PORT` environment variable (default: 3001)
-4. Default: `http://localhost:3001`
 
 ## Troubleshooting
 
