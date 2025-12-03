@@ -10,7 +10,7 @@ export enum Provider {
   ANTHROPIC = 'anthropic',
   OPENAI = 'openai',
   OPENROUTER = 'openrouter',
-  XAI = 'xAI',
+  XAI = 'xai',
   ZAI = 'zai',
   GOOGLE = 'google'
 }

@@ -3,6 +3,20 @@ currency: "USD"
 unit: "MTok"
 
 models:
+  claude-opus-4-5-20251101:
+    input: 5.00
+    output: 25.00
+    5m_cache_write: 6.25
+    1h_cache_write: 10.00
+    cache_read: 0.50
+  
+  claude-opus-4-5:
+    input: 5.00
+    output: 25.00
+    5m_cache_write: 6.25
+    1h_cache_write: 10.00
+    cache_read: 0.50
+  
   claude-opus-4-1:
     input: 15.00
     output: 75.00
@@ -17,12 +31,40 @@ models:
     1h_cache_write: 30.00
     cache_read: 1.50
   
+  claude-sonnet-4-5-20250929:
+    input: 3.00
+    output: 15.00
+    5m_cache_write: 3.75
+    1h_cache_write: 6.00
+    cache_read: 0.30
+  
+  claude-sonnet-4-5:
+    input: 3.00
+    output: 15.00
+    5m_cache_write: 3.75
+    1h_cache_write: 6.00
+    cache_read: 0.30
+  
   claude-sonnet-4:
     input: 3.00
     output: 15.00
     5m_cache_write: 3.75
     1h_cache_write: 6.00
     cache_read: 0.30
+  
+  claude-haiku-4-5-20251001:
+    input: 0.80
+    output: 4.00
+    5m_cache_write: 1.00
+    1h_cache_write: 1.60
+    cache_read: 0.08
+  
+  claude-haiku-4-5:
+    input: 0.80
+    output: 4.00
+    5m_cache_write: 1.00
+    1h_cache_write: 1.60
+    cache_read: 0.08
 
   claude-sonnet-3-7:
     input: 3.00
@@ -60,7 +102,7 @@ models:
     cache_read: 0.03
 
 metadata:
-  last_updated: "2025-10-06"
+  last_updated: "2025-12-03"
   source: "https://www.anthropic.com/pricing#api"
   notes: "Prices in USD per 1M tokens"
   version: "0.1"

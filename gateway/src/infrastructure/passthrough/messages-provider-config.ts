@@ -7,7 +7,6 @@ import { getConfig } from '../config/app-config.js';
 import {
   MessagesPassthroughConfig,
   MessagesAuthConfig,
-  MessagesModelOptions,
   MessagesUsageConfig,
 } from './messages-passthrough.js';
 
@@ -31,7 +30,6 @@ interface RawMessagesConfig {
   auth: RawMessagesAuthConfig;
   static_headers?: Record<string, string>;
   supported_client_formats: string[];
-  model_options?: RawMessagesModelOptions;
   usage?: RawMessagesUsageConfig;
   force_stream_option?: boolean;
 }
@@ -41,10 +39,6 @@ interface RawMessagesAuthConfig {
   header: string;
   scheme?: string;
   template?: string;
-}
-
-interface RawMessagesModelOptions {
-  ensure_anthropic_suffix?: boolean;
 }
 
 interface RawMessagesUsageConfig {
@@ -66,13 +60,6 @@ function toAuthConfig(raw: RawMessagesAuthConfig): MessagesAuthConfig {
   };
 }
 
-function toModelOptions(raw?: RawMessagesModelOptions): MessagesModelOptions | undefined {
-  if (!raw) return undefined;
-  return {
-    ensureAnthropicSuffix: raw.ensure_anthropic_suffix,
-  };
-}
-
 function toUsageConfig(raw?: RawMessagesUsageConfig): MessagesUsageConfig | undefined {
   if (!raw) return undefined;
   return {
@@ -87,7 +74,6 @@ function toPassthroughConfig(raw: RawMessagesConfig, provider: string): Messages
     auth: toAuthConfig(raw.auth),
     staticHeaders: raw.static_headers,
     supportedClientFormats: raw.supported_client_formats,
-    modelOptions: toModelOptions(raw.model_options),
     usage: toUsageConfig(raw.usage),
     forceStreamOption: raw.force_stream_option,
   };

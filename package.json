@@ -6,7 +6,10 @@
   "workspaces": ["gateway", "ui/dashboard"],
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace=gateway\" \"npm run dev --workspace=ui/dashboard\"",
-    "build": "npm install --workspaces && npm run build --workspaces --if-present",
+    "ekai": "tsx tools/ekai-cli/src/index.ts",
+    "build:cli": "cd tools/ekai-cli && npm install && npm run sync:catalog && npm run build",
+    "cli:install": "npm run build:cli && node tools/ekai-cli/scripts/set-workspace.js \"$PWD\" && cd tools/ekai-cli && npm link",
+    "build": "npm install --workspaces && npm run build --workspaces --if-present && npm run build:cli",
     "start": "npm install && concurrently \"npm run start:gateway\" \"npm run start:ui\"",
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
     "test": "npm run test --workspace=gateway",
@@ -16,7 +19,8 @@
     "start:ui": "npm run start --workspace=ui/dashboard"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "tsx": "^4.7.0"
   },
   "keywords": [
     "ai",
