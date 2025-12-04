@@ -1,5 +1,6 @@
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+export const MEMORY_BASE_URL = process.env.NEXT_PUBLIC_MEMORY_BASE_URL || 'http://localhost:4005';
 
 // Types based on your backend response
 export interface UsageRecord {
@@ -71,6 +72,33 @@ export interface BudgetResponse {
   window: 'monthly';
   spentMonthToDate: number;
   remaining: number | null;
+}
+
+export interface MemorySectorSummary {
+  sector: 'episodic' | 'semantic' | 'procedural' | 'affective';
+  count: number;
+  lastCreatedAt: number | null;
+}
+
+export interface MemoryRecentItem {
+  id: string;
+  sector: 'episodic' | 'semantic' | 'procedural' | 'affective';
+  createdAt: number;
+  lastAccessed: number;
+  preview: string;
+  retrievalCount?: number;
+  details?: {
+    trigger?: string;
+    goal?: string;
+    context?: string;
+    result?: string;
+    steps?: string[];
+  };
+}
+
+export interface MemorySummaryResponse {
+  summary: MemorySectorSummary[];
+  recent: MemoryRecentItem[];
 }
 
 // API service functions
@@ -176,6 +204,132 @@ export const apiService = {
       throw new Error(`Failed to update budget: ${response.statusText}`);
     }
 
+    return response.json();
+  },
+
+  async getMemorySummary(limit = 50): Promise<MemorySummaryResponse> {
+    const response = await fetch(`${MEMORY_BASE_URL}/v1/summary?limit=${limit}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch memory summary: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  async updateMemory(id: string, content: string, sector?: string): Promise<{ updated: boolean; id: string }> {
+    const response = await fetch(`${MEMORY_BASE_URL}/v1/memory/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, sector }),
+    });
+    if (!response.ok) {
+      let errorMessage = `Failed to update memory: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.error) {
+          errorMessage = `Failed to update memory: ${errorData.error}`;
+        }
+      } catch {
+        // If response is not JSON, use statusText
+      }
+      throw new Error(errorMessage);
+    }
+    return response.json();
+  },
+
+  async deleteMemory(id: string): Promise<void> {
+    const response = await fetch(`${MEMORY_BASE_URL}/v1/memory/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      let errorMessage = `Failed to delete memory: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.error) {
+          errorMessage = `Failed to delete memory: ${errorData.error}`;
+        }
+      } catch {
+        // If response is not JSON, use statusText
+      }
+      throw new Error(errorMessage);
+    }
+  },
+
+  async deleteAllMemories(): Promise<{ deleted: number }> {
+    const response = await fetch(`${MEMORY_BASE_URL}/v1/memory`, { method: 'DELETE' });
+    if (!response.ok) {
+      throw new Error(`Failed to delete all memories: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  // Graph traversal APIs
+  async getGraphVisualization(params?: { entity?: string; maxDepth?: number; maxNodes?: number }): Promise<{
+    center?: string;
+    nodes: Array<{ id: string; label: string }>;
+    edges: Array<{ source: string; target: string; predicate: string }>;
+  }> {
+    const searchParams = new URLSearchParams();
+    if (params?.entity) searchParams.append('entity', params.entity);
+    if (params?.maxDepth) searchParams.append('maxDepth', String(params.maxDepth));
+    if (params?.maxNodes) searchParams.append('maxNodes', String(params.maxNodes));
+
+    const url = `${MEMORY_BASE_URL}/v1/graph/visualization${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch graph visualization: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  async getGraphTriples(params: { entity: string; direction?: 'incoming' | 'outgoing' | 'both'; maxResults?: number; predicate?: string }): Promise<{
+    entity: string;
+    triples: Array<{
+      id: string;
+      subject: string;
+      predicate: string;
+      object: string;
+      validFrom: number;
+      validTo: number | null;
+    }>;
+    count: number;
+  }> {
+    const searchParams = new URLSearchParams();
+    searchParams.append('entity', params.entity);
+    if (params.direction) searchParams.append('direction', params.direction);
+    if (params.maxResults) searchParams.append('maxResults', String(params.maxResults));
+    if (params.predicate) searchParams.append('predicate', params.predicate);
+
+    const url = `${MEMORY_BASE_URL}/v1/graph/triples?${searchParams.toString()}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch graph triples: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  async getGraphNeighbors(entity: string): Promise<{ entity: string; neighbors: string[]; count: number }> {
+    const response = await fetch(`${MEMORY_BASE_URL}/v1/graph/neighbors?entity=${encodeURIComponent(entity)}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch neighbors: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  async getGraphPaths(from: string, to: string, maxDepth?: number): Promise<{
+    from: string;
+    to: string;
+    paths: Array<{ path: Array<{ subject: string; predicate: string; object: string }>; depth: number }>;
+    count: number;
+  }> {
+    const searchParams = new URLSearchParams();
+    searchParams.append('from', from);
+    searchParams.append('to', to);
+    if (maxDepth) searchParams.append('maxDepth', String(maxDepth));
+
+    const response = await fetch(`${MEMORY_BASE_URL}/v1/graph/paths?${searchParams.toString()}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch paths: ${response.statusText}`);
+    }
     return response.json();
   }
 };
