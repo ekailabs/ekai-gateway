@@ -3,6 +3,7 @@ import * as path from 'path';
 import { spawn } from 'child_process';
 import { c, symbols } from '../utils/colors';
 import { CliConfig, loadCliConfig } from '../utils/config';
+import { runDockerRuntime } from '../runners/docker-runtime';
 
 const DEFAULT_WORKSPACE = path.resolve(__dirname, '..', '..', '..', '..');
 
@@ -16,14 +17,25 @@ interface WorkspaceResolution {
 export async function handleUp(args: any) {
   const cliConfig = loadCliConfig();
   const workspaceInfo = resolveWorkspace(args, cliConfig);
+  const runtimePreference = typeof args.flags.runtime === 'string' ? args.flags.runtime.toLowerCase() : null;
+
+  if (runtimePreference === 'docker') {
+    await runDockerRuntime(args, cliConfig);
+    return;
+  }
 
   if (!workspaceInfo.path) {
-    console.error(`\n${symbols.cross} ${c.red}Unable to locate ekai-gateway workspace${c.reset}`);
-    if (workspaceInfo.reason) {
-      console.error(`   ${c.dim}${workspaceInfo.reason}${c.reset}`);
+    if (runtimePreference === 'local') {
+      console.error(`\n${symbols.cross} ${c.red}Unable to locate ekai-gateway workspace${c.reset}`);
+      if (workspaceInfo.reason) {
+        console.error(`   ${c.dim}${workspaceInfo.reason}${c.reset}`);
+      }
+      console.error(`\nProvide a workspace path via ${c.yellow}--workspace <path>${c.reset}, set ${c.yellow}EKAI_WORKSPACE${c.reset}, or add { "workspacePath": "/path/to/ekai-gateway" } to ~/.ekai/config.json.`);
+      process.exit(1);
     }
-    console.error(`\nProvide a workspace path via ${c.yellow}--workspace <path>${c.reset}, set ${c.yellow}EKAI_WORKSPACE${c.reset}, or add { "workspacePath": "/path/to/ekai-gateway" } to ~/.ekai/config.json.`);
-    process.exit(1);
+
+    await runDockerRuntime(args, cliConfig);
+    return;
   }
 
   const surface = getSurface(args);

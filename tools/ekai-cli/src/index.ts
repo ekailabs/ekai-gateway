@@ -81,10 +81,16 @@ ${c.yellow}Commands:${c.reset}
   ${c.green}ekai models${c.reset}             List compatible models and key status
 
 ${c.yellow}Options:${c.reset}
-  --model <name>, -m    Specify model (interactive selector if omitted)
-  --skip-version-check  Skip Claude/Codex binary version validation
-  --workspace <path>    Override workspace when running ${c.green}ekai up${c.reset}
-  --help, -h            Show this help
+  --model <name>, -m      Specify model (interactive selector if omitted)
+  --skip-version-check    Skip Claude/Codex binary version validation
+  --workspace <path>      Override workspace when running ${c.green}ekai up${c.reset}
+  --runtime <local|docker>Force ${c.green}ekai up${c.reset} to use a workspace or the Docker runtime
+  --image <name>          Override Docker image (default ghcr.io/ekailabs/ekai-gateway:latest)
+  --env-file <path>       Provide env vars when using Docker (defaults to ~/.ekai/.env)
+  --port <number>         Gateway port mapping (default 3001)
+  --ui-port <number>      Dashboard port mapping (default 3000)
+  --skip-pull             Skip docker pull (use cached image)
+  --help, -h              Show this help
 
 ${c.yellow}Examples:${c.reset}
   $ ekai up

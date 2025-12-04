@@ -39,6 +39,24 @@ You must run `npm run cli:install` first so `ekai` is on your PATH.
    ekai codex --model gpt-4o-mini
    ```
 
+## Local Workspace vs Docker Runtime
+
+`ekai up` prefers your local checkout (so `npm run dev` and `npm run start` keep working), but it now falls back to the published Docker image if it can’t find a workspace—or if you force it via `ekai up --runtime docker`.
+
+**To run with Docker only:**
+
+1. Create an env file once (the CLI auto-detects `~/.ekai/.env`):
+   ```bash
+   mkdir -p ~/.ekai
+   cp path/to/.env.example ~/.ekai/.env   # then edit keys
+   ```
+2. Launch the containerized gateway:
+   ```bash
+   ekai up --runtime docker
+   ```
+
+Volumes for `/app/gateway/data` and `/app/gateway/logs` are mounted under `~/.ekai/runtime`, and you can override ports, image tags, or env files with flags (see below).
+
 ## Commands
 
 ### `ekai claude [options]`
@@ -95,6 +113,11 @@ Start the Ekai Gateway and/or Dashboard.
 - `--gateway-only` - Start only the gateway
 - `--ui-only` - Start only the dashboard
 - `--mode <dev|prod>` - Run in dev or production mode
+- `--runtime <local|docker>` - Force a local workspace or the Docker runtime
+- `--image <name>` - Override Docker image (default `ghcr.io/ekailabs/ekai-gateway:latest`)
+- `--env-file <path>` - Pass a specific `.env` when running via Docker (defaults to `~/.ekai/.env` if present)
+- `--port <number>` / `--ui-port <number>` - Control host port mappings (default 3001/3000)
+- `--skip-pull` - Skip `docker pull` when you already have the image locally
 
 **Examples:**
 ```bash
@@ -108,6 +131,24 @@ ekai up --mode prod
 ### Environment Variables
 
 Copy `.env.example` to `.env` in the workspace root and add at least one provider key (Anthropic, OpenAI, Google Gemini, xAI, or OpenRouter). See the root README for full details.
+
+When you rely on the Docker runtime, the CLI looks for env vars in this order: `--env-file` flag → `EKAI_ENV_FILE` → the current working directory’s `.env` → `~/.ekai/.env`. Storing secrets in `~/.ekai/.env` keeps them reusable even when you’re not in the repo.
+
+### CLI Config
+
+Optional configuration file at `~/.ekai/config.json`:
+
+```json
+{
+  "workspacePath": "/path/to/ekai-gateway",
+  "gatewayUrl": "http://localhost:3001",
+  "port": "3001",
+  "uiPort": "3000",
+  "containerImage": "ghcr.io/ekailabs/ekai-gateway:latest"
+}
+```
+
+The CLI also honors an `env` object inside that file to set persistent environment variables (merged after `process.env` but before `.env` files).
 
 ## Troubleshooting
 

@@ -12,6 +12,8 @@ export interface CliConfig {
   port?: string;
   env?: Record<string, string>;
   workspacePath?: string;
+  containerImage?: string;
+  uiPort?: string;
 }
 
 export function loadCliConfig(): CliConfig {
