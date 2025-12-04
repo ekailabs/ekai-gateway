@@ -15,5 +15,6 @@ export const symbols = {
   cross: `${c.red}✖${c.reset}`,
   info: `${c.blue}ℹ${c.reset}`,
   arrow: `${c.cyan}➜${c.reset}`,
+  warning: `${c.yellow}⚠${c.reset}`,
 };
 

@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { spawn } from 'child_process';
 import { c, symbols } from '../utils/colors';
-import { CliConfig, loadCliConfig } from '../utils/config';
+import { CliConfig, loadCliConfig, loadEnv } from '../utils/config';
 import { runDockerRuntime } from '../runners/docker-runtime';
 
 const DEFAULT_WORKSPACE = path.resolve(__dirname, '..', '..', '..', '..');
@@ -47,10 +47,12 @@ export async function handleUp(args: any) {
   console.log(`${c.dim}   workspace: ${workspaceInfo.path}${c.reset}`);
   console.log(`${c.dim}   running: npm run ${script}${c.reset}\n`);
 
+  const envVars = loadEnv(cliConfig);
+
   const child = spawn(npmCmd, ['run', script], {
     cwd: workspaceInfo.path,
     stdio: 'inherit',
-    env: process.env,
+    env: envVars,
   });
 
   const handleSignal = (signal: NodeJS.Signals) => {

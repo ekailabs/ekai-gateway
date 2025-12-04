@@ -79,6 +79,17 @@ export function loadEnv(config?: CliConfig): Record<string, string> {
     Object.assign(env, cliConfig.env);
   }
 
+  // Load ~/.ekai/.env if it exists
+  const globalEnvPath = path.join(os.homedir(), '.ekai', '.env');
+  if (fs.existsSync(globalEnvPath)) {
+    try {
+      const parsed = dotenv.parse(fs.readFileSync(globalEnvPath));
+      Object.assign(env, parsed);
+    } catch (err) {
+      console.warn(`[ekai-cli] Warning: Failed to parse ${globalEnvPath}`);
+    }
+  }
+
   const workspaceRoot = resolveWorkspaceRoot(cliConfig);
   if (workspaceRoot) {
     const envPath = path.join(workspaceRoot, '.env');

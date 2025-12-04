@@ -12,6 +12,59 @@ export function prompt(query: string): Promise<string> {
   }));
 }
 
+export function promptMasked(query: string): Promise<string> {
+  // Fallback to regular prompt if not a TTY (e.g., piped input)
+  if (!process.stdin.isTTY) {
+    return prompt(query);
+  }
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise(resolve => {
+    process.stdout.write(query);
+    
+    let input = '';
+    const stdin = process.stdin;
+    const wasRaw = stdin.isRaw;
+    
+    stdin.setRawMode(true);
+    stdin.resume();
+
+    const onData = (char: Buffer) => {
+      const str = char.toString();
+      
+      // Handle special characters
+      if (str === '\u0003' || str === '\u0004') { // Ctrl+C or Ctrl+D
+        stdin.setRawMode(wasRaw);
+        stdin.pause();
+        stdin.removeListener('data', onData);
+        rl.close();
+        process.exit(0);
+      } else if (str === '\r' || str === '\n') { // Enter
+        stdin.setRawMode(wasRaw);
+        stdin.pause();
+        stdin.removeListener('data', onData);
+        process.stdout.write('\n');
+        rl.close();
+        resolve(input);
+      } else if (str === '\u007f' || str === '\b') { // Backspace
+        if (input.length > 0) {
+          input = input.slice(0, -1);
+          process.stdout.write('\b \b');
+        }
+      } else if (str.charCodeAt(0) >= 32) { // Printable characters
+        input += str;
+        process.stdout.write('*');
+      }
+    };
+
+    stdin.on('data', onData);
+  });
+}
+
 export async function selectModelInteractive(toolName: string): Promise<string> {
   const apiType = toolName === 'claude' ? 'messages API' : 'chat completions API';
   

@@ -6,6 +6,7 @@ import { c, symbols } from './utils/colors';
 import { handleTool } from './handlers/tool';
 import { handleModels } from './handlers/models';
 import { handleUp } from './handlers/up';
+import { handleInit } from './handlers/init';
 
 // --- Main ---
 
@@ -34,6 +35,11 @@ async function main() {
 
   if (['up', 'serve', 'start'].includes(command)) {
     await handleUp(args);
+    return;
+  }
+
+  if (command === 'init') {
+    await handleInit(args);
     return;
   }
 
@@ -75,6 +81,7 @@ function printHelp() {
 ${c.bright}ekai-cli${c.reset} - Local AI Gateway Launcher
 
 ${c.yellow}Commands:${c.reset}
+  ${c.green}ekai init${c.reset}             Initialize configuration and API keys
   ${c.green}ekai claude${c.reset} [options]   Proxy Claude CLI through Ekai
   ${c.green}ekai codex${c.reset}  [options]   Proxy Codex CLI through Ekai
   ${c.green}ekai up${c.reset}      [options]   Start the gateway + dashboard (dev or prod)
