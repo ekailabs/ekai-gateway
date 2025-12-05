@@ -18,6 +18,9 @@ dist/
 *.d.ts
 *.d.ts.map
 
+# Keep CLI helper scripts tracked even though we ignore other .js outputs
+!tools/ekai-cli/scripts/*.js
+
 # Generated types from JSON schemas
 gateway/src/types/*.types.ts
 gateway/src/types/index.ts

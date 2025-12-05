@@ -193,22 +193,32 @@ export class PricingLoader {
    * Get pricing for a specific model (with automatic model name normalization)
    */
   getModelPricing(provider: string, model: string): ModelPricing | null {
-    let config = this.pricingCache.get(provider);
+    // Normalize provider name to lowercase for consistent cache lookups
+    const normalizedProvider = provider.toLowerCase();
+    let config = this.pricingCache.get(normalizedProvider);
     if (!config) {
       this.loadAllPricing();
-      config = this.pricingCache.get(provider);
+      config = this.pricingCache.get(normalizedProvider);
       if (!config) return null;
     }
     
+    // Try normalized model name first, then original model name as fallback
     const normalizedModel = ModelUtils.normalizeModelName(model);
-    return config.models[normalizedModel] || null;
+    const modelWithoutPrefix = ModelUtils.removeProviderPrefix(model);
+    
+    return config.models[normalizedModel] 
+      || config.models[modelWithoutPrefix] 
+      || config.models[model] 
+      || null;
   }
 
   /**
    * Get all available models for a provider
    */
   getProviderModels(provider: string): string[] {
-    const config = this.pricingCache.get(provider);
+    // Normalize provider name to lowercase for consistent cache lookups
+    const normalizedProvider = provider.toLowerCase();
+    const config = this.pricingCache.get(normalizedProvider);
     if (!config) return [];
     
     return Object.keys(config.models);
@@ -251,7 +261,9 @@ export class PricingLoader {
     const outputCost = (outputTokens / 1_000_000) * pricing.output;
     const totalCost = inputCost + cacheWriteCost + cacheReadCost + outputCost;
 
-    const config = this.pricingCache.get(provider);
+    // Normalize provider name to lowercase for consistent cache lookups
+    const normalizedProvider = provider.toLowerCase();
+    const config = this.pricingCache.get(normalizedProvider);
 
     return {
       inputCost: Math.round(inputCost * 1000000) / 1000000, // Round to 6 decimal places

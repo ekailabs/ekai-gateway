@@ -28,33 +28,6 @@ export class ModelUtils {
       .replace(/-\d{4}-\d{2}-\d{2}$/, '') // Remove OpenAI dates: -2024-08-06
       .replace(/-(latest|preview|beta|alpha)$/, '') // Remove versions
       .replace(/-\d+k$/, '')           // Remove context: -32k
-      .replace(/claude-sonnet-4-5$/, 'claude-sonnet-4.5'); // Normalize claude-sonnet-4-5 to claude-sonnet-4.5
-  }
-
-  /**
-   * Ensure Anthropic models have required suffixes
-   * Anthropic API requires model names to have version suffixes
-   * Examples:
-   * - claude-3-5-sonnet → claude-3-5-sonnet-20241022
-   * - claude-sonnet-4 → claude-sonnet-4-20250514
-   * - claude-3-5-sonnet-latest → claude-3-5-sonnet-latest (unchanged)
-   */
-  static ensureAnthropicSuffix(modelName: string): string {
-    // Already has a date suffix or version suffix
-    if (/-\d{8}$/.test(modelName) || /-(latest|preview|beta|alpha)$/.test(modelName)) {
-      return modelName;
-    }
-    
-    // Add default suffixes for known models
-    if (modelName.includes('claude-3-5-sonnet')) {
-      return modelName + '-20241022';
-    }
-    if (modelName.includes('claude-sonnet-4')) {
-      return modelName + '-20250514';
-    }
-    
-    // Fallback: add -latest for unknown models
-    return modelName + '-latest';
   }
 
   /**
