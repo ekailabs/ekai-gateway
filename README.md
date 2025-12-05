@@ -211,5 +211,9 @@ cd gateway && npm run dev    # Gateway only (port 3001)
 cd ui/dashboard && npm run dev    # Dashboard only (port 3000)
 ```
 
+## Contributing
+
+Contributions are highly valued and welcomed! See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
+
 ## License
 Licensed under the [Apache License 2.0](./LICENSE).
