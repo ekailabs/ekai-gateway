@@ -111,7 +111,7 @@ export class ChatHandler {
 
       if (passThrough) {
         
-        await this.handlePassThrough(originalRequest, res, clientFormat, providerName, clientIp);
+        await this.handlePassThrough(originalRequest, res, clientFormat, providerName, clientIp, req);
         return;
       }
 
@@ -204,7 +204,7 @@ export class ChatHandler {
     res.writeHead(HTTP_STATUS.OK, headers);
   }
 
-  private async handlePassThrough(originalRequest: any, res: Response, clientFormat: ClientFormat, providerName: ProviderName, clientIp?: string): Promise<void> {
+  private async handlePassThrough(originalRequest: any, res: Response, clientFormat: ClientFormat, providerName: ProviderName, clientIp?: string, req?: Request): Promise<void> {
     const responsesPassthrough = responsesPassthroughRegistry.getPassthrough(providerName);
     const responsesSupportsFormat = responsesPassthroughRegistry
       .getSupportedClientFormats(providerName)
@@ -234,7 +234,7 @@ export class ChatHandler {
       throw new ConfigurationError(`Passthrough not configured for provider ${providerName}`, { provider: providerName, format: clientFormat });
     }
 
-    await passthrough.handleDirectRequest(originalRequest, res, clientIp);
+    await passthrough.handleDirectRequest(originalRequest, res, clientIp, req);
   }
 
 }

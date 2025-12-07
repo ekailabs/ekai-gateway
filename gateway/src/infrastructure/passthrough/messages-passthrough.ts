@@ -1,4 +1,4 @@
-import { Response as ExpressResponse } from 'express';
+import { Request, Response as ExpressResponse } from 'express';
 import { logger } from '../utils/logger.js';
 import { AuthenticationError, PaymentError, ProviderError } from '../../shared/errors/index.js';
 import { CONTENT_TYPES } from '../../domain/types/provider.js';
@@ -32,6 +32,7 @@ export interface MessagesPassthroughConfig {
   usage?: MessagesUsageConfig;
   forceStreamOption?: boolean;
   x402Enabled?: boolean;
+  allowCallerAuth?: boolean;
 }
 
 interface StreamUsageSnapshot {
@@ -128,11 +129,18 @@ export class MessagesPassthrough {
     return token;
   }
 
-  private buildHeaders(): Record<string, string> {
+  private buildHeaders(callerAuthToken?: string): Record<string, string> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...this.config.staticHeaders,
     };
+
+    if (callerAuthToken && this.config.allowCallerAuth) {
+      headers['Authorization'] = callerAuthToken.startsWith('Bearer ')
+        ? callerAuthToken
+        : `Bearer ${callerAuthToken}`;
+      return headers;
+    }
 
     // Only add auth header if auth is configured (not x402 mode)
     if (this.config.auth) {
@@ -161,7 +169,7 @@ export class MessagesPassthrough {
     return { ...body, stream };
   }
 
-  private async makeRequest(body: any, stream: boolean): Promise<globalThis.Response> {
+  private async makeRequest(body: any, stream: boolean, callerAuthToken?: string): Promise<globalThis.Response> {
     // Wait for x402 initialization to complete
     while (!this.x402Initialized) {
       await new Promise(resolve => setTimeout(resolve, 10));
@@ -174,6 +182,14 @@ export class MessagesPassthrough {
     // Log which authentication method is being used for this request
     if (isX402Enabled) {
       logger.info('Making request with x402 payment (PRIVATE_KEY)', {
+        provider: this.config.provider,
+        model: body?.model,
+        baseUrl: this.config.baseUrl,
+        stream,
+        module: 'messages-passthrough',
+      });
+    } else if (callerAuthToken && this.config.allowCallerAuth) {
+      logger.info('Making request with caller-supplied bearer token', {
         provider: this.config.provider,
         model: body?.model,
         baseUrl: this.config.baseUrl,
@@ -196,7 +212,7 @@ export class MessagesPassthrough {
     try {
       response = await fetchFunction(this.resolveBaseUrl(), {
         method: 'POST',
-        headers: this.buildHeaders(),
+        headers: this.buildHeaders(callerAuthToken),
         body: JSON.stringify(this.ensurePayloadBody(body, stream)),
       });
     } catch (error) {
@@ -257,7 +273,7 @@ export class MessagesPassthrough {
   }
 
 
-  private trackUsage(payloadChunk: string, model: string, clientIp?: string): void {
+  private trackUsage(payloadChunk: string, model: string, clientIp?: string, paymentMethodOverride?: string): void {
     if (this.config.usage?.format !== 'anthropic_messages') {
       return;
     }
@@ -362,6 +378,7 @@ export class MessagesPassthrough {
                   cacheReadTokens,
                   clientIp,
                   this.lastX402PaymentAmount, // Pass x402 payment amount if available
+                  paymentMethodOverride,
                 );
                 // Clear payment amount after tracking
                 this.lastX402PaymentAmount = undefined;
@@ -392,11 +409,31 @@ export class MessagesPassthrough {
     }
   }
 
-  async handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string): Promise<void> {
+  private extractCallerAuth(req?: Request): string | undefined {
+    if (!req || !this.config.allowCallerAuth) return undefined;
+
+    const explicit = req.headers['x-anthropic-bearer'];
+    if (typeof explicit === 'string' && explicit.trim()) {
+      return explicit.trim();
+    }
+
+    const authHeader = req.headers['authorization'];
+    if (typeof authHeader === 'string' && authHeader.trim()) {
+      // Allow full header value (e.g., "Bearer token") or raw token
+      const trimmed = authHeader.trim();
+      return trimmed;
+    }
+
+    return undefined;
+  }
+
+  async handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string, req?: Request): Promise<void> {
     this.initialUsage = null;
     this.streamBuffer = '';
     this.assistantResponseBuffer = '';
     this.lastX402PaymentAmount = undefined; // Reset payment amount for new request
+
+    const callerAuthToken = this.extractCallerAuth(req);
 
     // Retrieve and inject memory context
     injectMemoryContext(request, {
@@ -415,7 +452,7 @@ export class MessagesPassthrough {
     this.applyModelOptions(request);
 
     if (request.stream) {
-      const response = await this.makeRequest(request, true);
+      const response = await this.makeRequest(request, true, callerAuthToken);
 
       res.writeHead(200, {
         'Content-Type': CONTENT_TYPES.TEXT_PLAIN,
@@ -430,7 +467,7 @@ export class MessagesPassthrough {
         if (done) break;
 
         const chunkText = new TextDecoder().decode(value);
-        setImmediate(() => this.trackUsage(chunkText, request.model, clientIp));
+        setImmediate(() => this.trackUsage(chunkText, request.model, clientIp, callerAuthToken ? 'subscription' : undefined));
 
         res.write(value);
       }
@@ -453,7 +490,7 @@ export class MessagesPassthrough {
       return;
     }
 
-    const response = await this.makeRequest(request, false);
+    const response = await this.makeRequest(request, false, callerAuthToken);
     const json = await response.json();
 
     if (json.usage && this.config.usage?.format === 'anthropic_messages') {
@@ -485,6 +522,7 @@ export class MessagesPassthrough {
             cacheReadTokens,
             clientIp,
             this.lastX402PaymentAmount, // Pass x402 payment amount if available
+            callerAuthToken ? 'subscription' : undefined,
           );
           // Clear payment amount after tracking
           this.lastX402PaymentAmount = undefined;

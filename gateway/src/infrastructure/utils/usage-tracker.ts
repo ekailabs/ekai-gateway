@@ -49,7 +49,8 @@ export class UsageTracker {
     cacheWriteTokens: number = 0,
     cacheReadTokens: number = 0,
     clientIp?: string,
-    x402PaymentAmount?: string
+    x402PaymentAmount?: string,
+    paymentMethodOverride?: string
   ): CostCalculation | null {
     // Input validation
     if (!model?.trim() || !provider?.trim()) {
@@ -69,7 +70,11 @@ export class UsageTracker {
     // For x402 payments, use actual payment amount instead of YAML pricing
     let costCalculation: CostCalculation | null;
     
-    const paymentMethod = x402PaymentAmount ? 'x402' : 'api_key';
+    const paymentMethod = paymentMethodOverride
+      ? paymentMethodOverride
+      : x402PaymentAmount
+        ? 'x402'
+        : 'api_key';
 
     if (x402PaymentAmount) {
       // Parse the actual payment amount from x402

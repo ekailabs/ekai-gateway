@@ -34,6 +34,7 @@ interface RawMessagesConfig {
   model_options?: RawMessagesModelOptions;
   usage?: RawMessagesUsageConfig;
   force_stream_option?: boolean;
+  allow_caller_auth?: boolean;
 }
 
 interface RawMessagesAuthConfig {
@@ -90,6 +91,7 @@ function toPassthroughConfig(raw: RawMessagesConfig, provider: string): Messages
     modelOptions: toModelOptions(raw.model_options),
     usage: toUsageConfig(raw.usage),
     forceStreamOption: raw.force_stream_option,
+    allowCallerAuth: raw.allow_caller_auth,
   };
 
   return config;

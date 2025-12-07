@@ -162,6 +162,11 @@ export default function UsageTable({ className = '', usageData }: UsageTableProp
                         x402
                       </span>
                     )}
+                    {record.payment_method === 'subscription' && (
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                        Subscription
+                      </span>
+                    )}
                   </div>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-900 font-mono">
@@ -180,7 +185,14 @@ export default function UsageTable({ className = '', usageData }: UsageTableProp
                   {formatNumber(record.output_tokens)}
                 </td>
                 <td className="px-4 py-3 text-sm font-semibold text-gray-900 text-right">
-                  {formatCurrency(record.total_cost)}
+                  <div className="flex items-center justify-end gap-2">
+                    <span>{formatCurrency(record.total_cost)}</span>
+                    {record.payment_method === 'subscription' && (
+                      <span className="inline-flex px-2 py-0.5 text-[11px] font-medium rounded-full bg-green-50 text-green-700 border border-green-200">
+                        Included
+                      </span>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

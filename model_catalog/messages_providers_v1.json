@@ -30,7 +30,8 @@
         "usage": {
           "format": "anthropic_messages"
         },
-        "force_stream_option": true
+        "force_stream_option": true,
+        "allow_caller_auth": true
       }
     },
     {
