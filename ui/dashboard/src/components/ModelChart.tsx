@@ -34,7 +34,7 @@ export default function ModelChart({ className = '', usageData }: ModelChartProp
 
 
   if (loading) {
-    return <LoadingSkeleton className={className} />;
+    return <LoadingSkeleton className={className} variant="chart" height={220} />;
   }
 
   if (error) {

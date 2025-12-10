@@ -331,5 +331,15 @@ export const apiService = {
       throw new Error(`Failed to fetch paths: ${response.statusText}`);
     }
     return response.json();
+  },
+
+  async deleteGraphTriple(id: string): Promise<{ deleted: number }> {
+    const response = await fetch(`${MEMORY_BASE_URL}/v1/graph/triple/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to delete triple: ${response.statusText}`);
+    }
+    return response.json();
   }
 };

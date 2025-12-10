@@ -44,7 +44,7 @@ export default function UsageTable({ className = '', usageData }: UsageTableProp
   });
 
   if (loading) {
-    return <LoadingSkeleton className={className} table />;
+    return <LoadingSkeleton className={className} variant="table" count={6} />;
   }
 
   if (error) {

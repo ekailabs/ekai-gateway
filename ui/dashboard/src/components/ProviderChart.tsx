@@ -28,7 +28,7 @@ export default function ProviderChart({ className = '', usageData }: ProviderCha
 
 
   if (loading) {
-    return <LoadingSkeleton className={className} />;
+    return <LoadingSkeleton className={className} variant="chart" height={220} />;
   }
 
   if (error) {
