@@ -136,6 +136,23 @@ async function main() {
     }
   });
 
+  // Delete a single semantic graph triple by id
+  app.delete('/v1/graph/triple/:id', (req, res) => {
+    try {
+      const { id } = req.params;
+      if (!id) return res.status(400).json({ error: 'id_required' });
+
+      const deleted = store.deleteSemanticById(id);
+      if (!deleted) {
+        return res.status(404).json({ error: 'not_found', id });
+      }
+
+      res.json({ deleted });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message ?? 'triple delete failed' });
+    }
+  });
+
   app.post('/v1/search', async (req, res) => {
     const { query } = req.body as { query?: string };
     if (!query || !query.trim()) {

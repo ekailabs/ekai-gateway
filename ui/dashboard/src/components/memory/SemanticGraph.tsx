@@ -237,6 +237,9 @@ export function SemanticGraph({ entity, maxDepth = 2, maxNodes = 50, height = 50
               setShowDetailsPanel(false);
               setSelectedNode(null);
             }}
+            onChanged={() => {
+              fetchGraphData();
+            }}
           />
         </>
       )}

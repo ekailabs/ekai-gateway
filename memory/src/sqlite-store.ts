@@ -560,6 +560,11 @@ export class SqliteMemoryStore {
     return (res1.changes ?? 0) + (res2.changes ?? 0);
   }
 
+  deleteSemanticById(id: string): number {
+    const res = this.db.prepare('delete from semantic_memory where id = ?').run(id);
+    return res.changes ?? 0;
+  }
+
   private bumpRetrievalCounts(ids: string[]) {
     if (!ids.length) return;
     const placeholders = ids.map(() => '?').join(',');
