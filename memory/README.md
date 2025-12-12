@@ -39,7 +39,7 @@ Env (root `.env` or `memory/.env`):
   }
   ```
   Requires at least one user message. `reasoning`, `feedback`, and `metadata` are optional and currently not used in extraction/scoring (feedback is not yet applied; retrieval_count drives expected_value).
-  - `profile` is a slug `[a-z0-9_-]{1,40}`; defaults to `default`.
+  - `profile` is a slug that defaults to `default`.
 
 - `POST /v1/search` — body `{ "query": "...", "profile": "optional-slug" }` → returns `{ workingMemory, perSector, profileId }` with PBWM gating.
 
