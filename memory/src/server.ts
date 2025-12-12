@@ -38,6 +38,15 @@ async function main() {
     res.json({ status: 'ok' });
   });
 
+  app.get('/v1/profiles', (_req, res) => {
+    try {
+      const profiles = store.getAvailableProfiles();
+      res.json({ profiles });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message ?? 'failed to fetch profiles' });
+    }
+  });
+
   app.post('/v1/ingest', async (req, res) => {
     const { messages, reasoning, feedback, metadata, profile, profileId } = req.body as {
       messages?: Array<{ role: 'user' | 'assistant' | string; content: string }>;

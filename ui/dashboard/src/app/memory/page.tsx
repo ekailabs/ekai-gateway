@@ -13,6 +13,10 @@ import { BrainComposition } from '@/components/memory/BrainComposition';
 import { ActivityDistribution } from '@/components/memory/ActivityDistribution';
 import { MemoryStrength } from '@/components/memory/MemoryStrength';
 import { SemanticGraph } from '@/components/memory/SemanticGraph';
+import ProfileSelector from '@/components/memory/ProfileSelector';
+import ProfileManagement from '@/components/memory/ProfileManagement';
+import ProfileStats from '@/components/memory/ProfileStats';
+import ProfileBadge from '@/components/memory/ProfileBadge';
 
 
 export default function MemoryVaultPage() {
@@ -28,13 +32,16 @@ export default function MemoryVaultPage() {
   const [deleteModal, setDeleteModal] = useState<{ type: 'single'; id: string; preview?: string } | { type: 'bulk' } | null>(null);
   const [editModal, setEditModal] = useState<{ id: string; content: string; sector: string } | null>(null);
   const [editBusy, setEditBusy] = useState(false);
+  const [currentProfile, setCurrentProfile] = useState('default');
+  const [showProfileManagement, setShowProfileManagement] = useState(false);
+  const [profileSwitching, setProfileSwitching] = useState(false);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
       // Fetch more items for better visualization (limit=100)
-      const res = await apiService.getMemorySummary(100);
+      const res = await apiService.getMemorySummary(100, currentProfile);
       setData(res);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load memory summary');
@@ -45,7 +52,18 @@ export default function MemoryVaultPage() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [currentProfile]);
+
+  const handleProfileChange = (profileSlug: string) => {
+    setProfileSwitching(true);
+    setCurrentProfile(profileSlug);
+    setSearchTerm('');
+    setFilterSector('all');
+    setExpandedId(null);
+    
+    // Reset switching state after animation
+    setTimeout(() => setProfileSwitching(false), 500);
+  };
 
   const handleEditClick = (id: string, content: string, sector: string) => {
     setEditModal({ id, content, sector });
@@ -65,7 +83,7 @@ export default function MemoryVaultPage() {
     try {
       setEditBusy(true);
       setError(null);
-      await apiService.updateMemory(editModal.id, editModal.content, editModal.sector);
+      await apiService.updateMemory(editModal.id, editModal.content, editModal.sector, currentProfile);
       setEditModal(null);
       await fetchData();
     } catch (err) {
@@ -133,6 +151,17 @@ export default function MemoryVaultPage() {
     };
   }, [data]);
 
+  // Calculate sector counts for ProfileStats
+  const sectorCounts = useMemo(() => {
+    if (!data) return { episodic: 0, procedural: 0, semantic: 0, affective: 0 };
+    return {
+      episodic: data.summary.find(s => s.sector === 'episodic')?.count ?? 0,
+      procedural: data.summary.find(s => s.sector === 'procedural')?.count ?? 0,
+      semantic: data.summary.find(s => s.sector === 'semantic')?.count ?? 0,
+      affective: data.summary.find(s => s.sector === 'affective')?.count ?? 0,
+    };
+  }, [data]);
+
 
   return (
     <div className="min-h-screen font-sans text-slate-800" style={{ backgroundColor: '#FFFCEC' }}>
@@ -159,7 +188,12 @@ export default function MemoryVaultPage() {
                 </p>
               </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex items-center gap-3">
+              <ProfileSelector
+                currentProfile={currentProfile}
+                onProfileChange={handleProfileChange}
+                onManageProfiles={() => setShowProfileManagement(true)}
+              />
               <button
                 onClick={fetchData}
                 className="p-2 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-all"
@@ -225,6 +259,18 @@ export default function MemoryVaultPage() {
         </div>
       </header>
 
+      {/* Profile Switch Notification */}
+      {profileSwitching && (
+        <div className="fixed top-20 right-6 z-30 animate-in slide-in-from-top-2 fade-in duration-300">
+          <div className="bg-gradient-to-r from-teal-500 to-teal-600 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 border-2 border-teal-400">
+            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span className="font-semibold text-sm">Switching to {currentProfile} profile...</span>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         {error && (
@@ -238,6 +284,17 @@ export default function MemoryVaultPage() {
 
         {activeTab === 'overview' ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Profile Statistics - New! */}
+            <ProfileStats
+              profileName={currentProfile}
+              totalMemories={quickStats?.total ?? 0}
+              episodicCount={sectorCounts.episodic}
+              proceduralCount={sectorCounts.procedural}
+              semanticCount={sectorCounts.semantic}
+              affectiveCount={sectorCounts.affective}
+              totalRetrievals={quickStats?.totalRetrievals ?? 0}
+            />
+            
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <BrainComposition data={data} quickStats={quickStats} />
               <ActivityDistribution data={data} quickStats={quickStats} />
@@ -246,7 +303,7 @@ export default function MemoryVaultPage() {
           </div>
         ) : activeTab === 'graph' ? (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <SemanticGraph maxDepth={2} maxNodes={50} height={600} />
+            <SemanticGraph maxDepth={2} maxNodes={50} height={600} profile={currentProfile} />
           </div>
         ) : (
           <div className="bg-gradient-to-br from-white via-stone-50/20 to-white rounded-2xl border border-stone-200 shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden">
@@ -262,7 +319,8 @@ export default function MemoryVaultPage() {
             </div>
             {/* Enhanced Toolbar */}
             <div className="p-6 border-b border-stone-200/60 flex flex-col sm:flex-row gap-4 justify-between items-center bg-gradient-to-r from-white to-stone-50/30 backdrop-blur-sm">
-              <div className="flex items-center gap-3 flex-1">
+              <div className="flex items-center gap-3 flex-1 flex-wrap">
+                <ProfileBadge profileName={currentProfile} animated={true} />
                 <div className="relative w-full sm:w-96 group">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <svg className="h-4 w-4 text-stone-400 group-focus-within:text-teal-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -472,6 +530,12 @@ export default function MemoryVaultPage() {
           onClose={() => setEditModal(null)}
           onConfirm={handleEditConfirm}
           onUpdate={(updates) => setEditModal(editModal ? { ...editModal, ...updates } : null)}
+        />
+        <ProfileManagement
+          isOpen={showProfileManagement}
+          onClose={() => setShowProfileManagement(false)}
+          currentProfile={currentProfile}
+          onProfileCreated={(slug) => setCurrentProfile(slug)}
         />
       </main>
     </div>

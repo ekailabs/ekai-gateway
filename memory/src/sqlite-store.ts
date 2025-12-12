@@ -634,6 +634,28 @@ export class SqliteMemoryStore {
     return res.changes ?? 0;
   }
 
+  getAvailableProfiles(): string[] {
+    const memoryProfiles = this.db
+      .prepare('select distinct profile_id from memory')
+      .all() as Array<{ profile_id: string }>;
+    const procProfiles = this.db
+      .prepare('select distinct profile_id from procedural_memory')
+      .all() as Array<{ profile_id: string }>;
+    const semanticProfiles = this.db
+      .prepare('select distinct profile_id from semantic_memory')
+      .all() as Array<{ profile_id: string }>;
+    
+    const allProfiles = new Set<string>();
+    memoryProfiles.forEach(p => allProfiles.add(p.profile_id));
+    procProfiles.forEach(p => allProfiles.add(p.profile_id));
+    semanticProfiles.forEach(p => allProfiles.add(p.profile_id));
+    
+    // Always include default profile
+    allProfiles.add(DEFAULT_PROFILE);
+    
+    return Array.from(allProfiles).sort();
+  }
+
   private bumpRetrievalCounts(ids: string[]) {
     if (!ids.length) return;
     const placeholders = ids.map(() => '?').join(',');
