@@ -68,6 +68,7 @@ export class SqliteMemoryStore {
           procRow = {
             id: randomUUID(),
             trigger: content,
+            profileId,
             goal: '',
             context: '',
             result: '',
@@ -81,6 +82,7 @@ export class SqliteMemoryStore {
           procRow = {
             id: randomUUID(),
             trigger: content.trigger,
+            profileId,
             goal: content.goal ?? '',
             context: content.context ?? '',
             result: content.result ?? '',
@@ -100,6 +102,7 @@ export class SqliteMemoryStore {
               subject: 'User',
               predicate: 'statement',
               object: textToEmbed,
+              profileId,
               embedding: [],
               validFrom: createdAt,
               validTo: null,
@@ -122,6 +125,7 @@ export class SqliteMemoryStore {
               subject,
               predicate,
               object,
+              profileId,
               embedding: [],
               validFrom: createdAt,
               validTo: null,
