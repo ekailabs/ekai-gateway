@@ -5,6 +5,7 @@ import TrendChart from '@/components/TrendChart';
 import ProviderChart from '@/components/ProviderChart';
 import ModelChart from '@/components/ModelChart';
 import UsageTable from '@/components/UsageTable';
+import ActivityHeatmap from '@/components/ActivityHeatmap';
 import DateRangePicker, { DateRange } from '@/components/DateRangePicker';
 import { useUsageData } from '@/hooks/useUsageData';
 import { useConfigStatus } from '@/hooks/useConfigStatus';
@@ -138,6 +139,13 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-12">
+          {/* Activity Overview */}
+          <ActivityHeatmap
+            records={usageData.records}
+            fromDate={dateRange?.from}
+            toDate={dateRange?.to}
+          />
+
           {/* Trend Chart */}
           <TrendChart usageData={usageData} />
 
