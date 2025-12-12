@@ -179,10 +179,7 @@ export default function MemoryVaultPage() {
                 </svg>
               </Link>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></span>
-                  Memory Vault
-                </h1>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Memory Vault</h1>
                 <p className="text-sm text-stone-500 mt-0.5">
                   {data?.recent?.length ?? 0} active engrams loaded
                 </p>
