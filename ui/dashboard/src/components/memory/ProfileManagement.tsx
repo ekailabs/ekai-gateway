@@ -13,7 +13,6 @@ interface ProfileManagementProps {
   isOpen: boolean;
   onClose: () => void;
   currentProfile: string;
-  onProfileCreated: (slug: string) => void;
 }
 
 const formatProfileName = (slug: string): string => {
@@ -39,7 +38,7 @@ const getProfileColor = (slug: string, index: number): string => {
   return colors[index % colors.length];
 };
 
-export default function ProfileManagement({ isOpen, onClose, currentProfile, onProfileCreated }: ProfileManagementProps) {
+export default function ProfileManagement({ isOpen, onClose, currentProfile }: ProfileManagementProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

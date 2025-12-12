@@ -115,8 +115,17 @@ export default function ProfileSelector({ currentProfile, onProfileChange, onMan
       {isOpen && (
         <div className="absolute top-full left-0 mt-2 w-72 bg-white border-2 border-stone-200 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
           {/* Header */}
-          <div className="px-4 py-3 bg-gradient-to-r from-stone-50 to-white border-b border-stone-200">
+          <div className="px-4 py-3 bg-gradient-to-r from-stone-50 to-white border-b border-stone-200 flex items-center justify-between">
             <h3 className="text-xs font-bold text-stone-600 uppercase tracking-wider">Switch Profile</h3>
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                onManageProfiles();
+              }}
+              className="text-xs font-semibold text-teal-600 hover:text-teal-700"
+            >
+              Manage
+            </button>
           </div>
 
           {/* Profile List */}

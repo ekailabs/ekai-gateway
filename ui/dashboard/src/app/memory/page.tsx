@@ -36,7 +36,7 @@ export default function MemoryVaultPage() {
   const [showProfileManagement, setShowProfileManagement] = useState(false);
   const [profileSwitching, setProfileSwitching] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -48,11 +48,11 @@ export default function MemoryVaultPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentProfile]);
 
   useEffect(() => {
     fetchData();
-  }, [currentProfile]);
+  }, [fetchData]);
 
   const handleProfileChange = (profileSlug: string) => {
     setProfileSwitching(true);
@@ -535,7 +535,6 @@ export default function MemoryVaultPage() {
           isOpen={showProfileManagement}
           onClose={() => setShowProfileManagement(false)}
           currentProfile={currentProfile}
-          onProfileCreated={(slug) => setCurrentProfile(slug)}
         />
       </main>
     </div>
