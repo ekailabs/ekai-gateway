@@ -42,6 +42,7 @@ export class SqliteMemoryStore {
 
   async ingest(components: IngestComponents, profile?: string): Promise<MemoryRecord[]> {
     const profileId = normalizeProfileSlug(profile);
+    this.ensureProfileExists(profileId);
     const createdAt = this.now();
     const rows: MemoryRecord[] = [];
     const normalized = normalizeComponents(components);
@@ -192,6 +193,7 @@ export class SqliteMemoryStore {
     profile?: string,
   ): Promise<{ workingMemory: QueryResult[]; perSector: Record<SectorName, QueryResult[]>; profileId: string }> {
     const profileId = normalizeProfileSlug(profile);
+    this.ensureProfileExists(profileId);
     const queryEmbeddings: Record<SectorName, number[]> = {} as Record<SectorName, number[]>;
     for (const sector of SECTORS) {
       queryEmbeddings[sector] = await this.embed(queryText, sector);
@@ -265,6 +267,7 @@ export class SqliteMemoryStore {
 
   getSectorSummary(profile?: string): Array<{ sector: SectorName; count: number; lastCreatedAt: number | null }> {
     const profileId = normalizeProfileSlug(profile);
+    this.ensureProfileExists(profileId);
     const rows = this.db
       .prepare(
         `select sector, count(*) as count, max(created_at) as lastCreatedAt
@@ -304,6 +307,7 @@ export class SqliteMemoryStore {
 
   getRecent(profile: string | undefined, limit: number): (MemoryRecord & { details?: any })[] {
     const profileId = normalizeProfileSlug(profile);
+    this.ensureProfileExists(profileId);
     const rows = this.db
       .prepare(
         `select id, sector, content, embedding, created_at as createdAt, last_accessed as lastAccessed, '{}' as details, event_start as eventStart, event_end as eventEnd, retrieval_count as retrievalCount
@@ -550,6 +554,7 @@ export class SqliteMemoryStore {
     this.db.prepare('create index if not exists idx_semantic_object on semantic_memory(object)').run();
     this.ensureProfileColumns();
     this.ensureProfileIndexes();
+    this.ensureProfilesTable();
   }
 
   /**
@@ -580,8 +585,39 @@ export class SqliteMemoryStore {
       .run();
   }
 
+  private ensureProfilesTable() {
+    this.db
+      .prepare(
+        `create table if not exists profiles (
+          slug text primary key,
+          created_at integer not null
+        )`,
+      )
+      .run();
+
+    this.ensureProfileExists(DEFAULT_PROFILE);
+
+    // One-time backfill of existing profile ids into profiles table
+    const now = this.now();
+    const backfill = [
+      'insert or ignore into profiles (slug, created_at) select distinct profile_id, @now from memory',
+      'insert or ignore into profiles (slug, created_at) select distinct profile_id, @now from procedural_memory',
+      'insert or ignore into profiles (slug, created_at) select distinct profile_id, @now from semantic_memory',
+    ];
+    for (const sql of backfill) {
+      this.db.prepare(sql).run({ now });
+    }
+  }
+
+  private ensureProfileExists(profileId: string) {
+    this.db
+      .prepare('insert or ignore into profiles (slug, created_at) values (@slug, @createdAt)')
+      .run({ slug: profileId, createdAt: this.now() });
+  }
+
   async updateById(id: string, content: string, sector?: SectorName, profile?: string): Promise<boolean> {
     const profileId = normalizeProfileSlug(profile);
+    this.ensureProfileExists(profileId);
     // First, get the existing record to preserve sector if not changing
     const existing = this.db
       .prepare('select sector from memory where id = ? and profile_id = ?')
@@ -614,6 +650,7 @@ export class SqliteMemoryStore {
 
   deleteById(id: string, profile?: string): number {
     const profileId = normalizeProfileSlug(profile);
+    this.ensureProfileExists(profileId);
     const res1 = this.db.prepare('delete from memory where id = ? and profile_id = ?').run(id, profileId);
     const res2 = this.db.prepare('delete from procedural_memory where id = ? and profile_id = ?').run(id, profileId);
     const res3 = this.db.prepare('delete from semantic_memory where id = ? and profile_id = ?').run(id, profileId);
@@ -622,6 +659,7 @@ export class SqliteMemoryStore {
 
   deleteAll(profile?: string): number {
     const profileId = normalizeProfileSlug(profile);
+    this.ensureProfileExists(profileId);
     const res1 = this.db.prepare('delete from memory where profile_id = ?').run(profileId);
     const res2 = this.db.prepare('delete from procedural_memory where profile_id = ?').run(profileId);
     const res3 = this.db.prepare('delete from semantic_memory where profile_id = ?').run(profileId);
@@ -630,30 +668,14 @@ export class SqliteMemoryStore {
 
   deleteSemanticById(id: string, profile?: string): number {
     const profileId = normalizeProfileSlug(profile);
+    this.ensureProfileExists(profileId);
     const res = this.db.prepare('delete from semantic_memory where id = ? and profile_id = ?').run(id, profileId);
     return res.changes ?? 0;
   }
 
   getAvailableProfiles(): string[] {
-    const memoryProfiles = this.db
-      .prepare('select distinct profile_id from memory')
-      .all() as Array<{ profile_id: string }>;
-    const procProfiles = this.db
-      .prepare('select distinct profile_id from procedural_memory')
-      .all() as Array<{ profile_id: string }>;
-    const semanticProfiles = this.db
-      .prepare('select distinct profile_id from semantic_memory')
-      .all() as Array<{ profile_id: string }>;
-    
-    const allProfiles = new Set<string>();
-    memoryProfiles.forEach(p => allProfiles.add(p.profile_id));
-    procProfiles.forEach(p => allProfiles.add(p.profile_id));
-    semanticProfiles.forEach(p => allProfiles.add(p.profile_id));
-    
-    // Always include default profile
-    allProfiles.add(DEFAULT_PROFILE);
-    
-    return Array.from(allProfiles).sort();
+    const rows = this.db.prepare('select slug from profiles order by slug').all() as Array<{ slug: string }>;
+    return rows.map((r) => r.slug);
   }
 
   private bumpRetrievalCounts(ids: string[]) {
