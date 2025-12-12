@@ -10,7 +10,7 @@ import type {
   SectorName,
 } from './types.js';
 import { PBWM_SECTOR_WEIGHTS, scoreRowPBWM } from './scoring.js';
-import { cosineSimilarity } from './utils.js';
+import { cosineSimilarity, DEFAULT_PROFILE, normalizeProfileSlug } from './utils.js';
 import { filterAndCapWorkingMemory } from './wm.js';
 import { SemanticGraphTraversal } from './semantic-graph.js';
 
@@ -36,11 +36,13 @@ export class SqliteMemoryStore {
     this.db = new Database(opts.dbPath);
     this.embed = opts.embed;
     this.now = opts.now ?? (() => Date.now());
-    this.graph = new SemanticGraphTraversal(this.db, this.now);
     this.prepareSchema();
+    this.graph = new SemanticGraphTraversal(this.db, this.now);
   }
 
-  async ingest(components: IngestComponents): Promise<MemoryRecord[]> {
+  async ingest(components: IngestComponents, profile?: string): Promise<MemoryRecord[]> {
+    const profileId = normalizeProfileSlug(profile);
+    this.ensureProfileExists(profileId);
     const createdAt = this.now();
     const rows: MemoryRecord[] = [];
     const normalized = normalizeComponents(components);
@@ -67,6 +69,7 @@ export class SqliteMemoryStore {
           procRow = {
             id: randomUUID(),
             trigger: content,
+            profileId,
             goal: '',
             context: '',
             result: '',
@@ -80,6 +83,7 @@ export class SqliteMemoryStore {
           procRow = {
             id: randomUUID(),
             trigger: content.trigger,
+            profileId,
             goal: content.goal ?? '',
             context: content.context ?? '',
             result: content.result ?? '',
@@ -99,6 +103,7 @@ export class SqliteMemoryStore {
               subject: 'User',
               predicate: 'statement',
               object: textToEmbed,
+              profileId,
               embedding: [],
               validFrom: createdAt,
               validTo: null,
@@ -121,6 +126,7 @@ export class SqliteMemoryStore {
               subject,
               predicate,
               object,
+              profileId,
               embedding: [],
               validFrom: createdAt,
               validTo: null,
@@ -136,17 +142,20 @@ export class SqliteMemoryStore {
 
       if (sector === 'procedural' && procRow) {
         procRow.embedding = embedding;
+        procRow.profileId = profileId;
         this.insertProceduralRow(procRow);
         rows.push({
           id: procRow.id,
           sector,
           content: procRow.trigger,
           embedding,
+          profileId,
           createdAt,
           lastAccessed: createdAt,
         });
       } else if (sector === 'semantic' && semanticRow) {
         semanticRow.embedding = embedding;
+        semanticRow.profileId = profileId;
         this.insertSemanticRow(semanticRow);
         // Mirror into rows for compatibility (content = object; embedding still computed)
         rows.push({
@@ -154,6 +163,7 @@ export class SqliteMemoryStore {
           sector,
           content: semanticRow.object,
           embedding,
+          profileId,
           createdAt,
           lastAccessed: createdAt,
           eventStart: null,
@@ -165,6 +175,7 @@ export class SqliteMemoryStore {
           sector,
           content: textToEmbed,
           embedding,
+          profileId,
           createdAt,
           lastAccessed: createdAt,
           eventStart: sector === 'episodic' ? createdAt : null,
@@ -179,7 +190,10 @@ export class SqliteMemoryStore {
 
   async query(
     queryText: string,
-  ): Promise<{ workingMemory: QueryResult[]; perSector: Record<SectorName, QueryResult[]> }> {
+    profile?: string,
+  ): Promise<{ workingMemory: QueryResult[]; perSector: Record<SectorName, QueryResult[]>; profileId: string }> {
+    const profileId = normalizeProfileSlug(profile);
+    this.ensureProfileExists(profileId);
     const queryEmbeddings: Record<SectorName, number[]> = {} as Record<SectorName, number[]>;
     for (const sector of SECTORS) {
       queryEmbeddings[sector] = await this.embed(queryText, sector);
@@ -195,11 +209,12 @@ export class SqliteMemoryStore {
     for (const sector of SECTORS) {
       const candidates =
         sector === 'procedural'
-          ? this.getProceduralRows(SECTOR_SCAN_LIMIT).map((r) => ({
+          ? this.getProceduralRows(profileId, SECTOR_SCAN_LIMIT).map((r) => ({
               id: r.id,
               sector: 'procedural' as SectorName,
               content: r.trigger,
               embedding: r.embedding,
+              profileId: r.profileId,
               createdAt: r.createdAt,
               lastAccessed: r.lastAccessed,
               details: {
@@ -211,11 +226,12 @@ export class SqliteMemoryStore {
               },
             }))
           : sector === 'semantic'
-            ? this.getSemanticRows(SECTOR_SCAN_LIMIT).map((r) => ({
+            ? this.getSemanticRows(profileId, SECTOR_SCAN_LIMIT).map((r) => ({
                 id: r.id,
                 sector: 'semantic' as SectorName,
                 content: r.object,
                 embedding: r.embedding ?? [],
+                profileId: r.profileId,
                 createdAt: r.createdAt,
                 lastAccessed: r.updatedAt,
                 details: {
@@ -226,7 +242,7 @@ export class SqliteMemoryStore {
                   validTo: r.validTo,
                 },
               }))
-          : this.getRowsForSector(sector, SECTOR_SCAN_LIMIT);
+          : this.getRowsForSector(sector, profileId, SECTOR_SCAN_LIMIT);
       const scored = candidates
         .filter((row) => cosineSimilarity(queryEmbeddings[sector], row.embedding) >= 0.2)
         .map((row) => scoreRowPBWM(row, queryEmbeddings[sector], PBWM_SECTOR_WEIGHTS[sector]))
@@ -234,6 +250,7 @@ export class SqliteMemoryStore {
         .slice(0, PER_SECTOR_K)
         .map((row) => ({
           ...row,
+          profileId,
           // propagate temporal fields for episodic; procedural has none
           eventStart: (row as any).eventStart ?? null,
           eventEnd: (row as any).eventEnd ?? null,
@@ -245,31 +262,36 @@ export class SqliteMemoryStore {
 
     const workingMemory = filterAndCapWorkingMemory(perSectorResults, WORKING_MEMORY_CAP);
     this.bumpRetrievalCounts(workingMemory.map((r) => r.id));
-    return { workingMemory, perSector: perSectorResults };
+    return { workingMemory, perSector: perSectorResults, profileId };
   }
 
-  getSectorSummary(): Array<{ sector: SectorName; count: number; lastCreatedAt: number | null }> {
+  getSectorSummary(profile?: string): Array<{ sector: SectorName; count: number; lastCreatedAt: number | null }> {
+    const profileId = normalizeProfileSlug(profile);
+    this.ensureProfileExists(profileId);
     const rows = this.db
       .prepare(
         `select sector, count(*) as count, max(created_at) as lastCreatedAt
          from memory
+         where profile_id = @profileId
          group by sector`,
       )
-      .all() as Array<{ sector: SectorName; count: number; lastCreatedAt: number | null }>;
+      .all({ profileId }) as Array<{ sector: SectorName; count: number; lastCreatedAt: number | null }>;
 
     const proceduralRow = this.db
       .prepare(
         `select 'procedural' as sector, count(*) as count, max(created_at) as lastCreatedAt
-         from procedural_memory`,
+         from procedural_memory
+         where profile_id = @profileId`,
       )
-      .get() as { sector: SectorName; count: number; lastCreatedAt: number | null };
+      .get({ profileId }) as { sector: SectorName; count: number; lastCreatedAt: number | null };
 
     const semanticRow = this.db
       .prepare(
         `select 'semantic' as sector, count(*) as count, max(created_at) as lastCreatedAt
-         from semantic_memory`,
+         from semantic_memory
+         where profile_id = @profileId`,
       )
-      .get() as { sector: SectorName; count: number; lastCreatedAt: number | null };
+      .get({ profileId }) as { sector: SectorName; count: number; lastCreatedAt: number | null };
 
     const defaults = SECTORS.map((s) => ({
       sector: s,
@@ -283,29 +305,35 @@ export class SqliteMemoryStore {
     return defaults.map((d) => map.get(d.sector) ?? d);
   }
 
-  getRecent(limit: number): (MemoryRecord & { details?: any })[] {
+  getRecent(profile: string | undefined, limit: number): (MemoryRecord & { details?: any })[] {
+    const profileId = normalizeProfileSlug(profile);
+    this.ensureProfileExists(profileId);
     const rows = this.db
       .prepare(
         `select id, sector, content, embedding, created_at as createdAt, last_accessed as lastAccessed, '{}' as details, event_start as eventStart, event_end as eventEnd, retrieval_count as retrievalCount
          from memory
+         where profile_id = @profileId
          union all
          select id, 'procedural' as sector, trigger as content, embedding, created_at as createdAt, last_accessed as lastAccessed,
                 json_object('trigger', trigger, 'goal', goal, 'context', context, 'result', result, 'steps', json(steps)) as details,
                 null as eventStart, null as eventEnd, 0 as retrievalCount
          from procedural_memory
+         where profile_id = @profileId
          union all
          select id, 'semantic' as sector, object as content, json('[]') as embedding, created_at as createdAt, updated_at as lastAccessed,
                 json_object('subject', subject, 'predicate', predicate, 'object', object, 'validFrom', valid_from, 'validTo', valid_to, 'metadata', metadata) as details,
                 null as eventStart, null as eventEnd, 0 as retrievalCount
          from semantic_memory
+         where profile_id = @profileId
          order by createdAt desc
          limit @limit`,
       )
-      .all({ limit }) as Array<Omit<MemoryRecord, 'embedding'> & { details: string }>;
+      .all({ profileId, limit }) as Array<Omit<MemoryRecord, 'embedding' | 'profileId'> & { details: string }>;
 
     return rows.map((row) => {
       const parsed = {
         ...row,
+        profileId,
         embedding: JSON.parse((row as any).embedding) as number[],
         details: row.details ? JSON.parse(row.details) : undefined,
         eventStart: row.eventStart ?? null,
@@ -334,9 +362,9 @@ export class SqliteMemoryStore {
     this.db
       .prepare(
         `insert into memory (
-          id, sector, content, embedding, created_at, last_accessed, event_start, event_end, retrieval_count
+          id, sector, content, embedding, created_at, last_accessed, event_start, event_end, retrieval_count, profile_id
         ) values (
-          @id, @sector, @content, json(@embedding), @createdAt, @lastAccessed, @eventStart, @eventEnd, @retrievalCount
+          @id, @sector, @content, json(@embedding), @createdAt, @lastAccessed, @eventStart, @eventEnd, @retrievalCount, @profileId
         )`,
       )
       .run({
@@ -349,6 +377,7 @@ export class SqliteMemoryStore {
         eventStart: row.eventStart ?? null,
         eventEnd: row.eventEnd ?? null,
         retrievalCount: (row as any).retrievalCount ?? DEFAULT_RETRIEVAL_COUNT,
+        profileId: row.profileId ?? DEFAULT_PROFILE,
       });
   }
 
@@ -356,9 +385,9 @@ export class SqliteMemoryStore {
     this.db
       .prepare(
         `insert into procedural_memory (
-          id, trigger, goal, context, result, steps, embedding, created_at, last_accessed
+          id, trigger, goal, context, result, steps, embedding, created_at, last_accessed, profile_id
         ) values (
-          @id, @trigger, @goal, @context, @result, json(@steps), json(@embedding), @createdAt, @lastAccessed
+          @id, @trigger, @goal, @context, @result, json(@steps), json(@embedding), @createdAt, @lastAccessed, @profileId
         )`,
       )
       .run({
@@ -371,6 +400,7 @@ export class SqliteMemoryStore {
         embedding: JSON.stringify(row.embedding),
         createdAt: row.createdAt,
         lastAccessed: row.lastAccessed,
+        profileId: row.profileId ?? DEFAULT_PROFILE,
       });
   }
 
@@ -378,9 +408,9 @@ export class SqliteMemoryStore {
     this.db
       .prepare(
         `insert into semantic_memory (
-          id, subject, predicate, object, valid_from, valid_to, created_at, updated_at, embedding, metadata
+          id, subject, predicate, object, valid_from, valid_to, created_at, updated_at, embedding, metadata, profile_id
         ) values (
-          @id, @subject, @predicate, @object, @validFrom, @validTo, @createdAt, @updatedAt, json(@embedding), json(@metadata)
+          @id, @subject, @predicate, @object, @validFrom, @validTo, @createdAt, @updatedAt, json(@embedding), json(@metadata), @profileId
         )`,
       )
       .run({
@@ -394,20 +424,21 @@ export class SqliteMemoryStore {
         updatedAt: row.updatedAt,
         embedding: JSON.stringify(row.embedding),
         metadata: row.metadata ? JSON.stringify(row.metadata) : null,
+        profileId: row.profileId ?? DEFAULT_PROFILE,
       });
   }
 
-  private getRowsForSector(sector: SectorName, limit: number): MemoryRecord[] {
+  private getRowsForSector(sector: SectorName, profileId: string, limit: number): MemoryRecord[] {
     const rows = this.db
       .prepare(
         `select id, sector, content, embedding, created_at as createdAt, last_accessed as lastAccessed,
-                event_start as eventStart, event_end as eventEnd, retrieval_count as retrievalCount
+                event_start as eventStart, event_end as eventEnd, retrieval_count as retrievalCount, profile_id as profileId
          from memory
-         where sector = @sector
+         where sector = @sector and profile_id = @profileId
          order by last_accessed desc
          limit @limit`,
       )
-      .all({ sector, limit }) as Array<Omit<MemoryRecord, 'embedding'>>;
+      .all({ sector, limit, profileId }) as Array<Omit<MemoryRecord, 'embedding'>>;
 
     return rows.map((row) => ({
       ...row,
@@ -415,16 +446,17 @@ export class SqliteMemoryStore {
     }));
   }
 
-  private getSemanticRows(limit: number): SemanticMemoryRecord[] {
+  private getSemanticRows(profileId: string, limit: number): SemanticMemoryRecord[] {
     const rows = this.db
       .prepare(
         `select id, subject, predicate, object, valid_from as validFrom, valid_to as validTo,
-                created_at as createdAt, updated_at as updatedAt, embedding, metadata
+                created_at as createdAt, updated_at as updatedAt, embedding, metadata, profile_id as profileId
          from semantic_memory
+         where profile_id = @profileId
          order by updated_at desc
          limit @limit`,
       )
-      .all({ limit }) as any[];
+      .all({ limit, profileId }) as any[];
 
     return rows.map((row) => ({
       ...row,
@@ -433,15 +465,16 @@ export class SqliteMemoryStore {
     }));
   }
 
-  private getProceduralRows(limit: number): ProceduralMemoryRecord[] {
+  private getProceduralRows(profileId: string, limit: number): ProceduralMemoryRecord[] {
     const rows = this.db
       .prepare(
-        `select id, trigger, goal, context, result, steps, embedding, created_at as createdAt, last_accessed as lastAccessed
+        `select id, trigger, goal, context, result, steps, embedding, created_at as createdAt, last_accessed as lastAccessed, profile_id as profileId
          from procedural_memory
+         where profile_id = @profileId
          order by last_accessed desc
          limit @limit`,
       )
-      .all({ limit }) as Array<Omit<ProceduralMemoryRecord, 'embedding' | 'steps'>>;
+      .all({ limit, profileId }) as Array<Omit<ProceduralMemoryRecord, 'embedding' | 'steps'>>;
 
     return rows.map((row) => ({
       ...row,
@@ -474,7 +507,8 @@ export class SqliteMemoryStore {
           last_accessed integer not null,
           event_start integer,
           event_end integer,
-          retrieval_count integer not null default 0
+          retrieval_count integer not null default 0,
+          profile_id text not null default '${DEFAULT_PROFILE}'
         )`,
       )
       .run();
@@ -492,7 +526,8 @@ export class SqliteMemoryStore {
           steps json not null,
           embedding json not null,
           created_at integer not null,
-          last_accessed integer not null
+          last_accessed integer not null,
+          profile_id text not null default '${DEFAULT_PROFILE}'
         )`,
       )
       .run();
@@ -510,19 +545,83 @@ export class SqliteMemoryStore {
           created_at integer not null,
           updated_at integer not null,
           embedding json not null,
-          metadata json
+          metadata json,
+          profile_id text not null default '${DEFAULT_PROFILE}'
         )`,
       )
       .run();
     this.db.prepare('create index if not exists idx_semantic_subject_pred on semantic_memory(subject, predicate)').run();
     this.db.prepare('create index if not exists idx_semantic_object on semantic_memory(object)').run();
+    this.ensureProfileColumns();
+    this.ensureProfileIndexes();
+    this.ensureProfilesTable();
   }
 
-  async updateById(id: string, content: string, sector?: SectorName): Promise<boolean> {
+  /**
+   * Backfills profile_id column for existing databases and creates profile-aware indexes.
+   */
+  private ensureProfileColumns() {
+    const tables = ['memory', 'procedural_memory', 'semantic_memory'];
+    for (const table of tables) {
+      const columns = this.db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+      const hasProfile = columns.some((c) => c.name === 'profile_id');
+      if (!hasProfile) {
+        this.db
+          .prepare(`ALTER TABLE ${table} ADD COLUMN profile_id text not null default '${DEFAULT_PROFILE}'`)
+          .run();
+      }
+    }
+  }
+
+  private ensureProfileIndexes() {
+    this.db
+      .prepare('create index if not exists idx_memory_profile_sector on memory(profile_id, sector, last_accessed)')
+      .run();
+    this.db
+      .prepare('create index if not exists idx_proc_profile on procedural_memory(profile_id, last_accessed)')
+      .run();
+    this.db
+      .prepare('create index if not exists idx_semantic_profile on semantic_memory(profile_id, updated_at)')
+      .run();
+  }
+
+  private ensureProfilesTable() {
+    this.db
+      .prepare(
+        `create table if not exists profiles (
+          slug text primary key,
+          created_at integer not null
+        )`,
+      )
+      .run();
+
+    this.ensureProfileExists(DEFAULT_PROFILE);
+
+    // One-time backfill of existing profile ids into profiles table
+    const now = this.now();
+    const backfill = [
+      'insert or ignore into profiles (slug, created_at) select distinct profile_id, @now from memory',
+      'insert or ignore into profiles (slug, created_at) select distinct profile_id, @now from procedural_memory',
+      'insert or ignore into profiles (slug, created_at) select distinct profile_id, @now from semantic_memory',
+    ];
+    for (const sql of backfill) {
+      this.db.prepare(sql).run({ now });
+    }
+  }
+
+  private ensureProfileExists(profileId: string) {
+    this.db
+      .prepare('insert or ignore into profiles (slug, created_at) values (@slug, @createdAt)')
+      .run({ slug: profileId, createdAt: this.now() });
+  }
+
+  async updateById(id: string, content: string, sector?: SectorName, profile?: string): Promise<boolean> {
+    const profileId = normalizeProfileSlug(profile);
+    this.ensureProfileExists(profileId);
     // First, get the existing record to preserve sector if not changing
     const existing = this.db
-      .prepare('select sector from memory where id = ?')
-      .get(id) as { sector: SectorName } | undefined;
+      .prepare('select sector from memory where id = ? and profile_id = ?')
+      .get(id, profileId) as { sector: SectorName } | undefined;
 
     if (!existing) {
       return false;
@@ -535,34 +634,48 @@ export class SqliteMemoryStore {
     
     // Update the record
     const stmt = this.db.prepare(
-      'update memory set content = ?, sector = ?, embedding = json(?), last_accessed = ? where id = ?'
+      'update memory set content = ?, sector = ?, embedding = json(?), last_accessed = ? where id = ? and profile_id = ?'
     );
     const res = stmt.run(
       content,
       targetSector,
       JSON.stringify(embedding),
       this.now(),
-      id
+      id,
+      profileId,
     );
     
     return res.changes > 0;
   }
 
-  deleteById(id: string): number {
-    const res1 = this.db.prepare('delete from memory where id = ?').run(id);
-    const res2 = this.db.prepare('delete from procedural_memory where id = ?').run(id);
-    return (res1.changes ?? 0) + (res2.changes ?? 0);
+  deleteById(id: string, profile?: string): number {
+    const profileId = normalizeProfileSlug(profile);
+    this.ensureProfileExists(profileId);
+    const res1 = this.db.prepare('delete from memory where id = ? and profile_id = ?').run(id, profileId);
+    const res2 = this.db.prepare('delete from procedural_memory where id = ? and profile_id = ?').run(id, profileId);
+    const res3 = this.db.prepare('delete from semantic_memory where id = ? and profile_id = ?').run(id, profileId);
+    return (res1.changes ?? 0) + (res2.changes ?? 0) + (res3.changes ?? 0);
   }
 
-  deleteAll(): number {
-    const res1 = this.db.prepare('delete from memory').run();
-    const res2 = this.db.prepare('delete from procedural_memory').run();
-    return (res1.changes ?? 0) + (res2.changes ?? 0);
+  deleteAll(profile?: string): number {
+    const profileId = normalizeProfileSlug(profile);
+    this.ensureProfileExists(profileId);
+    const res1 = this.db.prepare('delete from memory where profile_id = ?').run(profileId);
+    const res2 = this.db.prepare('delete from procedural_memory where profile_id = ?').run(profileId);
+    const res3 = this.db.prepare('delete from semantic_memory where profile_id = ?').run(profileId);
+    return (res1.changes ?? 0) + (res2.changes ?? 0) + (res3.changes ?? 0);
   }
 
-  deleteSemanticById(id: string): number {
-    const res = this.db.prepare('delete from semantic_memory where id = ?').run(id);
+  deleteSemanticById(id: string, profile?: string): number {
+    const profileId = normalizeProfileSlug(profile);
+    this.ensureProfileExists(profileId);
+    const res = this.db.prepare('delete from semantic_memory where id = ? and profile_id = ?').run(id, profileId);
     return res.changes ?? 0;
+  }
+
+  getAvailableProfiles(): string[] {
+    const rows = this.db.prepare('select slug from profiles order by slug').all() as Array<{ slug: string }>;
+    return rows.map((r) => r.slug);
   }
 
   private bumpRetrievalCounts(ids: string[]) {

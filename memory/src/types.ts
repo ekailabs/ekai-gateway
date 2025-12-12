@@ -22,6 +22,7 @@ export interface MemoryRecord {
   sector: SectorName;
   content: string;
   embedding: number[];
+  profileId: string;
   createdAt: number;
   lastAccessed: number;
   eventStart?: number | null;
@@ -31,6 +32,7 @@ export interface MemoryRecord {
 export interface ProceduralMemoryRecord {
   id: string;
   trigger: string;
+  profileId: string;
   goal?: string;
   context?: string;
   result?: string;
@@ -45,6 +47,7 @@ export interface SemanticMemoryRecord {
   subject: string;
   predicate: string;
   object: string;
+  profileId: string;
   embedding: number[];
   validFrom: number;
   validTo: number | null;
@@ -57,6 +60,7 @@ export interface SemanticMemoryRecord {
 export interface QueryResult {
   sector: SectorName;
   id: string;
+  profileId: string;
   content: string;
   score: number;
   similarity: number;
@@ -72,6 +76,7 @@ export interface GraphTraversalOptions {
   maxResults?: number;
   includeInvalidated?: boolean;
   predicateFilter?: string;
+  profile?: string;
 }
 
 export interface GraphPath {

@@ -25,6 +25,7 @@ Env (root `.env` or `memory/.env`):
   Body:
   ```json
   {
+  "profile": "optional-slug",
   "messages": [
     { "role": "user", "content": "..." },
     { "role": "assistant", "content": "..." }
@@ -38,10 +39,11 @@ Env (root `.env` or `memory/.env`):
   }
   ```
   Requires at least one user message. `reasoning`, `feedback`, and `metadata` are optional and currently not used in extraction/scoring (feedback is not yet applied; retrieval_count drives expected_value).
+  - `profile` is a slug that defaults to `default`.
 
-- `POST /v1/search` — body `{ "query": "..." }` → returns `{ workingMemory, perSector }` with PBWM gating.
+- `POST /v1/search` — body `{ "query": "...", "profile": "optional-slug" }` → returns `{ workingMemory, perSector, profileId }` with PBWM gating.
 
-- `GET /v1/summary` — per-sector counts + recent items (includes procedural details).
+- `GET /v1/summary` — per-sector counts + recent items (includes procedural details). Accepts `?profile=slug` (default `default`).
 
 - `DELETE /v1/memory/:id` — delete one; `DELETE /v1/memory` — delete all.
 
