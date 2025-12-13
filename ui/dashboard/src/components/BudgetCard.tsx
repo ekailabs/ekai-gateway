@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
+import ErrorState from '@/components/ui/ErrorState';
+import EmptyState from '@/components/ui/EmptyState';
 import { BudgetResponse } from '@/lib/api';
 
 interface BudgetCardProps {
@@ -88,6 +91,30 @@ export default function BudgetCard({ data, loading, error, onSave, onRetry }: Bu
       handleCloseModal();
     }
   };
+
+  if (loading) {
+    return <LoadingSkeleton variant="card" />;
+  }
+
+  if (error) {
+    return (
+      <ErrorState
+        title="Budget unavailable"
+        message={error}
+        onRetry={onRetry}
+      />
+    );
+  }
+
+  if (!data) {
+    return (
+      <EmptyState
+        title="No budget found"
+        description="We couldn't load your budget settings."
+        suggestion="Retry or create a new budget."
+      />
+    );
+  }
 
   return (
     <>

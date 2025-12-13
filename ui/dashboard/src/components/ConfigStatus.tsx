@@ -1,5 +1,8 @@
 import { ConfigStatusResponse } from '@/lib/api';
 import { getProviderName } from '@/lib/utils';
+import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
+import ErrorState from '@/components/ui/ErrorState';
+import EmptyState from '@/components/ui/EmptyState';
 
 interface ConfigStatusProps {
   status: ConfigStatusResponse | null;
@@ -9,42 +12,29 @@ interface ConfigStatusProps {
 }
 
 export default function ConfigStatus({ status, loading, error, onRetry }: ConfigStatusProps) {
-  if (loading || !status) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="card p-4 animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
-          <div className="h-6 bg-gray-200 rounded w-32"></div>
-        </div>
-        <div className="card p-4 animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
-          <div className="h-6 bg-gray-200 rounded w-40"></div>
-        </div>
-        <div className="card p-4 animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
-          <div className="h-6 bg-gray-200 rounded w-28"></div>
-        </div>
-      </div>
-    );
+  if (loading) {
+    return <LoadingSkeleton className="mb-8" variant="grid" count={3} />;
   }
 
   if (error) {
     return (
-      <div className="card p-6 mb-8 border-red-200 bg-red-50">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="font-medium text-red-900 mb-1">Configuration Error</p>
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-          <button
-            type="button"
-            className="px-4 py-2 text-sm font-medium text-red-700 bg-white hover:bg-red-100 rounded-lg border border-red-300 transition-colors"
-            onClick={onRetry}
-          >
-            Retry
-          </button>
-        </div>
-      </div>
+      <ErrorState
+        className="mb-8"
+        title="Configuration error"
+        message={error}
+        onRetry={onRetry}
+      />
+    );
+  }
+
+  if (!status) {
+    return (
+      <EmptyState
+        className="mb-8"
+        title="No configuration found"
+        description="We couldn't load your provider configuration."
+        suggestion="Retry or add provider credentials to your .env file."
+      />
     );
   }
 

@@ -207,19 +207,23 @@ export const apiService = {
     return response.json();
   },
 
-  async getMemorySummary(limit = 50): Promise<MemorySummaryResponse> {
-    const response = await fetch(`${MEMORY_BASE_URL}/v1/summary?limit=${limit}`);
+  async getMemorySummary(limit = 50, profile?: string): Promise<MemorySummaryResponse> {
+    const params = new URLSearchParams();
+    params.append('limit', String(limit));
+    if (profile) params.append('profile', profile);
+    
+    const response = await fetch(`${MEMORY_BASE_URL}/v1/summary?${params.toString()}`);
     if (!response.ok) {
       throw new Error(`Failed to fetch memory summary: ${response.statusText}`);
     }
     return response.json();
   },
 
-  async updateMemory(id: string, content: string, sector?: string): Promise<{ updated: boolean; id: string }> {
+  async updateMemory(id: string, content: string, sector?: string, profile?: string): Promise<{ updated: boolean; id: string; profile?: string }> {
     const response = await fetch(`${MEMORY_BASE_URL}/v1/memory/${encodeURIComponent(id)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, sector }),
+      body: JSON.stringify({ content, sector, profile }),
     });
     if (!response.ok) {
       let errorMessage = `Failed to update memory: ${response.statusText}`;
@@ -263,7 +267,7 @@ export const apiService = {
   },
 
   // Graph traversal APIs
-  async getGraphVisualization(params?: { entity?: string; maxDepth?: number; maxNodes?: number }): Promise<{
+  async getGraphVisualization(params?: { entity?: string; maxDepth?: number; maxNodes?: number; profile?: string }): Promise<{
     center?: string;
     nodes: Array<{ id: string; label: string }>;
     edges: Array<{ source: string; target: string; predicate: string }>;
@@ -272,6 +276,7 @@ export const apiService = {
     if (params?.entity) searchParams.append('entity', params.entity);
     if (params?.maxDepth) searchParams.append('maxDepth', String(params.maxDepth));
     if (params?.maxNodes) searchParams.append('maxNodes', String(params.maxNodes));
+    if (params?.profile) searchParams.append('profile', params.profile);
 
     const url = `${MEMORY_BASE_URL}/v1/graph/visualization${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
     const response = await fetch(url);
@@ -329,6 +334,24 @@ export const apiService = {
     const response = await fetch(`${MEMORY_BASE_URL}/v1/graph/paths?${searchParams.toString()}`);
     if (!response.ok) {
       throw new Error(`Failed to fetch paths: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  async getProfiles(): Promise<{ profiles: string[] }> {
+    const response = await fetch(`${MEMORY_BASE_URL}/v1/profiles`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch profiles: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  async deleteGraphTriple(id: string): Promise<{ deleted: number }> {
+    const response = await fetch(`${MEMORY_BASE_URL}/v1/graph/triple/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to delete triple: ${response.statusText}`);
     }
     return response.json();
   }

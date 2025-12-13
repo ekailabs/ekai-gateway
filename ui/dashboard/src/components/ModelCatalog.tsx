@@ -35,7 +35,7 @@ export default function ModelCatalog({ className = '' }: ModelCatalogProps) {
   const filteredItems = items; // server-side filters already applied
 
   if (loading) {
-    return <LoadingSkeleton className={className} />;
+    return <LoadingSkeleton className={className} variant="table" count={8} />;
   }
 
   if (error) {
