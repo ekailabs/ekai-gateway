@@ -92,7 +92,7 @@
       }
     },
     {
-      "provider": "xAI",
+      "provider": "xai",
       "models": [
         "grok-4",
         "grok-3",
