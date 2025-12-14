@@ -48,7 +48,7 @@ export default function ActivityHeatmap({ records, fromDate, toDate, className =
   const [hoveredDay, setHoveredDay] = useState<DayData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
-  const { days, maxRequests } = useMemo(() => {
+  const { days } = useMemo(() => {
     // If showFullYear is true, always show last 52 weeks (GitHub-style)
     let startDate: Date;
     let endDate: Date;
@@ -60,7 +60,7 @@ export default function ActivityHeatmap({ records, fromDate, toDate, className =
       startDate.setDate(startDate.getDate() - (52 * 7 - 1)); // 52 weeks back
       startDate.setHours(0, 0, 0, 0);
     } else {
-      if (!fromDate || !toDate) return { days: [], maxRequests: 0 };
+      if (!fromDate || !toDate) return { days: [] };
       startDate = new Date(fromDate);
       endDate = new Date(toDate);
     }
@@ -107,7 +107,7 @@ export default function ActivityHeatmap({ records, fromDate, toDate, className =
       day.level = getActivityLevel(day.requests, maxRequests);
     });
 
-    return { days, maxRequests };
+    return { days };
   }, [records, fromDate, toDate, showFullYear]);
 
   // Group days by week (starting Monday)
@@ -234,7 +234,7 @@ export default function ActivityHeatmap({ records, fromDate, toDate, className =
                         `}
                         onMouseEnter={(e) => handleMouseEnter(day, e)}
                         onMouseLeave={handleMouseLeave}
-                        aria-label={`${day.date.toLocaleDateString()}: ${day.requests} requests`}
+                        aria-label={`${day.dateKey}: ${day.requests} requests`}
                       />
                     ))}
 

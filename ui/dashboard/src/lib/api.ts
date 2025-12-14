@@ -267,16 +267,18 @@ export const apiService = {
   },
 
   // Graph traversal APIs
-  async getGraphVisualization(params?: { entity?: string; maxDepth?: number; maxNodes?: number; profile?: string }): Promise<{
+  async getGraphVisualization(params?: { entity?: string; maxDepth?: number; maxNodes?: number; profile?: string; includeHistory?: boolean }): Promise<{
     center?: string;
     nodes: Array<{ id: string; label: string }>;
-    edges: Array<{ source: string; target: string; predicate: string }>;
+    edges: Array<{ source: string; target: string; predicate: string; isHistorical?: boolean }>;
+    includeHistory?: boolean;
   }> {
     const searchParams = new URLSearchParams();
     if (params?.entity) searchParams.append('entity', params.entity);
     if (params?.maxDepth) searchParams.append('maxDepth', String(params.maxDepth));
     if (params?.maxNodes) searchParams.append('maxNodes', String(params.maxNodes));
     if (params?.profile) searchParams.append('profile', params.profile);
+    if (params?.includeHistory) searchParams.append('includeHistory', 'true');
 
     const url = `${MEMORY_BASE_URL}/v1/graph/visualization${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
     const response = await fetch(url);

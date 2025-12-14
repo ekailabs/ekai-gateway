@@ -8,7 +8,9 @@ import type {
   SemanticMemoryRecord,
   QueryResult,
   SectorName,
+  ConsolidationAction,
 } from './types.js';
+import { determineConsolidationAction } from './consolidation.js';
 import { PBWM_SECTOR_WEIGHTS, scoreRowPBWM } from './scoring.js';
 import { cosineSimilarity, DEFAULT_PROFILE, normalizeProfileSlug } from './utils.js';
 import { filterAndCapWorkingMemory } from './wm.js';
@@ -109,6 +111,7 @@ export class SqliteMemoryStore {
               validTo: null,
               createdAt,
               updatedAt: createdAt,
+              strength: 1.0,
             };
           } else {
             // Ensure all three fields are populated for semantic triples
@@ -132,6 +135,7 @@ export class SqliteMemoryStore {
               validTo: null,
               createdAt,
               updatedAt: createdAt,
+              strength: 1.0,
             };
             textToEmbed = semanticRow.object;
           }
@@ -156,19 +160,60 @@ export class SqliteMemoryStore {
       } else if (sector === 'semantic' && semanticRow) {
         semanticRow.embedding = embedding;
         semanticRow.profileId = profileId;
-        this.insertSemanticRow(semanticRow);
-        // Mirror into rows for compatibility (content = object; embedding still computed)
-        rows.push({
-          id: semanticRow.id,
-          sector,
-          content: semanticRow.object,
-          embedding,
-          profileId,
-          createdAt,
-          lastAccessed: createdAt,
-          eventStart: null,
-          eventEnd: null,
-        });
+
+        // Consolidation: find semantically similar predicates (0.9 threshold)
+        const allFactsForSubject = this.findActiveFactsForSubject(
+          semanticRow.subject,
+          profileId
+        );
+        const matchingFacts = await this.findSemanticallyMatchingFacts(
+          semanticRow.predicate,
+          allFactsForSubject,
+          0.9 // Semantic similarity threshold
+        );
+        const action = determineConsolidationAction(
+          { subject: semanticRow.subject, predicate: semanticRow.predicate, object: semanticRow.object },
+          matchingFacts
+        );
+
+        switch (action.type) {
+          case 'merge':
+            // Same object exists: strengthen it, don't insert new row
+            this.strengthenFact(action.targetId);
+            rows.push({
+              id: action.targetId,
+              sector,
+              content: semanticRow.object,
+              embedding,
+              profileId,
+              createdAt,
+              lastAccessed: createdAt,
+              eventStart: null,
+              eventEnd: null,
+            });
+            break;
+
+          case 'supersede':
+            // Different object: close old fact, then insert new
+            this.supersedeFact(action.targetId);
+            // Fall through to insert
+            
+          case 'insert':
+            // Insert new semantic triple
+            this.insertSemanticRow(semanticRow);
+            rows.push({
+              id: semanticRow.id,
+              sector,
+              content: semanticRow.object,
+              embedding,
+              profileId,
+              createdAt,
+              lastAccessed: createdAt,
+              eventStart: null,
+              eventEnd: null,
+            });
+            break;
+        }
       } else {
         const row: MemoryRecord = {
           id: randomUUID(),
@@ -321,14 +366,15 @@ export class SqliteMemoryStore {
          where profile_id = @profileId
          union all
          select id, 'semantic' as sector, object as content, json('[]') as embedding, created_at as createdAt, updated_at as lastAccessed,
-                json_object('subject', subject, 'predicate', predicate, 'object', object, 'validFrom', valid_from, 'validTo', valid_to, 'metadata', metadata) as details,
+                json_object('subject', subject, 'predicate', predicate, 'object', object, 'validFrom', valid_from, 'validTo', valid_to, 'strength', strength, 'metadata', metadata) as details,
                 null as eventStart, null as eventEnd, 0 as retrievalCount
          from semantic_memory
          where profile_id = @profileId
+           and (valid_to is null or valid_to > @now)
          order by createdAt desc
          limit @limit`,
       )
-      .all({ profileId, limit }) as Array<Omit<MemoryRecord, 'embedding' | 'profileId'> & { details: string }>;
+      .all({ profileId, limit, now: this.now() }) as Array<Omit<MemoryRecord, 'embedding' | 'profileId'> & { details: string }>;
 
     return rows.map((row) => {
       const parsed = {
@@ -408,9 +454,9 @@ export class SqliteMemoryStore {
     this.db
       .prepare(
         `insert into semantic_memory (
-          id, subject, predicate, object, valid_from, valid_to, created_at, updated_at, embedding, metadata, profile_id
+          id, subject, predicate, object, valid_from, valid_to, created_at, updated_at, embedding, metadata, profile_id, strength
         ) values (
-          @id, @subject, @predicate, @object, @validFrom, @validTo, @createdAt, @updatedAt, json(@embedding), json(@metadata), @profileId
+          @id, @subject, @predicate, @object, @validFrom, @validTo, @createdAt, @updatedAt, json(@embedding), json(@metadata), @profileId, @strength
         )`,
       )
       .run({
@@ -425,6 +471,7 @@ export class SqliteMemoryStore {
         embedding: JSON.stringify(row.embedding),
         metadata: row.metadata ? JSON.stringify(row.metadata) : null,
         profileId: row.profileId ?? DEFAULT_PROFILE,
+        strength: row.strength ?? 1.0,
       });
   }
 
@@ -447,21 +494,25 @@ export class SqliteMemoryStore {
   }
 
   private getSemanticRows(profileId: string, limit: number): SemanticMemoryRecord[] {
+    const now = this.now();
     const rows = this.db
       .prepare(
         `select id, subject, predicate, object, valid_from as validFrom, valid_to as validTo,
-                created_at as createdAt, updated_at as updatedAt, embedding, metadata, profile_id as profileId
+                created_at as createdAt, updated_at as updatedAt, embedding, metadata, profile_id as profileId,
+                strength
          from semantic_memory
          where profile_id = @profileId
-         order by updated_at desc
+           and (valid_to is null or valid_to > @now)
+         order by strength desc, updated_at desc
          limit @limit`,
       )
-      .all({ limit, profileId }) as any[];
+      .all({ limit, profileId, now }) as any[];
 
     return rows.map((row) => ({
       ...row,
       embedding: JSON.parse((row as any).embedding) as number[],
       metadata: row.metadata ? JSON.parse((row as any).metadata) : undefined,
+      strength: row.strength ?? 1.0,
     }));
   }
 
@@ -555,6 +606,122 @@ export class SqliteMemoryStore {
     this.ensureProfileColumns();
     this.ensureProfileIndexes();
     this.ensureProfilesTable();
+    this.ensureStrengthColumn();
+  }
+
+  /**
+   * Add strength column to semantic_memory if it doesn't exist.
+   * Strength tracks evidence count from consolidation (starts at 1.0).
+   */
+  private ensureStrengthColumn() {
+    const columns = this.db.prepare('PRAGMA table_info(semantic_memory)').all() as Array<{ name: string }>;
+    if (!columns.some((c) => c.name === 'strength')) {
+      this.db.prepare('ALTER TABLE semantic_memory ADD COLUMN strength REAL NOT NULL DEFAULT 1.0').run();
+    }
+    // Index for slot-based lookups (subject + predicate)
+    this.db
+      .prepare('CREATE INDEX IF NOT EXISTS idx_semantic_slot ON semantic_memory(subject, predicate, profile_id)')
+      .run();
+  }
+
+  /**
+   * Find all active (non-expired) facts for a subject.
+   * Used for semantic similarity matching during consolidation.
+   */
+  findActiveFactsForSubject(
+    subject: string,
+    profileId: string
+  ): Array<{ id: string; predicate: string; object: string; updatedAt: number }> {
+    const now = this.now();
+    const rows = this.db
+      .prepare(
+        `SELECT id, predicate, object, updated_at as updatedAt
+         FROM semantic_memory
+         WHERE subject = @subject 
+           AND profile_id = @profileId
+           AND (valid_to IS NULL OR valid_to > @now)
+         ORDER BY updated_at DESC`
+      )
+      .all({ subject, profileId, now }) as Array<{ id: string; predicate: string; object: string; updatedAt: number }>;
+    return rows;
+  }
+
+  /**
+   * Find facts with semantically similar predicates (using embeddings).
+   * Returns facts where predicate similarity >= threshold.
+   */
+  async findSemanticallyMatchingFacts(
+    newPredicate: string,
+    existingFacts: Array<{ id: string; predicate: string; object: string; updatedAt: number }>,
+    threshold: number = 0.9
+  ): Promise<Array<{ id: string; object: string; updatedAt: number; similarity: number }>> {
+    if (existingFacts.length === 0) return [];
+
+    // Embed the new predicate
+    const newPredicateEmbedding = await this.embed(newPredicate, 'semantic');
+    
+    // Get unique predicates to embed (avoid duplicate embedding calls)
+    const uniquePredicates = [...new Set(existingFacts.map(f => f.predicate))];
+    const predicateEmbeddings = new Map<string, number[]>();
+    
+    for (const pred of uniquePredicates) {
+      predicateEmbeddings.set(pred, await this.embed(pred, 'semantic'));
+    }
+
+    // Filter facts by predicate similarity
+    const matchingFacts: Array<{ id: string; object: string; updatedAt: number; similarity: number }> = [];
+    
+    for (const fact of existingFacts) {
+      const factPredicateEmbedding = predicateEmbeddings.get(fact.predicate)!;
+      const similarity = cosineSimilarity(newPredicateEmbedding, factPredicateEmbedding);
+      
+      if (similarity >= threshold) {
+        matchingFacts.push({
+          id: fact.id,
+          object: fact.object,
+          updatedAt: fact.updatedAt,
+          similarity
+        });
+      }
+    }
+
+    // Sort by similarity desc, then by updatedAt desc
+    matchingFacts.sort((a, b) => {
+      if (b.similarity !== a.similarity) return b.similarity - a.similarity;
+      return b.updatedAt - a.updatedAt;
+    });
+
+    return matchingFacts;
+  }
+
+  /**
+   * Strengthen an existing semantic fact (merge operation).
+   * Increases strength by delta and updates timestamp.
+   */
+  strengthenFact(id: string, delta: number = 1.0): void {
+    this.db
+      .prepare(
+        `UPDATE semantic_memory 
+         SET strength = strength + @delta, 
+             updated_at = @now
+         WHERE id = @id`
+      )
+      .run({ id, delta, now: this.now() });
+  }
+
+  /**
+   * Supersede a semantic fact by closing its validity window.
+   * The fact remains in the database for historical queries.
+   */
+  supersedeFact(id: string): void {
+    this.db
+      .prepare(
+        `UPDATE semantic_memory 
+         SET valid_to = @now,
+             updated_at = @now
+         WHERE id = @id`
+      )
+      .run({ id, now: this.now() });
   }
 
   /**
