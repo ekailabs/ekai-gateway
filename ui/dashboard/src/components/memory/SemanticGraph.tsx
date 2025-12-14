@@ -92,20 +92,35 @@ export function SemanticGraph({ entity, maxDepth = 2, maxNodes = 50, height = 50
         },
       }));
 
-      const initialEdges: Edge[] = data.edges.map((e, i) => ({
-        id: `e${i}`,
-        source: e.source,
-        target: e.target,
-        label: e.predicate,
-        type: 'smoothstep',
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: '#a8a29e',
-        },
-        style: { stroke: '#a8a29e', strokeWidth: 1.5 },
-        labelStyle: { fill: '#78716c', fontSize: 10, fontWeight: 600 },
-        labelBgStyle: { fill: '#fafaf9', fillOpacity: 0.8 },
-      }));
+      const initialEdges: Edge[] = data.edges.map((e, i) => {
+        const isHistorical = e.isHistorical ?? false;
+        return {
+          id: `e${i}`,
+          source: e.source,
+          target: e.target,
+          label: e.predicate,
+          type: 'smoothstep',
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: isHistorical ? '#9ca3af' : '#a8a29e',
+          },
+          style: { 
+            stroke: isHistorical ? '#9ca3af' : '#a8a29e',
+            strokeWidth: isHistorical ? 1 : 1.5,
+            strokeDasharray: isHistorical ? '5,5' : undefined,
+            opacity: isHistorical ? 0.5 : 1,
+          },
+          labelStyle: { 
+            fill: isHistorical ? '#6b7280' : '#78716c', 
+            fontSize: 10, 
+            fontWeight: isHistorical ? 500 : 600 
+          },
+          labelBgStyle: { 
+            fill: isHistorical ? '#f3f4f6' : '#fafaf9', 
+            fillOpacity: isHistorical ? 0.6 : 0.8 
+          },
+        };
+      });
 
       const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
         initialNodes,

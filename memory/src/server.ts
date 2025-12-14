@@ -301,12 +301,13 @@ async function main() {
 
   app.get('/v1/graph/visualization', (req, res) => {
     try {
-      const { entity, maxDepth, maxNodes, profile, profileId } = req.query;
+      const { entity, maxDepth, maxNodes, profile, profileId, includeHistory } = req.query;
       const profileValue = (profile as string) ?? (profileId as string);
       const normalizedProfile = normalizeProfileSlug(profileValue);
       const centerEntity = (entity as string) || null;
       const depth = maxDepth ? Number(maxDepth) : 2;
       const nodeLimit = maxNodes ? Number(maxNodes) : 50;
+      const showHistory = includeHistory === 'true' || includeHistory === '1';
 
       // If no center entity, get a sample of semantic triples
       if (!centerEntity) {
@@ -314,10 +315,11 @@ async function main() {
         const triples = allSemantic
           .slice(0, nodeLimit)
           .map((r) => (r as any).details)
-          .filter((d) => d && d.subject && d.predicate && d.object);
+          .filter((d) => d && d.subject && d.predicate && d.object)
+          .filter((d) => showHistory || !d.validTo); // Filter out historical if not requested
 
         const nodes = new Set<string>();
-        const edges: Array<{ source: string; target: string; predicate: string }> = [];
+        const edges: Array<{ source: string; target: string; predicate: string; isHistorical?: boolean }> = [];
 
         for (const triple of triples) {
           nodes.add(triple.subject);
@@ -326,23 +328,26 @@ async function main() {
             source: triple.subject,
             target: triple.object,
             predicate: triple.predicate,
+            isHistorical: triple.validTo != null,
           });
         }
 
         return res.json({
           nodes: Array.from(nodes).map((id) => ({ id, label: id })),
           edges,
+          includeHistory: showHistory,
           profile: normalizedProfile,
         });
       }
 
       // Build graph from center entity
-      const reachable = store.graph.findReachableEntities(centerEntity, { maxDepth: depth, profile: normalizedProfile });
+      const graphOptions = { maxDepth: depth, profile: normalizedProfile, includeInvalidated: showHistory };
+      const reachable = store.graph.findReachableEntities(centerEntity, graphOptions);
       const nodes = new Set<string>([centerEntity]);
-      const edges: Array<{ source: string; target: string; predicate: string }> = [];
+      const edges: Array<{ source: string; target: string; predicate: string; isHistorical?: boolean }> = [];
 
       // Add center entity's connections
-      const centerTriples = store.graph.findConnectedTriples(centerEntity, { maxResults: 100, profile: normalizedProfile });
+      const centerTriples = store.graph.findConnectedTriples(centerEntity, { maxResults: 100, profile: normalizedProfile, includeInvalidated: showHistory });
       for (const triple of centerTriples) {
         nodes.add(triple.subject);
         nodes.add(triple.object);
@@ -350,6 +355,7 @@ async function main() {
           source: triple.subject,
           target: triple.object,
           predicate: triple.predicate,
+          isHistorical: triple.validTo != null,
         });
       }
 
@@ -359,7 +365,7 @@ async function main() {
         .slice(0, nodeLimit - nodes.size);
 
       for (const [entity, _depth] of reachableArray) {
-        const entityTriples = store.graph.findTriplesBySubject(entity, { maxResults: 10, profile: normalizedProfile });
+        const entityTriples = store.graph.findTriplesBySubject(entity, { maxResults: 10, profile: normalizedProfile, includeInvalidated: showHistory });
         for (const triple of entityTriples) {
           if (nodes.has(triple.subject) || nodes.has(triple.object)) {
             nodes.add(triple.subject);
@@ -368,6 +374,7 @@ async function main() {
               source: triple.subject,
               target: triple.object,
               predicate: triple.predicate,
+              isHistorical: triple.validTo != null,
             });
           }
         }
@@ -377,6 +384,7 @@ async function main() {
         center: centerEntity,
         nodes: Array.from(nodes).map((id) => ({ id, label: id })),
         edges,
+        includeHistory: showHistory,
         profile: normalizedProfile,
       });
     } catch (err: any) {
