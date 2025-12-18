@@ -8,6 +8,11 @@ const DEFAULT_SECTOR_WEIGHTS: Record<SectorName, number> = {
   affective: 1,
 };
 const RETRIEVAL_SOFTCAP = 10; // for normalization
+const RELEVANCE_WEIGHT = 1.0;
+const EXPECTED_VALUE_WEIGHT = 0.4;
+const CONTROL_WEIGHT = 0.05;
+const NOISE_WEIGHT = 0.02;
+const CONTROL_SIGNAL = 0.3;
 
 /**
  * Minimal PBWM-inspired gate.
@@ -22,14 +27,13 @@ export function scoreRowPBWM(
   const relevance = cosineSimilarity(queryEmbedding, row.embedding);
 
   const expectedValue = normalizeRetrieval(row);
-  const controlSignal = 0.5;
   const noise = gaussianNoise(0, 0.05);
 
   const x =
-    0.5 * relevance +
-    0.25 * expectedValue +
-    0.2 * controlSignal -
-    0.05 * noise;
+    RELEVANCE_WEIGHT * relevance +
+    EXPECTED_VALUE_WEIGHT * expectedValue +
+    CONTROL_WEIGHT * CONTROL_SIGNAL -
+    NOISE_WEIGHT * noise;
 
   const gateScore = sigmoid(x);
   const score = gateScore * sectorWeight;
