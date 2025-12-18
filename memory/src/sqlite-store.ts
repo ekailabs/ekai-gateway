@@ -833,6 +833,18 @@ export class SqliteMemoryStore {
     return (res1.changes ?? 0) + (res2.changes ?? 0) + (res3.changes ?? 0);
   }
 
+  deleteProfile(profile?: string): number {
+    const profileId = normalizeProfileSlug(profile);
+    if (profileId === DEFAULT_PROFILE) {
+      throw new Error('cannot_delete_default_profile');
+    }
+    // Delete all memories for this profile
+    const deletedCount = this.deleteAll(profileId);
+    // Delete the profile itself from the profiles table
+    const res = this.db.prepare('delete from profiles where slug = ?').run(profileId);
+    return deletedCount;
+  }
+
   deleteSemanticById(id: string, profile?: string): number {
     const profileId = normalizeProfileSlug(profile);
     this.ensureProfileExists(profileId);
