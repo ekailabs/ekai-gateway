@@ -105,12 +105,12 @@ async function main() {
     if (!messages || !messages.length) {
       return res.status(400).json({ error: 'messages is required and must include at least one item' });
     }
-    const lastUser = [...messages].reverse().find((m) => m.role === 'user');
-    if (!lastUser || !lastUser.content?.trim()) {
+    const userMessages = messages.filter((m) => m.role === 'user' && m.content?.trim());
+    if (!userMessages.length) {
       return res.status(400).json({ error: 'at least one user message with content is required' });
     }
 
-    const sourceText = lastUser.content;
+    const sourceText = userMessages.map((m) => m.content.trim()).join('\n\n');
     let finalComponents: IngestComponents | undefined;
 
     try {
