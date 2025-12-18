@@ -30,6 +30,7 @@ export default function MemoryVaultPage() {
   const [filterSector, setFilterSector] = useState<string>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ type: 'single'; id: string; preview?: string } | { type: 'bulk' } | null>(null);
+  const [bulkScope, setBulkScope] = useState<'current' | 'all'>('current');
   const [editModal, setEditModal] = useState<{ id: string; content: string; sector: string } | null>(null);
   const [editBusy, setEditBusy] = useState(false);
   const [currentProfile, setCurrentProfile] = useState('default');
@@ -65,6 +66,14 @@ export default function MemoryVaultPage() {
     setTimeout(() => setProfileSwitching(false), 500);
   };
 
+  const handleProfileDeleted = (profileSlug: string) => {
+    if (profileSlug === currentProfile) {
+      handleProfileChange('default');
+    } else {
+      fetchData();
+    }
+  };
+
   const handleEditClick = (id: string, content: string, sector: string) => {
     setEditModal({ id, content, sector });
   };
@@ -74,6 +83,7 @@ export default function MemoryVaultPage() {
   };
 
   const handleBulkDeleteClick = () => {
+    setBulkScope('current');
     setDeleteModal({ type: 'bulk' });
   };
 
@@ -100,11 +110,20 @@ export default function MemoryVaultPage() {
       if (deleteModal.type === 'single') {
         setBusyId(deleteModal.id);
         setError(null);
-        await apiService.deleteMemory(deleteModal.id);
+        await apiService.deleteMemory(deleteModal.id, currentProfile);
       } else {
         setBulkBusy(true);
         setError(null);
-        await apiService.deleteAllMemories();
+        if (bulkScope === 'current') {
+          await apiService.deleteAllMemories(currentProfile);
+        } else {
+          const { profiles } = await apiService.getProfiles();
+          // Delete sequentially to surface the first failing profile clearly
+          const targets = profiles.length ? profiles : ['default'];
+          for (const profile of targets) {
+            await apiService.deleteAllMemories(profile);
+          }
+        }
       }
       setDeleteModal(null);
       await fetchData();
@@ -114,7 +133,9 @@ export default function MemoryVaultPage() {
           ? err.message
           : deleteModal.type === 'single'
             ? 'Failed to delete memory'
-            : 'Failed to delete all memories'
+            : bulkScope === 'current'
+              ? `Failed to delete memories in "${currentProfile}" profile`
+              : 'Failed to delete memories across profiles'
       );
     } finally {
       setBusyId(null);
@@ -206,7 +227,7 @@ export default function MemoryVaultPage() {
                 className="px-4 py-2 text-sm font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors border border-rose-200 shadow-sm"
                 disabled={loading || bulkBusy}
               >
-                {bulkBusy ? 'Deleting…' : 'Delete all'}
+                {bulkBusy ? 'Deleting…' : `Delete all (${currentProfile})`}
               </button>
             </div>
           </div>
@@ -518,6 +539,9 @@ export default function MemoryVaultPage() {
           deleteModal={deleteModal}
           busyId={busyId}
           bulkBusy={bulkBusy}
+          profile={currentProfile}
+          bulkScope={bulkScope}
+          onScopeChange={setBulkScope}
           onClose={() => setDeleteModal(null)}
           onConfirm={handleDeleteConfirm}
         />
@@ -532,6 +556,7 @@ export default function MemoryVaultPage() {
           isOpen={showProfileManagement}
           onClose={() => setShowProfileManagement(false)}
           currentProfile={currentProfile}
+          onProfileDeleted={handleProfileDeleted}
         />
       </main>
     </div>

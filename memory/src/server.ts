@@ -47,6 +47,41 @@ async function main() {
     }
   });
 
+  app.delete('/v1/profiles/:slug', (req, res) => {
+    try {
+      const { slug } = req.params;
+      const normalizedProfile = normalizeProfileSlug(slug);
+      const deleted = store.deleteProfile(normalizedProfile);
+      res.json({ deleted, profile: normalizedProfile });
+    } catch (err: any) {
+      if (err?.message === 'invalid_profile') {
+        return res.status(400).json({ error: 'invalid_profile' });
+      }
+      if (err?.message === 'cannot_delete_default_profile') {
+        return res.status(400).json({ error: 'default_profile_protected' });
+      }
+      res.status(500).json({ error: err.message ?? 'delete profile failed' });
+    }
+  });
+
+  // Backward/compatibility alias (singular path)
+  app.delete('/v1/profile/:slug', (req, res) => {
+    try {
+      const { slug } = req.params;
+      const normalizedProfile = normalizeProfileSlug(slug);
+      const deleted = store.deleteProfile(normalizedProfile);
+      res.json({ deleted, profile: normalizedProfile });
+    } catch (err: any) {
+      if (err?.message === 'invalid_profile') {
+        return res.status(400).json({ error: 'invalid_profile' });
+      }
+      if (err?.message === 'cannot_delete_default_profile') {
+        return res.status(400).json({ error: 'default_profile_protected' });
+      }
+      res.status(500).json({ error: err.message ?? 'delete profile failed' });
+    }
+  });
+
   app.post('/v1/ingest', async (req, res) => {
     const { messages, reasoning, feedback, metadata, profile, profileId } = req.body as {
       messages?: Array<{ role: 'user' | 'assistant' | string; content: string }>;
