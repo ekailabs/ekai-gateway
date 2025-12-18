@@ -1,6 +1,6 @@
 import type { QueryResult, SectorName } from './types.js';
 
-export const PBWM_GATE_THRESHOLD = 0.6;
+export const PBWM_GATE_THRESHOLD = 0.5;
 export const WM_CAP = 8;
 
 export function filterAndCapWorkingMemory(

@@ -80,11 +80,11 @@ This approach:
 - PBWM-inspired gate (prefrontal–basal ganglia model) scores the rest:
 
   ```
-  x = 0.5 * relevance + 0.25 * expected_value + 0.2 * control - 0.05 * noise
+  x = 1.0 * relevance + 0.4 * expected_value + 0.05 * control - 0.02 * noise
   gate_score = sigmoid(x)
   ```
-- We use retrieval_count (log-normalized) for `expected_value` and keep `control = 0.5` for now; small Gaussian noise is applied.
-- Candidates are sorted by `gate_score`, top-k per sector are kept, then merged and capped to a working-memory size of 8.
+- We use retrieval_count (log-normalized) for `expected_value` and keep `control = 0.3` for now; small Gaussian noise is applied.
+- Candidates with `gate_score > 0.5` are kept, then top-k per sector are merged and capped to a working-memory size of 8.
 
 ## Architecture (v0)
 
@@ -114,7 +114,7 @@ graph TB
   QUERY["Search Query"]:::inputStyle
   QEMBED["Query Embeds<br>per sector"]:::processStyle
   CANDIDATES["Candidates<br>(cosine ≥ 0.2)"]:::engineStyle
-  PBWM["PBWM Gate<br>sigmoid(0.5*rel + 0.25*exp + 0.2*ctrl - 0.05*noise)"]:::engineStyle
+  PBWM["PBWM Gate<br>sigmoid(1.0*rel + 0.4*exp + 0.05*ctrl - 0.02*noise)"]:::engineStyle
   WM["Working Memory<br>top-k per sector → cap 8"]:::engineStyle
 
   OUTPUT["Recall Response<br>(workingMemory + perSector)"]:::outputStyle

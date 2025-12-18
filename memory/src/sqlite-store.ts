@@ -137,7 +137,8 @@ export class SqliteMemoryStore {
               updatedAt: createdAt,
               strength: 1.0,
             };
-            textToEmbed = semanticRow.object;
+            // Embed the full triple to capture semantic relationships, not just the object
+            textToEmbed = `${subject} ${predicate} ${object}`;
           }
         }
       }
@@ -274,7 +275,7 @@ export class SqliteMemoryStore {
             ? this.getSemanticRows(profileId, SECTOR_SCAN_LIMIT).map((r) => ({
                 id: r.id,
                 sector: 'semantic' as SectorName,
-                content: r.object,
+                content: `${r.subject} ${r.predicate} ${r.object}`,
                 embedding: r.embedding ?? [],
                 profileId: r.profileId,
                 createdAt: r.createdAt,
