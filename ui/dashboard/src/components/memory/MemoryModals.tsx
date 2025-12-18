@@ -65,7 +65,7 @@ export function DeleteModal({
                       />
                       <div className="text-sm">
                         <div className="font-semibold text-gray-900">Delete current profile</div>
-                        <div className="text-gray-600 text-xs">Remove every memory in the "{profile}" profile only.</div>
+                        <div className="text-gray-600 text-xs">Remove every memory in the &quot;{profile}&quot; profile only.</div>
                       </div>
                     </label>
                     <label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 hover:border-rose-300 transition-colors">
@@ -86,7 +86,7 @@ export function DeleteModal({
               ) : (
                 <div>
                   <p className="text-sm text-gray-600 mb-3">
-                    This memory will be permanently deleted from the "{profile}" profile. This action cannot be undone.
+                    This memory will be permanently deleted from the &quot;{profile}&quot; profile. This action cannot be undone.
                   </p>
                   {deleteModal.preview && (
                     <div className="bg-gray-50 rounded-md p-3 border border-gray-200">

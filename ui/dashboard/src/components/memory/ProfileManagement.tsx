@@ -78,8 +78,9 @@ export default function ProfileManagement({ isOpen, onClose, currentProfile, onP
       await apiService.deleteProfile(slug);
       if (onProfileDeleted) onProfileDeleted(slug);
       await loadProfiles();
-    } catch (err: any) {
-      setDeleteError(err?.message ?? 'Failed to delete profile');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to delete profile';
+      setDeleteError(message);
     } finally {
       setDeleting(null);
       setDeleteTarget(null);
@@ -211,7 +212,7 @@ export default function ProfileManagement({ isOpen, onClose, currentProfile, onP
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-slate-900">Delete profile?</h3>
                 <p className="text-sm text-stone-600 mt-1">
-                  This will remove the profile "{deleteTarget.displayName}" and all of its memories. This action cannot be undone.
+                  This will remove the profile &quot;{deleteTarget.displayName}&quot; and all of its memories. This action cannot be undone.
                 </p>
               </div>
             </div>
