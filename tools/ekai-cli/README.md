@@ -2,6 +2,13 @@
 
 A clean, interactive CLI launcher for integrating the Ekai Gateway with Claude CLI and Codex CLI.
 
+## Commands at a Glance
+
+- `ekai init` — Create/update `~/.ekai/.env` with provider keys (masked prompts).
+- `ekai claude` / `ekai codex` — Launch either CLI through the gateway with model selection.
+- `ekai up` (`ekai serve` / `ekai start`) — Start gateway + dashboard locally or via Docker.
+- `ekai models` — List compatible models with provider/key status.
+
 ## Installation
 
 From the repo root, install the CLI globally once (this also records the workspace path for `.env` loading):
@@ -21,6 +28,11 @@ Now you can run `ekai ...` from any directory. Remove it later with `npm unlink 
 ## Quick Start
 
 You must run `npm run cli:install` first so `ekai` is on your PATH.
+
+0. **(Optional) Prime your API keys**:
+   ```bash
+   ekai init
+   ```
 
 1. **Start the gateway/dashboard** (in a separate terminal):
    ```bash
@@ -104,9 +116,13 @@ ekai models --all
 ekai models --provider anthropic
 ```
 
+### `ekai init`
+
+Write provider API keys to `~/.ekai/.env` with masked prompts and safe permissions (0600). Existing keys are preserved unless you enter a new value. Run this once when setting up a machine.
+
 ### `ekai up [options]`
 
-Start the Ekai Gateway and/or Dashboard.
+Start the Ekai Gateway and/or Dashboard. Also available as `ekai serve` or `ekai start`.
 
 **Options:**
 - `--workspace <path>`, `-w` - Override workspace path
@@ -125,6 +141,10 @@ ekai up
 ekai up --gateway-only
 ekai up --mode prod
 ```
+
+**Workspace resolution order:** `--workspace` flag → `EKAI_WORKSPACE` env → `~/.ekai/config.json` → current repo root. If none is found, the CLI automatically falls back to Docker (unless `--runtime local` is set).
+
+**Env loading order for `ekai up`:** process env → `~/.ekai/config.json` `env` block → `~/.ekai/.env` → `<workspace>/.env`.
 
 ## Configuration
 
