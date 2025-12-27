@@ -1,0 +1,29 @@
+{
+  "name": "ekai-cli",
+  "version": "0.1.0",
+  "description": "Integrate Ekai Gateway with your preferred coding CLI",
+  "main": "dist/index.js",
+  "bin": {
+    "ekai": "dist/index.js"
+  },
+  "scripts": {
+    "sync:catalog": "node ./scripts/sync-catalog.js",
+    "build": "tsc && node -e \"const fs=require('fs');const f='dist/index.js';const c=fs.readFileSync(f,'utf8');if(!c.startsWith('#!'))fs.writeFileSync(f,'#!/usr/bin/env node\\n'+c)\"",
+    "start": "node dist/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "files": [
+    "dist",
+    "catalog"
+  ],
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  }
+}
+
