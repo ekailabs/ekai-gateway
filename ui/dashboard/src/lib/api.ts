@@ -240,10 +240,12 @@ export const apiService = {
     return response.json();
   },
 
-  async deleteMemory(id: string): Promise<void> {
-    const response = await fetch(`${MEMORY_BASE_URL}/v1/memory/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    });
+  async deleteMemory(id: string, profile?: string): Promise<void> {
+    const params = new URLSearchParams();
+    if (profile) params.append('profile', profile);
+    const url = `${MEMORY_BASE_URL}/v1/memory/${encodeURIComponent(id)}${params.toString() ? `?${params.toString()}` : ''}`;
+
+    const response = await fetch(url, { method: 'DELETE' });
     if (!response.ok) {
       let errorMessage = `Failed to delete memory: ${response.statusText}`;
       try {
@@ -258,8 +260,12 @@ export const apiService = {
     }
   },
 
-  async deleteAllMemories(): Promise<{ deleted: number }> {
-    const response = await fetch(`${MEMORY_BASE_URL}/v1/memory`, { method: 'DELETE' });
+  async deleteAllMemories(profile?: string): Promise<{ deleted: number; profile?: string }> {
+    const params = new URLSearchParams();
+    if (profile) params.append('profile', profile);
+    const url = `${MEMORY_BASE_URL}/v1/memory${params.toString() ? `?${params.toString()}` : ''}`;
+
+    const response = await fetch(url, { method: 'DELETE' });
     if (!response.ok) {
       throw new Error(`Failed to delete all memories: ${response.statusText}`);
     }
@@ -267,16 +273,18 @@ export const apiService = {
   },
 
   // Graph traversal APIs
-  async getGraphVisualization(params?: { entity?: string; maxDepth?: number; maxNodes?: number; profile?: string }): Promise<{
+  async getGraphVisualization(params?: { entity?: string; maxDepth?: number; maxNodes?: number; profile?: string; includeHistory?: boolean }): Promise<{
     center?: string;
     nodes: Array<{ id: string; label: string }>;
-    edges: Array<{ source: string; target: string; predicate: string }>;
+    edges: Array<{ source: string; target: string; predicate: string; isHistorical?: boolean }>;
+    includeHistory?: boolean;
   }> {
     const searchParams = new URLSearchParams();
     if (params?.entity) searchParams.append('entity', params.entity);
     if (params?.maxDepth) searchParams.append('maxDepth', String(params.maxDepth));
     if (params?.maxNodes) searchParams.append('maxNodes', String(params.maxNodes));
     if (params?.profile) searchParams.append('profile', params.profile);
+    if (params?.includeHistory) searchParams.append('includeHistory', 'true');
 
     const url = `${MEMORY_BASE_URL}/v1/graph/visualization${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
     const response = await fetch(url);
@@ -342,6 +350,24 @@ export const apiService = {
     const response = await fetch(`${MEMORY_BASE_URL}/v1/profiles`);
     if (!response.ok) {
       throw new Error(`Failed to fetch profiles: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  async deleteProfile(profile: string): Promise<{ deleted: number; profile: string }> {
+    const response = await fetch(`${MEMORY_BASE_URL}/v1/profiles/${encodeURIComponent(profile)}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      // Treat "not_found" as a no-op to keep the flow idempotent
+      if (response.status === 404 && body?.error === 'not_found') {
+        return { deleted: 0, profile };
+      }
+      const reason = body?.error === 'default_profile_protected'
+        ? 'Default profile cannot be deleted'
+        : body?.error ?? response.statusText;
+      throw new Error(`Failed to delete profile: ${reason}`);
     }
     return response.json();
   },

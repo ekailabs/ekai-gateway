@@ -4,11 +4,23 @@ interface DeleteModalProps {
   deleteModal: { type: 'single'; id: string; preview?: string } | { type: 'bulk' } | null;
   busyId: string | null;
   bulkBusy: boolean;
+  profile: string;
+  bulkScope: 'current' | 'all';
+  onScopeChange: (scope: 'current' | 'all') => void;
   onClose: () => void;
   onConfirm: () => void;
 }
 
-export function DeleteModal({ deleteModal, busyId, bulkBusy, onClose, onConfirm }: DeleteModalProps) {
+export function DeleteModal({
+  deleteModal,
+  busyId,
+  bulkBusy,
+  profile,
+  bulkScope,
+  onScopeChange,
+  onClose,
+  onConfirm,
+}: DeleteModalProps) {
   if (!deleteModal) return null;
 
   return (
@@ -38,13 +50,43 @@ export function DeleteModal({ deleteModal, busyId, bulkBusy, onClose, onConfirm 
             
             <div className="mb-6">
               {deleteModal.type === 'bulk' ? (
-                <p className="text-sm text-gray-600">
-                  Are you sure you want to delete <strong>all memories</strong>? This action cannot be undone and will permanently remove all stored memories across all sectors.
-                </p>
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    Choose what to delete. This action cannot be undone.
+                  </p>
+                  <div className="space-y-2">
+                    <label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 hover:border-rose-300 transition-colors">
+                      <input
+                        type="radio"
+                        name="bulk-delete-scope"
+                        className="mt-1 h-4 w-4 text-rose-600 border-gray-300 focus:ring-rose-500"
+                        checked={bulkScope === 'current'}
+                        onChange={() => onScopeChange('current')}
+                      />
+                      <div className="text-sm">
+                        <div className="font-semibold text-gray-900">Delete current profile</div>
+                        <div className="text-gray-600 text-xs">Remove every memory in the &quot;{profile}&quot; profile only.</div>
+                      </div>
+                    </label>
+                    <label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 hover:border-rose-300 transition-colors">
+                      <input
+                        type="radio"
+                        name="bulk-delete-scope"
+                        className="mt-1 h-4 w-4 text-rose-600 border-gray-300 focus:ring-rose-500"
+                        checked={bulkScope === 'all'}
+                        onChange={() => onScopeChange('all')}
+                      />
+                      <div className="text-sm">
+                        <div className="font-semibold text-gray-900">Delete all profiles</div>
+                        <div className="text-gray-600 text-xs">Remove memories from every profile. Use with caution.</div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
               ) : (
                 <div>
                   <p className="text-sm text-gray-600 mb-3">
-                    This memory will be permanently deleted. This action cannot be undone.
+                    This memory will be permanently deleted from the &quot;{profile}&quot; profile. This action cannot be undone.
                   </p>
                   {deleteModal.preview && (
                     <div className="bg-gray-50 rounded-md p-3 border border-gray-200">

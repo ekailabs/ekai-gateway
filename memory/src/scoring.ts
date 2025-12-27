@@ -8,6 +8,11 @@ const DEFAULT_SECTOR_WEIGHTS: Record<SectorName, number> = {
   affective: 1,
 };
 const RETRIEVAL_SOFTCAP = 10; // for normalization
+const RELEVANCE_WEIGHT = 1.0;
+const EXPECTED_VALUE_WEIGHT = 0.4;
+const CONTROL_WEIGHT = 0.05;
+const NOISE_WEIGHT = 0.02;
+const CONTROL_SIGNAL = 0.3;
 
 /**
  * Minimal PBWM-inspired gate.
@@ -22,14 +27,13 @@ export function scoreRowPBWM(
   const relevance = cosineSimilarity(queryEmbedding, row.embedding);
 
   const expectedValue = normalizeRetrieval(row);
-  const controlSignal = 0.5;
   const noise = gaussianNoise(0, 0.05);
 
   const x =
-    0.5 * relevance +
-    0.25 * expectedValue +
-    0.2 * controlSignal -
-    0.05 * noise;
+    RELEVANCE_WEIGHT * relevance +
+    EXPECTED_VALUE_WEIGHT * expectedValue +
+    CONTROL_WEIGHT * CONTROL_SIGNAL -
+    NOISE_WEIGHT * noise;
 
   const gateScore = sigmoid(x);
   const score = gateScore * sectorWeight;
@@ -52,7 +56,12 @@ export const PBWM_SECTOR_WEIGHTS = DEFAULT_SECTOR_WEIGHTS;
 
 function normalizeRetrieval(row: MemoryRecord): number {
   const count = (row as any).retrievalCount ?? 0;
-  if (count <= 0) return 0;
-  // log-style normalization to [0,1] with a soft cap
-  return Math.min(1, Math.log(1 + count) / Math.log(1 + RETRIEVAL_SOFTCAP));
+  const strength = (row as any).strength ?? 1.0;
+  
+  // Combine retrieval count and strength into expected value
+  // Both are log-normalized to [0,1] with a soft cap
+  const retrievalScore = count > 0 ? Math.log(1 + count) / Math.log(1 + RETRIEVAL_SOFTCAP) : 0;
+  const strengthScore = Math.log(strength) / Math.log(1 + RETRIEVAL_SOFTCAP); // strength starts at 1.0
+  
+  return Math.min(1, retrievalScore + strengthScore);
 }

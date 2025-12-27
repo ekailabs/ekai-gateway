@@ -47,6 +47,41 @@ async function main() {
     }
   });
 
+  app.delete('/v1/profiles/:slug', (req, res) => {
+    try {
+      const { slug } = req.params;
+      const normalizedProfile = normalizeProfileSlug(slug);
+      const deleted = store.deleteProfile(normalizedProfile);
+      res.json({ deleted, profile: normalizedProfile });
+    } catch (err: any) {
+      if (err?.message === 'invalid_profile') {
+        return res.status(400).json({ error: 'invalid_profile' });
+      }
+      if (err?.message === 'cannot_delete_default_profile') {
+        return res.status(400).json({ error: 'default_profile_protected' });
+      }
+      res.status(500).json({ error: err.message ?? 'delete profile failed' });
+    }
+  });
+
+  // Backward/compatibility alias (singular path)
+  app.delete('/v1/profile/:slug', (req, res) => {
+    try {
+      const { slug } = req.params;
+      const normalizedProfile = normalizeProfileSlug(slug);
+      const deleted = store.deleteProfile(normalizedProfile);
+      res.json({ deleted, profile: normalizedProfile });
+    } catch (err: any) {
+      if (err?.message === 'invalid_profile') {
+        return res.status(400).json({ error: 'invalid_profile' });
+      }
+      if (err?.message === 'cannot_delete_default_profile') {
+        return res.status(400).json({ error: 'default_profile_protected' });
+      }
+      res.status(500).json({ error: err.message ?? 'delete profile failed' });
+    }
+  });
+
   app.post('/v1/ingest', async (req, res) => {
     const { messages, reasoning, feedback, metadata, profile, profileId } = req.body as {
       messages?: Array<{ role: 'user' | 'assistant' | string; content: string }>;
@@ -70,12 +105,12 @@ async function main() {
     if (!messages || !messages.length) {
       return res.status(400).json({ error: 'messages is required and must include at least one item' });
     }
-    const lastUser = [...messages].reverse().find((m) => m.role === 'user');
-    if (!lastUser || !lastUser.content?.trim()) {
+    const userMessages = messages.filter((m) => m.role === 'user' && m.content?.trim());
+    if (!userMessages.length) {
       return res.status(400).json({ error: 'at least one user message with content is required' });
     }
 
-    const sourceText = lastUser.content;
+    const sourceText = userMessages.map((m) => m.content.trim()).join('\n\n');
     let finalComponents: IngestComponents | undefined;
 
     try {
@@ -301,12 +336,13 @@ async function main() {
 
   app.get('/v1/graph/visualization', (req, res) => {
     try {
-      const { entity, maxDepth, maxNodes, profile, profileId } = req.query;
+      const { entity, maxDepth, maxNodes, profile, profileId, includeHistory } = req.query;
       const profileValue = (profile as string) ?? (profileId as string);
       const normalizedProfile = normalizeProfileSlug(profileValue);
       const centerEntity = (entity as string) || null;
       const depth = maxDepth ? Number(maxDepth) : 2;
       const nodeLimit = maxNodes ? Number(maxNodes) : 50;
+      const showHistory = includeHistory === 'true' || includeHistory === '1';
 
       // If no center entity, get a sample of semantic triples
       if (!centerEntity) {
@@ -314,10 +350,11 @@ async function main() {
         const triples = allSemantic
           .slice(0, nodeLimit)
           .map((r) => (r as any).details)
-          .filter((d) => d && d.subject && d.predicate && d.object);
+          .filter((d) => d && d.subject && d.predicate && d.object)
+          .filter((d) => showHistory || !d.validTo); // Filter out historical if not requested
 
         const nodes = new Set<string>();
-        const edges: Array<{ source: string; target: string; predicate: string }> = [];
+        const edges: Array<{ source: string; target: string; predicate: string; isHistorical?: boolean }> = [];
 
         for (const triple of triples) {
           nodes.add(triple.subject);
@@ -326,23 +363,26 @@ async function main() {
             source: triple.subject,
             target: triple.object,
             predicate: triple.predicate,
+            isHistorical: triple.validTo != null,
           });
         }
 
         return res.json({
           nodes: Array.from(nodes).map((id) => ({ id, label: id })),
           edges,
+          includeHistory: showHistory,
           profile: normalizedProfile,
         });
       }
 
       // Build graph from center entity
-      const reachable = store.graph.findReachableEntities(centerEntity, { maxDepth: depth, profile: normalizedProfile });
+      const graphOptions = { maxDepth: depth, profile: normalizedProfile, includeInvalidated: showHistory };
+      const reachable = store.graph.findReachableEntities(centerEntity, graphOptions);
       const nodes = new Set<string>([centerEntity]);
-      const edges: Array<{ source: string; target: string; predicate: string }> = [];
+      const edges: Array<{ source: string; target: string; predicate: string; isHistorical?: boolean }> = [];
 
       // Add center entity's connections
-      const centerTriples = store.graph.findConnectedTriples(centerEntity, { maxResults: 100, profile: normalizedProfile });
+      const centerTriples = store.graph.findConnectedTriples(centerEntity, { maxResults: 100, profile: normalizedProfile, includeInvalidated: showHistory });
       for (const triple of centerTriples) {
         nodes.add(triple.subject);
         nodes.add(triple.object);
@@ -350,6 +390,7 @@ async function main() {
           source: triple.subject,
           target: triple.object,
           predicate: triple.predicate,
+          isHistorical: triple.validTo != null,
         });
       }
 
@@ -359,7 +400,7 @@ async function main() {
         .slice(0, nodeLimit - nodes.size);
 
       for (const [entity, _depth] of reachableArray) {
-        const entityTriples = store.graph.findTriplesBySubject(entity, { maxResults: 10, profile: normalizedProfile });
+        const entityTriples = store.graph.findTriplesBySubject(entity, { maxResults: 10, profile: normalizedProfile, includeInvalidated: showHistory });
         for (const triple of entityTriples) {
           if (nodes.has(triple.subject) || nodes.has(triple.object)) {
             nodes.add(triple.subject);
@@ -368,6 +409,7 @@ async function main() {
               source: triple.subject,
               target: triple.object,
               predicate: triple.predicate,
+              isHistorical: triple.validTo != null,
             });
           }
         }
@@ -377,6 +419,7 @@ async function main() {
         center: centerEntity,
         nodes: Array.from(nodes).map((id) => ({ id, label: id })),
         edges,
+        includeHistory: showHistory,
         profile: normalizedProfile,
       });
     } catch (err: any) {

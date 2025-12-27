@@ -1,4 +1,4 @@
-export const EXTRACT_PROMPT = `You are a cognitive memory extractor. Rewrite the user's message into four distinct memory types.
+export const EXTRACT_PROMPT = `You are a cognitive memory extractor. If the user's message is worthwhile to be stored as long-term information, rewrite the user's message into four distinct memory types.
 Always rewrite "I" as "User". Do NOT copy the sentence verbatim; transform it into the correct memory format.
 
 Return ONLY valid JSON with these keys:

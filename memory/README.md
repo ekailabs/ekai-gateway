@@ -25,7 +25,6 @@ Env (root `.env` or `memory/.env`):
   Body:
   ```json
   {
-  "profile": "optional-slug",
   "messages": [
     { "role": "user", "content": "..." },
     { "role": "assistant", "content": "..." }
@@ -39,11 +38,10 @@ Env (root `.env` or `memory/.env`):
   }
   ```
   Requires at least one user message. `reasoning`, `feedback`, and `metadata` are optional and currently not used in extraction/scoring (feedback is not yet applied; retrieval_count drives expected_value).
-  - `profile` is a slug that defaults to `default`.
 
-- `POST /v1/search` — body `{ "query": "...", "profile": "optional-slug" }` → returns `{ workingMemory, perSector, profileId }` with PBWM gating.
+- `POST /v1/search` — body `{ "query": "..." }` → returns `{ workingMemory, perSector }` with PBWM gating.
 
-- `GET /v1/summary` — per-sector counts + recent items (includes procedural details). Accepts `?profile=slug` (default `default`).
+- `GET /v1/summary` — per-sector counts + recent items (includes procedural details).
 
 - `DELETE /v1/memory/:id` — delete one; `DELETE /v1/memory` — delete all.
 
@@ -56,7 +54,24 @@ Env (root `.env` or `memory/.env`):
 - `procedural_memory` table for structured procedures:  
   `trigger, goal, context, result, steps[], embedding, timestamps`.
 - `retrieval_count` tracks how often a memory enters working memory; used in PBWM expected_value.
-- `semantic_memory` (graph-lite facts): `subject, predicate, object, valid_from, valid_to, embedding, metadata`.
+- `semantic_memory` (graph-lite facts): `subject, predicate, object, valid_from, valid_to, strength, embedding, metadata`.
+
+## Semantic Consolidation
+
+When ingesting semantic facts, the system applies consolidation logic using **semantic similarity** for predicate matching:
+
+1. **Find existing facts**: Query all active facts for the same subject
+2. **Semantic predicate matching**: Use embeddings to find predicates with ≥0.9 cosine similarity
+   - "is co-founder of" ≈ "cofounded" ≈ "founded" → treated as same slot
+3. **Consolidation action**:
+   - **Merge**: Same object exists → strengthen it (increment `strength`)
+   - **Supersede**: Different object for similar predicate → close old fact (`valid_to = now`), insert new
+   - **Insert**: No matching predicate → insert new with `strength = 1.0`
+
+This approach:
+- Handles natural language variation in predicates (synonyms, paraphrases)
+- Preserves history while avoiding duplicate facts
+- Superseded facts remain queryable for temporal reasoning
 
 ## Retrieval
 
@@ -65,11 +80,11 @@ Env (root `.env` or `memory/.env`):
 - PBWM-inspired gate (prefrontal–basal ganglia model) scores the rest:
 
   ```
-  x = 0.5 * relevance + 0.25 * expected_value + 0.2 * control - 0.05 * noise
+  x = 1.0 * relevance + 0.4 * expected_value + 0.05 * control - 0.02 * noise
   gate_score = sigmoid(x)
   ```
-- We use retrieval_count (log-normalized) for `expected_value` and keep `control = 0.5` for now; small Gaussian noise is applied.
-- Candidates are sorted by `gate_score`, top-k per sector are kept, then merged and capped to a working-memory size of 8.
+- We use retrieval_count (log-normalized) for `expected_value` and keep `control = 0.3` for now; small Gaussian noise is applied.
+- Candidates with `gate_score > 0.5` are kept, then top-k per sector are merged and capped to a working-memory size of 8.
 
 ## Architecture (v0)
 
@@ -99,7 +114,7 @@ graph TB
   QUERY["Search Query"]:::inputStyle
   QEMBED["Query Embeds<br>per sector"]:::processStyle
   CANDIDATES["Candidates<br>(cosine ≥ 0.2)"]:::engineStyle
-  PBWM["PBWM Gate<br>sigmoid(0.5*rel + 0.25*exp + 0.2*ctrl - 0.05*noise)"]:::engineStyle
+  PBWM["PBWM Gate<br>sigmoid(1.0*rel + 0.4*exp + 0.05*ctrl - 0.02*noise)"]:::engineStyle
   WM["Working Memory<br>top-k per sector → cap 8"]:::engineStyle
 
   OUTPUT["Recall Response<br>(workingMemory + perSector)"]:::outputStyle
