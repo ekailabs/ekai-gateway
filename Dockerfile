@@ -22,11 +22,14 @@
   # Ensure schema.sql ships with compiled code
   RUN if [ -f src/db/schema.sql ]; then mkdir -p dist/db && cp src/db/schema.sql dist/db/schema.sql; fi
   
-  # ---------- dashboard build ----------
-  FROM build-base AS dashboard-build
-  WORKDIR /app/ui/dashboard
-  # For smaller runtime images, you could: RUN npm run build && npm prune --omit=dev
-  RUN npm run build
+# ---------- dashboard build ----------
+FROM build-base AS dashboard-build
+WORKDIR /app/ui/dashboard
+# Accept build arg but default to a placeholder that can be replaced at runtime
+ARG NEXT_PUBLIC_API_BASE_URL=__API_URL_PLACEHOLDER__
+ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+# For smaller runtime images, you could: RUN npm run build && npm prune --omit=dev
+RUN npm run build
   
   # ---------- gateway runtime ----------
   FROM node:20-alpine AS gateway-runtime
