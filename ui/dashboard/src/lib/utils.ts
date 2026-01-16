@@ -131,3 +131,17 @@ export const formatNumber = (num: number) => {
   }
   return num.toString();
 };
+
+// Get human-readable provider name
+export const getProviderName = (provider: string): string => {
+  const providerMap: Record<string, string> = {
+    openai: 'OpenAI',
+    anthropic: 'Anthropic',
+    google: 'Google',
+    xai: 'xAI',
+    openrouter: 'OpenRouter',
+    zai: 'Z.ai',
+  };
+
+  return providerMap[provider.toLowerCase()] || provider.charAt(0).toUpperCase() + provider.slice(1);
+};

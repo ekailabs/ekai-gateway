@@ -50,6 +50,10 @@ export class AppConfig {
       apiKey: this.getOptionalString('ZAI_API_KEY'),
       enabled: this.has('ZAI_API_KEY'),
     },
+    google: {
+      apiKey: this.getOptionalString('GOOGLE_API_KEY'),
+      enabled: this.has('GOOGLE_API_KEY'),
+    },
   };
 
   // Telemetry configuration
@@ -69,6 +73,12 @@ export class AppConfig {
   readonly features = {
     usageTracking: this.getBoolean('ENABLE_USAGE_TRACKING', true),
   };
+
+  // Memory service configuration (FIFO file backend by default)
+  readonly memory = {
+    backend: this.getString('MEMORY_BACKEND', 'file'),
+    maxItems: this.getNumber('MEMORY_MAX_ITEMS', 20),
+  } as const;
 
   // Helper methods
   private has(key: string): boolean {

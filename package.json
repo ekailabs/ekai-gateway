@@ -3,9 +3,11 @@
   "version": "0.1.0-beta.1",
   "description": "Ekai Gateway - Multi-provider AI request routing with dashboard",
   "private": true,
-  "workspaces": ["gateway", "ui/dashboard"],
+  "workspaces": ["gateway", "ui/dashboard", "memory"],
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace=gateway\" \"npm run dev --workspace=ui/dashboard\"",
+    "dev:core": "concurrently \"npm run dev --workspace=gateway\" \"npm run dev --workspace=ui/dashboard\"",
+    "dev:all": "concurrently \"npm run dev --workspace=gateway\" \"npm run dev --workspace=ui/dashboard\" \"npm run start --workspace=memory\"",
     "build": "npm install --workspaces && npm run build --workspaces --if-present",
     "start": "npm install && concurrently \"npm run start:gateway\" \"npm run start:ui\"",
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",

@@ -7,7 +7,7 @@ export class UsageHandler {
   async getUsage(req: Request, res: Response): Promise<void> {
     try {
       // Parse and validate query parameters
-      const { startTime, endTime, timezone } = req.query;
+      const { startTime, endTime, timezone, format } = req.query;
       
       
       // Default to last 7 days if no startTime provided
@@ -45,9 +45,22 @@ export class UsageHandler {
         start: start.toISOString(),
         end: end.toISOString(),
         timezone: tz,
+        format,
         operation: 'usage_fetch',
         module: 'usage-handler'
       });
+
+      // CSV export path
+      const wantsCsv = String(format || '').toLowerCase() === 'csv';
+      if (wantsCsv) {
+        const records = usageTracker.getUsageRecords(start.toISOString(), end.toISOString());
+
+        const filename = `usage-${start.toISOString().slice(0, 10)}-${end.toISOString().slice(0, 10)}.csv`;
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.send(usageTracker.toCsv(records));
+        return;
+      }
       
       // Get usage data with date range filtering
       const usage = usageTracker.getUsageFromDatabase(start.toISOString(), end.toISOString());

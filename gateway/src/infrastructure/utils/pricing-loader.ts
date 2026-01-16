@@ -51,6 +51,7 @@ export interface CostCalculation {
 
 export class PricingLoader {
   private costsDir = path.join(__dirname, '../../costs');
+  private generatedCostsDir = path.join(__dirname, '../../../costs/generated');
   private pricingCache = new Map<string, PricingConfig>();
   private lastLoadTime = 0;
   private cacheExpiryMs = 5 * 60 * 1000; // 5 minutes
@@ -82,13 +83,16 @@ export class PricingLoader {
       
       files.forEach(file => {
         if (file.endsWith('.yaml') || file.endsWith('.yml')) {
-          const provider = path.basename(file, path.extname(file));
+          const providerFromFile = path.basename(file, path.extname(file));
           
           // Skip template files
-          if (provider === 'templates') return;
+          if (providerFromFile === 'templates') return;
+          
+          // Normalize provider name to lowercase for consistent lookups
+          const provider = providerFromFile.toLowerCase();
           
           try {
-            const pricing = this.loadProviderPricing(provider);
+            const pricing = this.loadProviderPricing(providerFromFile);
             this.pricingCache.set(provider, pricing);
             logger.debug('Pricing loaded', { provider, modelCount: Object.keys(pricing.models).length, operation: 'pricing_load', module: 'pricing-loader' });
           } catch (error) {
@@ -111,7 +115,7 @@ export class PricingLoader {
    * Load pricing for a specific provider
    */
   loadProviderPricing(provider: string): PricingConfig {
-    const filePath = path.join(this.costsDir, `${provider}.yaml`);
+    const filePath = this.getCostFilePath(provider);
 
     if (!fs.existsSync(filePath)) {
       throw new Error(`Pricing file not found for provider: ${provider}`);
@@ -125,67 +129,65 @@ export class PricingLoader {
       throw new Error(`Invalid pricing configuration for provider: ${provider}`);
     }
 
-    // Normalize cache field names for Anthropic
-    if (provider === 'anthropic') {
-      config.models = this.normalizeAnthropicCacheFields(config.models);
-    }
-
-    // Normalize cache field names for xAI
-    if (provider === 'xAI') {
-      config.models = this.normalizeXAICacheFields(config.models);
+    // Provider-specific normalizations
+    const normalizer = this.modelNormalizers.get(provider.toLowerCase());
+    if (normalizer) {
+      config.models = normalizer(config.models);
     }
 
     return config;
   }
+  private getCostFilePath(provider: string): string {
+    if (provider === 'openrouter') {
+      const generatedCandidates = [
+        path.join(this.generatedCostsDir, `${provider}.yaml`),
+        path.join(this.costsDir, 'generated', `${provider}.yaml`)
+      ];
 
-  /**
-   * Normalize Anthropic cache field names to generic format
-   */
-  private normalizeAnthropicCacheFields(models: Record<string, any>): Record<string, ModelPricing> {
-    const normalizedModels: Record<string, ModelPricing> = {};
-
-    Object.entries(models).forEach(([modelName, modelPricing]: [string, any]) => {
-      const normalizedPricing: ModelPricing = { ...modelPricing };
-
-      // Map Anthropic-specific cache field names to generic ones
-      if (modelPricing['5m_cache_write'] !== undefined) {
-        normalizedPricing.cache_write = modelPricing['5m_cache_write'];
+      for (const candidate of generatedCandidates) {
+        if (fs.existsSync(candidate)) {
+          return candidate;
+        }
       }
-      if (modelPricing['1h_cache_write'] !== undefined) {
-        // Use 5min cache write as default, 1h as fallback
-        normalizedPricing.cache_write = normalizedPricing.cache_write || modelPricing['1h_cache_write'];
-      }
-      if (modelPricing['cache_read'] !== undefined) {
-        normalizedPricing.cache_read = modelPricing['cache_read'];
-      }
+    }
 
-      normalizedModels[modelName] = normalizedPricing;
-    });
-
-    return normalizedModels;
+    return path.join(this.costsDir, `${provider}.yaml`);
   }
 
-  /**
-   * Normalize xAI cache field names to generic format
-   */
-  private normalizeXAICacheFields(models: Record<string, any>): Record<string, ModelPricing> {
-    const normalizedModels: Record<string, ModelPricing> = {};
+  // Provider-specific pricing normalizers
+  private modelNormalizers: Map<string, (models: Record<string, any>) => Record<string, ModelPricing>> = new Map([
+    ['anthropic', (models) => {
+      const normalizedModels: Record<string, ModelPricing> = {};
+      Object.entries(models).forEach(([modelName, modelPricing]: [string, any]) => {
+        const normalizedPricing: ModelPricing = { ...modelPricing };
 
-    Object.entries(models).forEach(([modelName, modelPricing]: [string, any]) => {
-      const normalizedPricing: ModelPricing = { ...modelPricing };
+        if (modelPricing['5m_cache_write'] !== undefined) {
+          normalizedPricing.cache_write = modelPricing['5m_cache_write'];
+        }
+        if (modelPricing['1h_cache_write'] !== undefined) {
+          normalizedPricing.cache_write = normalizedPricing.cache_write || modelPricing['1h_cache_write'];
+        }
+        if (modelPricing['cache_read'] !== undefined) {
+          normalizedPricing.cache_read = modelPricing['cache_read'];
+        }
 
-      // Map xAI-specific cache field names to generic ones
-      if (modelPricing['cached_input'] !== undefined) {
-        // For xAI, cached_input is used for both read and write operations
-        normalizedPricing.cache_write = modelPricing['cached_input'];
-        normalizedPricing.cache_read = modelPricing['cached_input'];
-      }
-
-      normalizedModels[modelName] = normalizedPricing;
-    });
-
-    return normalizedModels;
-  }
+        normalizedModels[modelName] = normalizedPricing;
+      });
+      return normalizedModels;
+    }],
+    ['xai', (models) => {
+      const normalizedModels: Record<string, ModelPricing> = {};
+      Object.entries(models).forEach(([modelName, modelPricing]: [string, any]) => {
+        const normalizedPricing: ModelPricing = { ...modelPricing };
+        if (modelPricing['cached_input'] !== undefined) {
+          normalizedPricing.cache_write = modelPricing['cached_input'];
+          normalizedPricing.cache_read = modelPricing['cached_input'];
+        }
+        normalizedModels[modelName] = normalizedPricing;
+      });
+      return normalizedModels;
+    }]
+  ]);
 
   /**
    * Get pricing for a specific model (with automatic model name normalization)

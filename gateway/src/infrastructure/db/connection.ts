@@ -48,6 +48,14 @@ class DatabaseConnection {
           this.db!.exec(statement);
         }
       });
+
+      // Lightweight migration: add payment_method column if missing
+      const columns = this.db.prepare(`PRAGMA table_info(usage_records)`).all();
+      const hasPaymentMethod = columns.some((c: any) => c.name === 'payment_method');
+      if (!hasPaymentMethod) {
+        this.db.exec(`ALTER TABLE usage_records ADD COLUMN payment_method TEXT DEFAULT 'api_key';`);
+        logger.info('Added payment_method column to usage_records', { module: 'db-connection', operation: 'db_migration' });
+      }
       
       logger.debug('Database tables created', { operation: 'db_schema', module: 'db-connection' });
     } catch (error) {

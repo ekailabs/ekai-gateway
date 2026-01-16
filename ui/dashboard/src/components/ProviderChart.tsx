@@ -1,28 +1,26 @@
 'use client';
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, getProviderName } from '@/lib/utils';
 import { CHART_COLORS } from '@/lib/constants';
-import { useUsageData } from '@/hooks/useUsageData';
+import { UsageDataResult } from '@/hooks/useUsageData';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import ErrorState from '@/components/ui/ErrorState';
 import EmptyState from '@/components/ui/EmptyState';
 import ChartTooltip from '@/components/ui/ChartTooltip';
 
-import { DateRange } from '@/components/DateRangePicker';
-
 interface ProviderChartProps {
   className?: string;
-  dateRange?: DateRange | null;
+  usageData: UsageDataResult;
 }
 
-export default function ProviderChart({ className = '', dateRange }: ProviderChartProps) {
-  const { costByProvider, totalCost, loading, error, refetch } = useUsageData(dateRange?.from, dateRange?.to);
+export default function ProviderChart({ className = '', usageData }: ProviderChartProps) {
+  const { costByProvider, totalCost, loading, error, refetch } = usageData;
 
   // Convert to chart data format
   const data = Object.entries(costByProvider)
     .map(([provider, cost]) => ({
-      name: provider === 'xAI' ? 'xAI' : provider.charAt(0).toUpperCase() + provider.slice(1),
+      name: getProviderName(provider),
       value: Number(cost.toFixed(6)),
       percentage: totalCost > 0 ? ((cost / totalCost) * 100).toFixed(1) : '0'
     }))
@@ -30,7 +28,7 @@ export default function ProviderChart({ className = '', dateRange }: ProviderCha
 
 
   if (loading) {
-    return <LoadingSkeleton className={className} />;
+    return <LoadingSkeleton className={className} variant="chart" height={220} />;
   }
 
   if (error) {

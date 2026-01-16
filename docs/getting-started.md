@@ -10,7 +10,7 @@ This is a quick-start for running Ekai Gateway locally. For detailed client setu
 
 - Node.js v18 or newer  
 - npm or Docker  
-- At least one provider API key (OpenAI, Anthropic, xAI, or OpenRouter)
+- At least one provider API key (OpenAI, Anthropic, Google Gemini, xAI, or OpenRouter)
 
 ---
 
@@ -37,6 +37,7 @@ This is a quick-start for running Ekai Gateway locally. For detailed client setu
    ANTHROPIC_API_KEY=
    XAI_API_KEY=
    OPENROUTER_API_KEY=
+   GOOGLE_API_KEY=
    ```
 
 4. Build and start the Gateway  
@@ -83,6 +84,7 @@ The `split` profile starts the `gateway` and `dashboard` services defined in `do
 | `ANTHROPIC_API_KEY` | Key for Anthropic models |
 | `XAI_API_KEY` | Key for xAI Grok models |
 | `OPENROUTER_API_KEY` | Key for OpenRouter models |
+| `GOOGLE_API_KEY` | Key for Google Gemini models |
 | `PORT_GATEWAY` | Port for Gateway API (default 3001) |
 | `PORT_DASHBOARD` | Port for Dashboard UI (default 3000) |
 | `DATABASE_PATH` | SQLite file path (default `data/usage.db`) |
