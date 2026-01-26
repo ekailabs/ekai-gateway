@@ -37,27 +37,30 @@ Deploy your own private ekai-gateway instance on Oasis Network using ROFL (Runti
 git clone https://github.com/ekailabs/ekai-gateway.git
 cd ekai-gateway
 
-# 2. Create app
+# 2. Create rofl.yaml from template
+cp rofl.yaml.template rofl.yaml
+
+# 3. Register app
 oasis rofl create --network testnet --paratime sapphire
 
-# 3. Set secrets (at least one)
+# 4. Set secrets (at least one)
 echo -n "sk-your-openai-key" | oasis rofl secret set OPENAI_API_KEY -
 echo -n "sk-ant-your-anthropic-key" | oasis rofl secret set ANTHROPIC_API_KEY -
 echo -n "xai-your-xai-key" | oasis rofl secret set XAI_API_KEY -
 
-# 4. Build
+# 5. Build
 oasis rofl build
 
-# 5. Update on-chain config
+# 6. Update on-chain config
 oasis rofl update
 
-# 6. Push
+# 7. Push
 oasis rofl push
 
-# 7. Deploy
+# 8. Deploy
 oasis rofl deploy
 
-# 8. Get your endpoints
+# 9. Get your endpoints
 oasis rofl machine show
 ```
 
