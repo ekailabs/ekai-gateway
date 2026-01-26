@@ -7,3 +7,4 @@
 * [Usage with Codex](USAGE_WITH_CODEX.md)
 * [Get Started with x402](GET_STARTED_WITH_X402.md)
 * [Supported Providers and Models](providers-and-models.md)
+* [ROFL Deployment](ROFL_DEPLOYMENT.md)
