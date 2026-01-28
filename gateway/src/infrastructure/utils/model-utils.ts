@@ -45,14 +45,24 @@ export class ModelUtils {
       return modelName;
     }
     
-    // Add default suffixes for known models
+    // Add default suffixes for known models (Claude 4.5 series)
+    if (modelName.includes('claude-opus-4-5')) {
+      return modelName + '-20251101';
+    }
+    if (modelName.includes('claude-sonnet-4-5')) {
+      return modelName + '-20250929';
+    }
+    if (modelName.includes('claude-haiku-4-5')) {
+      return modelName + '-20251001';
+    }
+    // Legacy models
     if (modelName.includes('claude-3-5-sonnet')) {
       return modelName + '-20241022';
     }
     if (modelName.includes('claude-sonnet-4')) {
       return modelName + '-20250514';
     }
-    
+
     // Fallback: add -latest for unknown models
     return modelName + '-latest';
   }
