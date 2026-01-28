@@ -57,7 +57,7 @@ export const useModels = (filter: ModelsFilter = {}) => {
     const fetchModels = async () => {
       const hasExistingData = dataRef.current !== null && dataRef.current.items.length > 0;
       const isInitial = isInitialLoadRef.current;
-      
+
       try {
         // Only show full loading state on initial load or when we have no data
         // For subsequent searches, keep existing data visible (optimistic updates)
@@ -77,7 +77,8 @@ export const useModels = (filter: ModelsFilter = {}) => {
     };
 
     fetchModels();
-  }, [normalizedFilter, normalizedKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- normalizedKey is a stable string representation of normalizedFilter
+  }, [normalizedKey]);
 
   return {
     data,
