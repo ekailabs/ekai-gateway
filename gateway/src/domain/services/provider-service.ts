@@ -84,11 +84,6 @@ export class ProviderService {
   ): Promise<CanonicalResponse> {
     const provider = this.registry.getOrCreateProvider(providerName);
 
-    // Ensure Anthropic models have required suffixes
-    if (providerName === Provider.ANTHROPIC) {
-      request.model = ModelUtils.ensureAnthropicSuffix(request.model);
-    }
-
     logger.info(`Processing chat completion`, {
       provider: providerName,
       model: request.model,
@@ -112,11 +107,6 @@ export class ProviderService {
     clientIp?: string
   ): Promise<any> {
     const provider = this.registry.getOrCreateProvider(providerName);
-
-    // Ensure Anthropic models have required suffixes
-    if (providerName === Provider.ANTHROPIC) {
-      request.model = ModelUtils.ensureAnthropicSuffix(request.model);
-    }
 
     logger.info(`Processing streaming request`, {
       provider: providerName,

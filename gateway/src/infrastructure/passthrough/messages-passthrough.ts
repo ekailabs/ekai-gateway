@@ -2,7 +2,6 @@ import { Response as ExpressResponse } from 'express';
 import { logger } from '../utils/logger.js';
 import { AuthenticationError, PaymentError, ProviderError } from '../../shared/errors/index.js';
 import { CONTENT_TYPES } from '../../domain/types/provider.js';
-import { ModelUtils } from '../utils/model-utils.js';
 import { injectMemoryContext, persistMemory } from '../memory/memory-helper.js';
 
 type UsageFormat = 'anthropic_messages';
@@ -18,17 +17,12 @@ export interface MessagesUsageConfig {
   format: UsageFormat;
 }
 
-export interface MessagesModelOptions {
-  ensureAnthropicSuffix?: boolean;
-}
-
 export interface MessagesPassthroughConfig {
   provider: string;
   baseUrl: string;
   auth?: MessagesAuthConfig;
   staticHeaders?: Record<string, string>;
   supportedClientFormats: string[];
-  modelOptions?: MessagesModelOptions;
   usage?: MessagesUsageConfig;
   forceStreamOption?: boolean;
   x402Enabled?: boolean;
@@ -143,15 +137,6 @@ export class MessagesPassthrough {
     }
 
     return headers;
-  }
-
-  private applyModelOptions(request: any): void {
-    const modelOptions = this.config.modelOptions;
-    if (!modelOptions) return;
-
-    if (modelOptions.ensureAnthropicSuffix && typeof request.model === 'string') {
-      request.model = ModelUtils.ensureAnthropicSuffix(request.model);
-    }
   }
 
   private ensurePayloadBody(body: any, stream: boolean): any {
@@ -411,8 +396,6 @@ export class MessagesPassthrough {
         }
       }
     });
-
-    this.applyModelOptions(request);
 
     if (request.stream) {
       const response = await this.makeRequest(request, true);

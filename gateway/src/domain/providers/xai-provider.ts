@@ -29,7 +29,7 @@ interface GrokResponse {
 }
 
 export class XAIProvider extends BaseProvider {
-  readonly name = 'xAI';
+  readonly name = 'xai';
   protected readonly baseUrl = 'https://api.x.ai/v1';
   protected get apiKey(): string | undefined {
     return getConfig().providers.xai.apiKey;

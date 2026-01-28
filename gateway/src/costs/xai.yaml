@@ -1,4 +1,4 @@
-provider: "xAI"
+provider: "xai"
 currency: "USD"
 unit: "MTok"
 
@@ -38,4 +38,4 @@ metadata:
   source: "https://docs.x.ai/docs#models"
   notes: "xAI Grok model pricing with cache support."
   version: "1.0"
-  contributor: "xAI"
+  contributor: "xai"

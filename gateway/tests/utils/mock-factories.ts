@@ -201,7 +201,7 @@ metadata:
    */
   static getRealProviderModelCombinations(): Array<{ provider: string; model: string; hasCache: boolean }> {
     const combinations: Array<{ provider: string; model: string; hasCache: boolean }> = [];
-    const providers = ['openai', 'anthropic', 'xAI', 'openrouter'];
+    const providers = ['openai', 'anthropic', 'xai', 'openrouter'];
     
     providers.forEach(provider => {
       const config = MockFactories.loadRealPricingConfig(provider);
