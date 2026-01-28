@@ -1,5 +1,6 @@
 services:
   fullstack:
+    build: .
     image: ghcr.io/ekailabs/ekai-gateway:latest
     environment:
       PORT: ${PORT:-3001}
