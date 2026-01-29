@@ -104,11 +104,12 @@ async function bootstrap(): Promise<void> {
   app.post('/v1/chat/completions', authenticate, handleOpenAIFormatChat);
   app.post('/v1/messages', authenticate, handleAnthropicFormatChat);
   app.post('/v1/responses', authenticate, handleOpenAIResponses);
-  app.get('/v1/models', authenticate, handleModelsRequest);
-  app.get('/usage', authenticate, handleUsageRequest);
+  // Public dashboard endpoints (community dashboard)
+  app.get('/v1/models', handleModelsRequest);
+  app.get('/usage', handleUsageRequest);
   app.get('/config/status', handleConfigStatus);
-  app.get('/budget', authenticate, handleGetBudget);
-  app.put('/budget', authenticate, handleUpdateBudget);
+  app.get('/budget', handleGetBudget);
+  app.put('/budget', handleUpdateBudget);
 
   // Error handler MUST be last middleware
   app.use(errorHandler);

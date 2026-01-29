@@ -1,168 +1,124 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import TrendChart from '@/components/TrendChart';
 import ProviderChart from '@/components/ProviderChart';
 import ModelChart from '@/components/ModelChart';
-import UsageTable from '@/components/UsageTable';
-import ActivityHeatmap from '@/components/ActivityHeatmap';
-import DateRangePicker, { DateRange } from '@/components/DateRangePicker';
+import StatsCards from '@/components/StatsCards';
 import { useUsageData } from '@/hooks/useUsageData';
-import { useConfigStatus } from '@/hooks/useConfigStatus';
-import ConfigStatus from '@/components/ConfigStatus';
+import { generateDemoData, aggregateDemoData } from '@/lib/demo-data';
 import FirstRunModal from '@/components/FirstRunModal';
-import BudgetCard from '@/components/BudgetCard';
-import { useBudget } from '@/hooks/useBudget';
-import { apiService } from '@/lib/api';
 import Link from 'next/link';
 
 export default function Dashboard() {
-  const [dateRange, setDateRange] = useState<DateRange | null>(null);
   const [mounted, setMounted] = useState(false);
-  const usageData = useUsageData(dateRange?.from, dateRange?.to);
-  const configStatus = useConfigStatus();
-  const budget = useBudget();
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(true);
-  
+
+  // All time - no date filtering
+  const realUsageData = useUsageData(undefined, undefined);
+
+  // Generate demo data once and memoize it
+  const demoData = useMemo(() => {
+    if (!isDemoMode) return null;
+    const records = generateDemoData();
+    return aggregateDemoData(records);
+  }, [isDemoMode]);
+
+  // Use demo or real data based on toggle
+  const usageData = isDemoMode && demoData ? demoData : realUsageData;
+
   useEffect(() => {
-    // Set default to last 7 days after hydration
-    const now = new Date();
-    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-    const start = new Date(now);
-    start.setDate(start.getDate() - 6);
-    start.setHours(0, 0, 0, 0);
-    setDateRange({ from: start, to: end });
     setMounted(true);
   }, []);
 
-  const handleExportCsv = async () => {
-    try {
-      setExportError(null);
-      setExporting(true);
-      await apiService.downloadUsageCsv(dateRange?.from, dateRange?.to);
-    } catch (err) {
-      setExportError(err instanceof Error ? err.message : 'Failed to export CSV');
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const showFirstRunGuide = showOnboarding && !usageData.loading && !usageData.error && usageData.totalRequests === 0;
+  const showFirstRunGuide = showOnboarding && !isDemoMode && !realUsageData.loading && !realUsageData.error && realUsageData.totalRequests === 0;
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FFFCEC' }}>
       {/* Header */}
       <header className="bg-white border-b" style={{ borderColor: '#e5e5e5' }}>
         <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-semibold text-gray-900 mb-2">Ekai Gateway Dashboard</h1>
-              <p className="text-gray-600">AI Spend Analytics & Usage Tracking</p>
+              <h1 className="text-3xl font-semibold text-gray-900 mb-1">Ekai Gateway</h1>
+              <p className="text-gray-600">Model & Token Analytics · All Time</p>
             </div>
-            <div className="text-right">
-              <div className="text-sm text-gray-500 mb-1">Last updated</div>
-              <div className="text-gray-900 font-medium">
-                {mounted ? new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : 'Loading...'}
+            <div className="flex items-center gap-6">
+              {/* Live/Demo Toggle */}
+              <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setIsDemoMode(false)}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                    !isDemoMode
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Live
+                </button>
+                <button
+                  onClick={() => setIsDemoMode(true)}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                    isDemoMode
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Demo
+                </button>
               </div>
             </div>
           </div>
-          
-          {/* Date Range Filter */}
-          <div className="flex justify-between items-center gap-4 flex-wrap">
-            <div>
-              <h2 className="text-lg font-medium text-gray-900 mb-1">Filter by Date Range</h2>
-              <p className="text-sm text-gray-500">Select a time period to view usage analytics</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <DateRangePicker 
-                value={dateRange} 
-                onChange={setDateRange} 
-              />
-              <button
-                onClick={handleExportCsv}
-                disabled={exporting}
-                className="px-4 py-2 text-sm font-semibold text-white rounded-md disabled:opacity-60 hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: '#004f4f' }}
-              >
-                {exporting ? 'Exporting…' : 'Export CSV'}
-              </button>
-            </div>
-          </div>
-          {exportError && (
-            <p className="text-sm text-red-600 mt-2">CSV export failed: {exportError}</p>
-          )}
         </div>
       </header>
 
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="bg-amber-50 border-b border-amber-200">
+          <div className="max-w-7xl mx-auto px-6 py-2">
+            <p className="text-amber-800 text-sm text-center">
+              Viewing sample data. Switch to <button onClick={() => setIsDemoMode(false)} className="font-semibold underline">Live</button> to see real usage.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-12">
-        <ConfigStatus 
-          status={configStatus.data} 
-          loading={configStatus.loading} 
-          error={configStatus.error} 
-          onRetry={configStatus.refetch} 
-        />
+        {/* Stats Cards */}
+        <StatsCards usageData={usageData} />
 
-        {/* Model Catalog Link */}
-        <div className="mt-6 mb-6">
-          <div className="card p-6 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">Browse Available Models</h3>
-                <p className="text-sm text-gray-600">View the full catalog of models across all providers with pricing information</p>
-              </div>
-              <Link 
-                href="/models"
-                className="flex-shrink-0 inline-flex items-center gap-2 px-6 py-3 text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
-                style={{ backgroundColor: '#004f4f' }}
-              >
-                View Model Catalog
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </div>
+        {/* Charts Section */}
+        <div className="space-y-12">
+          {/* Token Usage Trend */}
+          <TrendChart usageData={usageData} />
+
+          {/* Model & Provider Breakdown */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <ModelChart usageData={usageData} />
+            <ProviderChart usageData={usageData} />
           </div>
         </div>
 
-        {/* Budget Control */}
-        <div className="mb-8">
-          <BudgetCard 
-            data={budget.data}
-            loading={budget.loading}
-            error={budget.error}
-            onSave={budget.saveBudget}
-            onRetry={budget.refetch}
-          />
+        {/* Model Catalog Link */}
+        <div className="mt-12">
+          <Link
+            href="/models"
+            className="inline-flex items-center gap-2 px-8 py-4 text-white rounded-lg hover:opacity-90 transition-opacity font-semibold text-lg"
+            style={{ backgroundColor: '#004f4f' }}
+          >
+            View Model Catalog
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
         </div>
+      </main>
 
-        <div className="space-y-12">
-          {/* Activity Overview */}
-          <ActivityHeatmap
-            records={usageData.records}
-            fromDate={dateRange?.from}
-            toDate={dateRange?.to}
-          />
-
-          {/* Trend Chart */}
-          <TrendChart usageData={usageData} />
-
-          {/* Provider and Model Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <ProviderChart usageData={usageData} />
-          <ModelChart usageData={usageData} />
-        </div>
-
-        {/* Usage Table */}
-        <UsageTable usageData={usageData} />
-      </div>
-    </main>
-
-      <FirstRunModal 
-        open={showFirstRunGuide} 
-        onClose={() => setShowOnboarding(false)} 
+      <FirstRunModal
+        open={showFirstRunGuide}
+        onClose={() => setShowOnboarding(false)}
         onRefresh={usageData.refetch}
       />
     </div>
