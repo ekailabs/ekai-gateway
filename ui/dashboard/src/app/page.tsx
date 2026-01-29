@@ -1,19 +1,20 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import TrendChart from '@/components/TrendChart';
 import ProviderChart from '@/components/ProviderChart';
 import ModelChart from '@/components/ModelChart';
 import StatsCards from '@/components/StatsCards';
+import SetupModal from '@/components/SetupModal';
 import { useUsageData } from '@/hooks/useUsageData';
+import { useAuth } from '@/contexts/AuthContext';
 import { generateDemoData, aggregateDemoData } from '@/lib/demo-data';
-import FirstRunModal from '@/components/FirstRunModal';
 import Link from 'next/link';
 
 export default function Dashboard() {
-  const [mounted, setMounted] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(true);
+  const [showSetup, setShowSetup] = useState(false);
+  const auth = useAuth();
 
   // All time - no date filtering
   const realUsageData = useUsageData(undefined, undefined);
@@ -28,12 +29,6 @@ export default function Dashboard() {
   // Use demo or real data based on toggle
   const usageData = isDemoMode && demoData ? demoData : realUsageData;
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const showFirstRunGuide = showOnboarding && !isDemoMode && !realUsageData.loading && !realUsageData.error && realUsageData.totalRequests === 0;
-
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FFFCEC' }}>
       {/* Header */}
@@ -44,7 +39,7 @@ export default function Dashboard() {
               <h1 className="text-3xl font-semibold text-gray-900 mb-1">Ekai Gateway</h1>
               <p className="text-gray-600">Model & Token Analytics · All Time</p>
             </div>
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4">
               {/* Live/Demo Toggle */}
               <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
                 <button
@@ -68,6 +63,37 @@ export default function Dashboard() {
                   Demo
                 </button>
               </div>
+
+              {/* Use Gateway / Connected State */}
+              {auth.token ? (
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 px-3 py-2 text-sm text-green-700 bg-green-50 rounded-lg">
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    Connected
+                  </span>
+                  <button
+                    onClick={() => setShowSetup(true)}
+                    className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
+                    style={{ backgroundColor: '#004f4f' }}
+                  >
+                    Setup
+                  </button>
+                  <button
+                    onClick={() => auth.logout()}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowSetup(true)}
+                  className="px-5 py-2 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: '#004f4f' }}
+                >
+                  Use Gateway
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -116,10 +142,9 @@ export default function Dashboard() {
         </div>
       </main>
 
-      <FirstRunModal
-        open={showFirstRunGuide}
-        onClose={() => setShowOnboarding(false)}
-        onRefresh={usageData.refetch}
+      <SetupModal
+        open={showSetup}
+        onClose={() => setShowSetup(false)}
       />
     </div>
   );
