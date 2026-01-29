@@ -155,10 +155,14 @@ export class MessagesPassthrough {
   }
 
   private ensurePayloadBody(body: any, stream: boolean): any {
+    // Strip fields not supported by Anthropic's public API
+    // Claude Code sends these but they're only valid for internal/beta endpoints
+    const { output_config, context_management, ...rest } = body;
+
     if (this.config.forceStreamOption === false) {
-      return { ...body };
+      return { ...rest };
     }
-    return { ...body, stream };
+    return { ...rest, stream };
   }
 
   private async makeRequest(body: any, stream: boolean): Promise<globalThis.Response> {
