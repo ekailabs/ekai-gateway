@@ -127,7 +127,7 @@ export const apiService = {
   // Fetch usage data
   async getUsage(fromDate?: Date, toDate?: Date): Promise<UsageResponse> {
     let url = `${API_BASE_URL}/usage`;
-    
+
     if (fromDate || toDate) {
       const params = new URLSearchParams();
       if (fromDate) {
@@ -138,9 +138,14 @@ export const apiService = {
       }
       url += `?${params.toString()}`;
     }
-    
-    const response = await fetch(url);
+
+    const response = await fetch(url, {
+      headers: getAuthHeaders()
+    });
     if (!response.ok) {
+      if (response.status === 401) {
+        handleAuthError();
+      }
       throw new Error(`Failed to fetch usage data: ${response.statusText}`);
     }
     return response.json();
@@ -162,8 +167,13 @@ export const apiService = {
     params.append('format', 'csv');
 
     const url = `${API_BASE_URL}/usage?${params.toString()}`;
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: getAuthHeaders()
+    });
     if (!response.ok) {
+      if (response.status === 401) {
+        handleAuthError();
+      }
       throw new Error(`Failed to export CSV: ${response.statusText}`);
     }
 
@@ -199,16 +209,26 @@ export const apiService = {
     if (params?.offset) searchParams.append('offset', String(params.offset));
 
     const url = `${API_BASE_URL}/v1/models${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: getAuthHeaders()
+    });
     if (!response.ok) {
+      if (response.status === 401) {
+        handleAuthError();
+      }
       throw new Error(`Failed to fetch models: ${response.statusText}`);
     }
     return response.json();
   },
 
   async getBudget(): Promise<BudgetResponse> {
-    const response = await fetch(`${API_BASE_URL}/budget`);
+    const response = await fetch(`${API_BASE_URL}/budget`, {
+      headers: getAuthHeaders()
+    });
     if (!response.ok) {
+      if (response.status === 401) {
+        handleAuthError();
+      }
       throw new Error(`Failed to fetch budget: ${response.statusText}`);
     }
     return response.json();
@@ -217,11 +237,17 @@ export const apiService = {
   async updateBudget(payload: { amountUsd: number | null; alertOnly?: boolean }): Promise<BudgetResponse> {
     const response = await fetch(`${API_BASE_URL}/budget`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
       body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        handleAuthError();
+      }
       throw new Error(`Failed to update budget: ${response.statusText}`);
     }
 
@@ -403,3 +429,28 @@ export const apiService = {
     return response.json();
   }
 };
+
+/**
+ * Get authorization headers with token from localStorage
+ */
+function getAuthHeaders(): HeadersInit {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('ekai_auth_token') : null;
+  if (token) {
+    return {
+      'Authorization': `Bearer ${token}`
+    };
+  }
+  return {};
+}
+
+/**
+ * Handle authentication errors by clearing auth and redirecting to login
+ */
+function handleAuthError(): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('ekai_auth_token');
+    localStorage.removeItem('ekai_auth_address');
+    localStorage.removeItem('ekai_auth_expiration');
+    window.location.href = '/login';
+  }
+}

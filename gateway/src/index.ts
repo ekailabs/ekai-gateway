@@ -32,9 +32,11 @@ import { handleUsageRequest } from './app/handlers/usage-handler.js';
 import { handleConfigStatus } from './app/handlers/config-handler.js';
 import { handleModelsRequest } from './app/handlers/models-handler.js';
 import { handleGetBudget, handleUpdateBudget } from './app/handlers/budget-handler.js';
+import { handleLogin } from './app/handlers/auth-handler.js';
 import { logger } from './infrastructure/utils/logger.js';
 import { requestContext } from './infrastructure/middleware/request-context.js';
 import { requestLogging } from './infrastructure/middleware/request-logging.js';
+import { authenticate } from './infrastructure/middleware/auth.js';
 import { ProviderService } from './domain/services/provider-service.js';
 import { pricingLoader } from './infrastructure/utils/pricing-loader.js';
 import { getConfig } from './infrastructure/config/app-config.js';
@@ -63,18 +65,31 @@ async function bootstrap(): Promise<void> {
   const PORT = config.server.port;
   // Middleware
   app.set('trust proxy', true);
-  app.use(cors());
+  app.use(cors({
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
+  }));
   app.use(requestContext);
   app.use(requestLogging);
   app.use(express.json({ limit: '50mb' }));
 
-  // Health check
+  // CORS preflight
+  app.options('*', cors({
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
+  }));
+
+  // Health check (no auth required)
   app.get('/health', (req, res) => {
-    logger.debug('Health check accessed', { 
+    logger.debug('Health check accessed', {
       requestId: req.requestId,
       module: 'health-endpoint'
     });
-    
+
     res.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
@@ -82,15 +97,18 @@ async function bootstrap(): Promise<void> {
     });
   });
 
-  // API Routes
-  app.post('/v1/chat/completions', handleOpenAIFormatChat);
-  app.post('/v1/messages', handleAnthropicFormatChat);
-  app.post('/v1/responses', handleOpenAIResponses);
-  app.get('/v1/models', handleModelsRequest);
-  app.get('/usage', handleUsageRequest);
+  // Authentication routes (no auth required)
+  app.post('/auth/login', handleLogin);
+
+  // API Routes (auth required)
+  app.post('/v1/chat/completions', authenticate, handleOpenAIFormatChat);
+  app.post('/v1/messages', authenticate, handleAnthropicFormatChat);
+  app.post('/v1/responses', authenticate, handleOpenAIResponses);
+  app.get('/v1/models', authenticate, handleModelsRequest);
+  app.get('/usage', authenticate, handleUsageRequest);
   app.get('/config/status', handleConfigStatus);
-  app.get('/budget', handleGetBudget);
-  app.put('/budget', handleUpdateBudget);
+  app.get('/budget', authenticate, handleGetBudget);
+  app.put('/budget', authenticate, handleUpdateBudget);
 
   // Error handler MUST be last middleware
   app.use(errorHandler);
