@@ -1,9 +1,8 @@
-import { formatCurrency, formatNumber } from '@/lib/utils';
+import { formatNumber } from '@/lib/utils';
 
 interface TooltipPayload {
   formattedDate?: string;
   formattedTime?: string;
-  cost?: number;
   value?: number;
   tokens?: number;
   requests?: number;
@@ -19,10 +18,10 @@ interface ChartTooltipProps {
   active?: boolean;
   payload?: { value: number; name: string; color: string; payload: TooltipPayload }[];
   label?: string;
-  type?: 'cost' | 'tokens' | 'provider' | 'model';
+  type?: 'tokens' | 'provider' | 'model';
 }
 
-export default function ChartTooltip({ active, payload, label, type = 'cost' }: ChartTooltipProps) {
+export default function ChartTooltip({ active, payload, label, type = 'tokens' }: ChartTooltipProps) {
   if (!active || !payload || !payload.length) {
     return null;
   }
@@ -31,26 +30,6 @@ export default function ChartTooltip({ active, payload, label, type = 'cost' }: 
 
   return (
     <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-      {type === 'cost' && (
-        <>
-          <p className="font-semibold">{data.formattedDate || label}</p>
-          {data.formattedTime && <p className="text-sm text-gray-600">{data.formattedTime}</p>}
-          <p className="text-blue-600">
-            <span className="font-semibold">Cost:</span> {formatCurrency(data.cost || data.value || 0)}
-          </p>
-          {data.tokens && (
-            <p className="text-green-600">
-              <span className="font-semibold">Tokens:</span> {formatNumber(data.tokens)}
-            </p>
-          )}
-          {data.requests && (
-            <p className="text-purple-600">
-              <span className="font-semibold">Requests:</span> {data.requests}
-            </p>
-          )}
-        </>
-      )}
-
       {type === 'tokens' && (
         <>
           <p className="font-semibold">{data.formattedDate || label}</p>
@@ -90,7 +69,7 @@ export default function ChartTooltip({ active, payload, label, type = 'cost' }: 
         <>
           <p className="font-semibold">{data.name}</p>
           <p className="text-blue-600">
-            <span className="font-semibold">Cost:</span> {formatCurrency(data.value || 0)}
+            <span className="font-semibold">Tokens:</span> {formatNumber(data.value || 0)}
           </p>
           <p className="text-gray-600">
             <span className="font-semibold">Percentage:</span> {data.percentage}%

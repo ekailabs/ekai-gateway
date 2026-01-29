@@ -2,7 +2,6 @@ import { Response as ExpressResponse } from 'express';
 import { AuthenticationError, PaymentError, ProviderError } from '../../shared/errors/index.js';
 import { logger } from '../utils/logger.js';
 import { CONTENT_TYPES, HTTP_STATUS } from '../../domain/types/provider.js';
-import { injectMemoryContext, persistMemory } from '../memory/memory-helper.js';
 
 export type ChatUsageFormat = 'openai_chat';
 
@@ -65,7 +64,6 @@ export class ChatCompletionsPassthrough {
   private x402FetchFunction: typeof fetch | null = null;
   private x402Initialized = false;
   private lastX402PaymentAmount: string | undefined = undefined;
-  private assistantResponseBuffer = '';
 
   constructor(private readonly config: ChatCompletionsPassthroughConfig) {
     // Initialize x402 payment wrapper once if needed
@@ -354,11 +352,6 @@ export class ChatCompletionsPassthrough {
         try {
           const parsed = JSON.parse(payload);
           
-          // Extract assistant response content
-          if (parsed?.choices?.[0]?.delta?.content) {
-            this.assistantResponseBuffer += parsed.choices[0].delta.content;
-          }
-          
           if (parsed?.usage) {
             this.recordUsage(parsed.usage, model, clientIp);
             // reset buffer after successful usage capture to avoid duplicate processing
@@ -387,24 +380,7 @@ export class ChatCompletionsPassthrough {
 
   async handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string): Promise<void> {
     this.eventBuffer = '';
-    this.assistantResponseBuffer = '';
-    this.lastX402PaymentAmount = undefined; // Reset payment amount for new request
-
-    // Retrieve and inject memory context
-    injectMemoryContext(request, {
-      provider: this.config.provider,
-      defaultUserId: 'default',
-      extractCurrentUserInputs: req => extractOpenAIUserMessages(req),
-      applyMemoryContext: (req, context) => {
-        if (!req.messages) {
-          req.messages = [];
-        }
-        req.messages.unshift({
-          role: 'system',
-          content: context,
-        });
-      }
-    });
+    this.lastX402PaymentAmount = undefined;
 
     if (request?.stream) {
       const response = await this.makeRequest(request, true);
@@ -438,17 +414,6 @@ export class ChatCompletionsPassthrough {
       }
 
       res.end();
-      
-      // Persist memory after streaming completes
-      persistMemory(request, this.assistantResponseBuffer, {
-        provider: this.config.provider,
-        defaultUserId: 'default',
-        extractUserContent: req => extractOpenAILastUserContent(req),
-        metadataBuilder: req => ({
-          model: req.model,
-          provider: this.config.provider,
-        }),
-      });
       return;
     }
 
@@ -467,43 +432,7 @@ export class ChatCompletionsPassthrough {
       this.recordUsage(json.usage, request?.model, clientIp);
     }
 
-    // Extract assistant response from non-streaming response
-    const assistantResponse = json?.choices?.[0]?.message?.content || '';
-    persistMemory(request, assistantResponse, {
-      provider: this.config.provider,
-      defaultUserId: 'default',
-      extractUserContent: req => extractOpenAILastUserContent(req),
-      metadataBuilder: req => ({
-        model: req.model,
-        provider: this.config.provider,
-      }),
-    });
-
     res.status(HTTP_STATUS.OK).json(json);
   }
   
-}
-
-function extractOpenAIUserMessages(request: any): string[] {
-  const currentMessages = request.messages || [];
-  return currentMessages
-    .filter((msg: any) => msg.role === 'user')
-    .map((msg: any) => {
-      const content = typeof msg.content === 'string'
-        ? msg.content
-        : JSON.stringify(msg.content);
-      return content;
-    });
-}
-
-function extractOpenAILastUserContent(request: any): string | null {
-  const messages = request.messages || [];
-  const userMessages = messages.filter((msg: any) => msg.role === 'user');
-  if (!userMessages.length) {
-    return null;
-  }
-  const lastUserMessage = userMessages[userMessages.length - 1];
-  return typeof lastUserMessage.content === 'string'
-    ? lastUserMessage.content
-    : JSON.stringify(lastUserMessage.content);
 }

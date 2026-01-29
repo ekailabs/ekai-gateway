@@ -3,7 +3,6 @@ import { logger } from '../utils/logger.js';
 import { AuthenticationError, PaymentError, ProviderError } from '../../shared/errors/index.js';
 import { CONTENT_TYPES } from '../../domain/types/provider.js';
 import { ModelUtils } from '../utils/model-utils.js';
-import { injectMemoryContext, persistMemory } from '../memory/memory-helper.js';
 
 type UsageFormat = 'anthropic_messages';
 
@@ -46,7 +45,6 @@ export class MessagesPassthrough {
   private x402FetchFunction: typeof fetch | null = null;
   private x402Initialized = false;
   private lastX402PaymentAmount: string | undefined = undefined;
-  private assistantResponseBuffer = '';
 
   constructor(private readonly config: MessagesPassthroughConfig) {
     // Initialize x402 payment wrapper once if needed
@@ -195,37 +193,9 @@ export class MessagesPassthrough {
     // Sanitize required: null to required: [] for xAI compatibility
     const sanitized = this.sanitizeRequiredFields(rest);
 
-    // Debug: check if sanitization worked
-    const jsonStr = JSON.stringify(sanitized);
-    const hasRequiredNull = jsonStr.includes('"required":null');
-    const hasRequiredNullSpaced = jsonStr.includes('"required": null');
-
-    // Write full payload to file for inspection (per-provider)
-    const provider = this.config.provider;
-    require('fs').writeFileSync(`/tmp/payload-${provider}.json`, jsonStr);
-    if (hasRequiredNull || hasRequiredNullSpaced) {
-      require('fs').writeFileSync(`/tmp/bad-payload-${provider}.json`, jsonStr);
-    }
-
-    const result = this.config.forceStreamOption === false
+    return this.config.forceStreamOption === false
       ? sanitized
       : { ...(sanitized as object), stream };
-
-    // Log the FINAL result that will be stringified
-    const finalJson = JSON.stringify(result);
-    const finalHasNull = finalJson.includes('"required":null') || finalJson.includes('"required": null');
-    require('fs').writeFileSync(`/tmp/final-${provider}.json`, finalJson);
-
-    logger.info('PAYLOAD SANITIZATION', {
-      provider,
-      hasRequiredNull,
-      hasRequiredNullSpaced,
-      finalHasNull,
-      payloadLength: finalJson.length,
-      module: 'messages-passthrough',
-    });
-
-    return result;
   }
 
   private async makeRequest(body: any, stream: boolean): Promise<globalThis.Response> {
@@ -238,49 +208,14 @@ export class MessagesPassthrough {
     const fetchFunction = this.x402FetchFunction || fetch;
     const isX402Enabled = this.x402FetchFunction !== null;
 
-    // Log which authentication method is being used for this request
-    if (isX402Enabled) {
-      logger.info('Making request with x402 payment (PRIVATE_KEY)', {
-        provider: this.config.provider,
-        model: body?.model,
-        baseUrl: this.config.baseUrl,
-        stream,
-        module: 'messages-passthrough',
-      });
-    } else {
-      logger.info('Making request with API key authentication', {
-        provider: this.config.provider,
-        model: body?.model,
-        baseUrl: this.config.baseUrl,
-        apiKeyEnvVar: this.config.auth?.envVar,
-        stream,
-        module: 'messages-passthrough',
-      });
-    }
-
     let response: globalThis.Response;
 
     try {
       // Build payload and do final string-level sanitization
       let payloadJson = JSON.stringify(this.ensurePayloadBody(body, stream));
 
-      // Bulletproof fix: replace ALL variations of required:null
-      const beforeLen = payloadJson.length;
+      // Bulletproof fix: replace ALL variations of required:null for xAI compatibility
       payloadJson = payloadJson.replace(/"required"\s*:\s*null/g, '"required":[]');
-      const fixed = beforeLen !== payloadJson.length;
-
-      // Write final payload to file for debugging
-      require('fs').writeFileSync(`/tmp/FINAL-${this.config.provider}-${Date.now()}.json`, payloadJson);
-
-      // Double check - does it still have required:null?
-      const stillHasNull = payloadJson.includes('required') && payloadJson.includes('null');
-      logger.info('FINAL PAYLOAD CHECK', {
-        provider: this.config.provider,
-        fixed,
-        stillHasNull,
-        len: payloadJson.length,
-        module: 'messages-passthrough'
-      });
 
       response = await fetchFunction(this.resolveBaseUrl(), {
         method: 'POST',
@@ -390,18 +325,6 @@ export class MessagesPassthrough {
         if (data.type === 'message_delta' || data.type === 'message_stop') {
           const usageData = data.usage;
           
-          // Extract final response text from message_delta/message_stop event
-          // Check if there's a message field with content
-          if (data.message?.content && Array.isArray(data.message.content)) {
-            const textContent = data.message.content
-              .filter((c: any) => c.type === 'text')
-              .map((c: any) => c.text || '')
-              .join('');
-            if (textContent) {
-              this.assistantResponseBuffer = textContent;
-            }
-          }
-
           if (usageData) {
             const inputTokens = usageData.input_tokens ?? this.initialUsage?.inputTokens ?? 0;
             const cacheCreationTokens = usageData.cache_creation_input_tokens ?? this.initialUsage?.cacheCreationTokens ?? 0;
@@ -483,22 +406,7 @@ export class MessagesPassthrough {
   async handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string): Promise<void> {
     this.initialUsage = null;
     this.streamBuffer = '';
-    this.assistantResponseBuffer = '';
-    this.lastX402PaymentAmount = undefined; // Reset payment amount for new request
-
-    // Retrieve and inject memory context
-    injectMemoryContext(request, {
-      provider: this.config.provider,
-      defaultUserId: 'default',
-      extractCurrentUserInputs: req => extractAnthropicUserMessages(req),
-      applyMemoryContext: (req, context) => {
-        if (req.system) {
-          req.system = `${context}\n\n---\n\n${req.system}`;
-        } else {
-          req.system = context;
-        }
-      }
-    });
+    this.lastX402PaymentAmount = undefined;
 
     this.applyModelOptions(request);
 
@@ -523,21 +431,6 @@ export class MessagesPassthrough {
         res.write(value);
       }
       res.end();
-      
-      // Persist memory after streaming completes
-      persistMemory(request, this.assistantResponseBuffer, {
-        provider: this.config.provider,
-        defaultUserId: 'default',
-        minAssistantResponseLength: 3,
-        filteredPatterns: [
-          'User: test\n\nAssistant: Hello',
-        ],
-        extractUserContent: req => extractAnthropicLastUserContent(req),
-        metadataBuilder: req => ({
-          model: req.model,
-          provider: this.config.provider,
-        })
-      });
       return;
     }
 
@@ -586,58 +479,7 @@ export class MessagesPassthrough {
         });
     }
 
-    // Extract assistant response from non-streaming response
-    const assistantResponse = json?.content?.[0]?.text || '';
-    persistMemory(request, assistantResponse, {
-      provider: this.config.provider,
-      defaultUserId: 'default',
-      minAssistantResponseLength: 3,
-      filteredPatterns: [
-        'User: test\n\nAssistant: Hello',
-      ],
-      extractUserContent: req => extractAnthropicLastUserContent(req),
-      metadataBuilder: req => ({
-        model: req.model,
-        provider: this.config.provider,
-      })
-    });
-
     res.json(json);
   }
   
-}
-
-function formatAnthropicMessageContent(content: any): string {
-  let raw: string;
-  if (typeof content === 'string') {
-    raw = content;
-  } else if (Array.isArray(content)) {
-    raw = content.map((c: any) => (c.type === 'text' ? c.text : `[${c.type}]`)).join(' ');
-  } else {
-    raw = JSON.stringify(content);
-  }
-  return stripSystemReminders(raw).trim();
-}
-
-function extractAnthropicUserMessages(request: any): string[] {
-  const currentMessages = request.messages || [];
-  return currentMessages
-    .filter((msg: any) => msg.role === 'user')
-    .map((msg: any) => formatAnthropicMessageContent(msg.content))
-    .filter(Boolean);
-}
-
-function extractAnthropicLastUserContent(request: any): string | null {
-  const messages = request.messages || [];
-  const userMessages = messages.filter((msg: any) => msg.role === 'user');
-  if (!userMessages.length) {
-    return null;
-  }
-  const lastUserMessage = userMessages[userMessages.length - 1];
-  const formatted = formatAnthropicMessageContent(lastUserMessage.content);
-  return formatted || null;
-}
-
-function stripSystemReminders(text: string): string {
-  return text.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/gi, '').trim();
 }
