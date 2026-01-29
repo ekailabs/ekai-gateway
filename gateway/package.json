@@ -29,7 +29,7 @@
     "json-schema-to-typescript": "^15.0.4",
     "node-fetch": "^3.3.2",
     "pino": "^9.4.0",
-    "viem": "^2.0.0",
+    "viem": "^2.45.0",
     "x402-fetch": "^0.3.0"
   },
   "devDependencies": {

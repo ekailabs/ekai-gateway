@@ -17,16 +17,25 @@ declare global {
  * Extract bearer token from Authorization header or x-api-key header.
  */
 function extractToken(req: Request): string | null {
+  let token: string | null = null;
+
   // Try Authorization header first (standard approach)
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.slice(7);
+    token = authHeader.slice(7);
   }
 
   // Fall back to x-api-key header for backward compatibility
-  const apiKey = req.headers['x-api-key'];
-  if (apiKey && typeof apiKey === 'string') {
-    return apiKey;
+  if (!token) {
+    const apiKey = req.headers['x-api-key'];
+    if (apiKey && typeof apiKey === 'string') {
+      token = apiKey;
+    }
+  }
+
+  // Strip sk-ant- prefix if Claude Code adds it
+  if (token) {
+    return token.replace(/^sk-ant-/, '');
   }
 
   return null;

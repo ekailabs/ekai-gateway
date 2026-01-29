@@ -146,20 +146,15 @@ export class AuthHandler {
       };
 
       const types = {
-        EIP712Domain: [
-          { name: 'name', type: 'string' },
-          { name: 'version', type: 'string' },
-          { name: 'chainId', type: 'uint256' }
-        ],
         Login: [
           { name: 'address', type: 'address' },
           { name: 'expiration', type: 'uint256' }
         ]
-      };
+      } as const;
 
       const message = {
-        address,
-        expiration
+        address: address as `0x${string}`,
+        expiration: BigInt(expiration)
       };
 
       // Recover the address from the signature
