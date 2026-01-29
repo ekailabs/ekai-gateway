@@ -154,11 +154,78 @@ export class MessagesPassthrough {
     }
   }
 
-  private ensurePayloadBody(body: any, stream: boolean): any {
-    if (this.config.forceStreamOption === false) {
-      return { ...body };
+  /**
+   * Recursively fix null or missing 'required' fields anywhere in an object.
+   * xAI rejects required: null AND missing required in schemas, expects required: []
+   */
+  private sanitizeRequiredFields(obj: unknown): unknown {
+    if (obj === null || obj === undefined) return obj;
+    if (Array.isArray(obj)) return obj.map(item => this.sanitizeRequiredFields(item));
+    if (typeof obj === 'object') {
+      const result: Record<string, unknown> = {};
+      const objRecord = obj as Record<string, unknown>;
+
+      for (const [key, value] of Object.entries(objRecord)) {
+        if (key === 'required' && value === null) {
+          result[key] = [];
+        } else {
+          result[key] = this.sanitizeRequiredFields(value);
+        }
+      }
+
+      // If this looks like a JSON schema object (has properties or type:object) but no required, add it
+      const hasProperties = 'properties' in objRecord;
+      const isObjectType = objRecord['type'] === 'object';
+      const hasRequired = 'required' in result;
+
+      if ((hasProperties || isObjectType) && !hasRequired) {
+        result['required'] = [];
+      }
+
+      return result;
     }
-    return { ...body, stream };
+    return obj;
+  }
+
+  private ensurePayloadBody(body: any, stream: boolean): any {
+    // Strip fields not supported by Anthropic's public API
+    // Claude Code sends these but they're only valid for internal/beta endpoints
+    const { output_config, context_management, ...rest } = body;
+
+    // Sanitize required: null to required: [] for xAI compatibility
+    const sanitized = this.sanitizeRequiredFields(rest);
+
+    // Debug: check if sanitization worked
+    const jsonStr = JSON.stringify(sanitized);
+    const hasRequiredNull = jsonStr.includes('"required":null');
+    const hasRequiredNullSpaced = jsonStr.includes('"required": null');
+
+    // Write full payload to file for inspection (per-provider)
+    const provider = this.config.provider;
+    require('fs').writeFileSync(`/tmp/payload-${provider}.json`, jsonStr);
+    if (hasRequiredNull || hasRequiredNullSpaced) {
+      require('fs').writeFileSync(`/tmp/bad-payload-${provider}.json`, jsonStr);
+    }
+
+    const result = this.config.forceStreamOption === false
+      ? sanitized
+      : { ...(sanitized as object), stream };
+
+    // Log the FINAL result that will be stringified
+    const finalJson = JSON.stringify(result);
+    const finalHasNull = finalJson.includes('"required":null') || finalJson.includes('"required": null');
+    require('fs').writeFileSync(`/tmp/final-${provider}.json`, finalJson);
+
+    logger.info('PAYLOAD SANITIZATION', {
+      provider,
+      hasRequiredNull,
+      hasRequiredNullSpaced,
+      finalHasNull,
+      payloadLength: finalJson.length,
+      module: 'messages-passthrough',
+    });
+
+    return result;
   }
 
   private async makeRequest(body: any, stream: boolean): Promise<globalThis.Response> {
@@ -192,12 +259,33 @@ export class MessagesPassthrough {
     }
 
     let response: globalThis.Response;
-    
+
     try {
+      // Build payload and do final string-level sanitization
+      let payloadJson = JSON.stringify(this.ensurePayloadBody(body, stream));
+
+      // Bulletproof fix: replace ALL variations of required:null
+      const beforeLen = payloadJson.length;
+      payloadJson = payloadJson.replace(/"required"\s*:\s*null/g, '"required":[]');
+      const fixed = beforeLen !== payloadJson.length;
+
+      // Write final payload to file for debugging
+      require('fs').writeFileSync(`/tmp/FINAL-${this.config.provider}-${Date.now()}.json`, payloadJson);
+
+      // Double check - does it still have required:null?
+      const stillHasNull = payloadJson.includes('required') && payloadJson.includes('null');
+      logger.info('FINAL PAYLOAD CHECK', {
+        provider: this.config.provider,
+        fixed,
+        stillHasNull,
+        len: payloadJson.length,
+        module: 'messages-passthrough'
+      });
+
       response = await fetchFunction(this.resolveBaseUrl(), {
         method: 'POST',
         headers: this.buildHeaders(),
-        body: JSON.stringify(this.ensurePayloadBody(body, stream)),
+        body: payloadJson,
       });
     } catch (error) {
       // Catch x402 payment errors (insufficient balance, payment failures, etc.)
