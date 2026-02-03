@@ -3,21 +3,13 @@
   "version": "0.1.0-beta.1",
   "description": "Ekai Gateway - Multi-provider AI request routing",
   "private": true,
-  "workspaces": ["gateway", "memory"],
+  "workspaces": ["gateway"],
   "scripts": {
     "dev": "npm run dev --workspace=gateway",
-    "dev:all": "concurrently \"npm run dev --workspace=gateway\" \"npm run start --workspace=memory\"",
     "build": "npm install --workspaces && npm run build --workspaces --if-present",
     "start": "npm install && npm run start --workspace=gateway",
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
-    "test": "npm run test --workspace=gateway",
-    "dev:gateway": "npm run dev --workspace=gateway",
-    "dev:memory": "npm run start --workspace=memory",
-    "start:gateway": "npm run start --workspace=gateway",
-    "start:memory": "npm run start --workspace=memory"
-  },
-  "devDependencies": {
-    "concurrently": "^8.2.2"
+    "test": "npm run test --workspace=gateway"
   },
   "keywords": [
     "ai",

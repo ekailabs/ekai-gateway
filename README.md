@@ -105,7 +105,6 @@ codex
 ```
 ekai-gateway/
 ├── gateway/          # Backend API and routing
-├── memory/           # Memory service (optional)
 └── package.json      # Root package configuration
 ```
 
@@ -175,8 +174,7 @@ npm start      # Start gateway
 ## Development
 
 ```bash
-npm run dev        # Start gateway in development mode
-npm run dev:all    # Start gateway + memory service
+npm run dev    # Start gateway in development mode
 ```
 
 ## Contributing
