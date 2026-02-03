@@ -164,42 +164,35 @@ curl http://localhost:3001/usage
 
 ## User Preferences
 
-Each authenticated user **must** configure their preferences before making API calls:
-- **`api_address`** - Whose API keys to bill (own wallet or delegate to another)
-- **`model_preferences`** - List of models the user can access (required)
+Users must configure `model_preferences` before making API calls.
 
 ```bash
-# Get current preferences
+# Get preferences
 curl http://localhost:3001/user/preferences \
   -H "Authorization: Bearer <token>"
 
-# Set model preferences (required before making API calls)
+# Set model preferences
 curl -X PUT http://localhost:3001/user/preferences \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{"model_preferences": ["claude-sonnet-4-20250514", "claude-3-5-haiku-20241022", "gpt-4o"]}'
+  -d '{"model_preferences": ["grok-code-fast-1", "claude-3-5-haiku"]}'
 
-# Delegate to another wallet's API keys
+# Delegate billing to another wallet
 curl -X PUT http://localhost:3001/user/preferences \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"api_address": "0x1234..."}'
 ```
 
-**Response format:**
-```json
-{
-  "address": "0x5272...",
-  "api_address": "0x5272...",
-  "model_preferences": ["claude-sonnet-4-20250514", "claude-3-5-haiku-20241022"],
-  "updated_at": "2026-02-03T11:41:23.000Z"
-}
-```
+| Field | Description |
+|-------|-------------|
+| `model_preferences` | List of models user can access (required for API calls) |
+| `api_address` | Wallet to bill - own address or delegate to another |
 
 **Behavior:**
-- **`/v1/models`**: Returns only user's `model_preferences` (or full catalog if not set)
-- **Chat requests**: If requested model is not in `model_preferences`, uses the first model in the list
-- **Validation**: Models must exist in catalog and have accessible providers (API keys configured)
+- `GET /v1/models` with auth returns only user's preferred models
+- Requests for models not in preferences fallback to first model in list
+- Models are validated against catalog and provider availability
 
 ## Model Routing (Cost-Optimized)
 

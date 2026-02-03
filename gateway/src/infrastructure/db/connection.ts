@@ -56,6 +56,34 @@ class DatabaseConnection {
         this.db.exec(`ALTER TABLE usage_records ADD COLUMN payment_method TEXT DEFAULT 'api_key';`);
         logger.info('Added payment_method column to usage_records', { module: 'db-connection', operation: 'db_migration' });
       }
+
+      // Migration: rename allowed_models/default_model to model_preferences
+      const prefColumns = this.db.prepare(`PRAGMA table_info(user_preferences)`).all();
+      const hasModelPreferences = prefColumns.some((c: any) => c.name === 'model_preferences');
+      const hasAllowedModels = prefColumns.some((c: any) => c.name === 'allowed_models');
+      const hasDefaultModel = prefColumns.some((c: any) => c.name === 'default_model');
+
+      if (!hasModelPreferences && (hasAllowedModels || hasDefaultModel)) {
+        // SQLite doesn't support RENAME COLUMN in older versions, so recreate table
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS user_preferences_new (
+            address TEXT PRIMARY KEY,
+            api_address TEXT NOT NULL,
+            model_preferences TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          );
+          INSERT INTO user_preferences_new (address, api_address, model_preferences, created_at, updated_at)
+            SELECT address, api_address,
+              COALESCE(${hasAllowedModels ? 'allowed_models' : 'NULL'}, ${hasDefaultModel ? "CASE WHEN default_model IS NOT NULL THEN '[\"' || default_model || '\"]' ELSE NULL END" : 'NULL'}),
+              created_at, updated_at
+            FROM user_preferences;
+          DROP TABLE user_preferences;
+          ALTER TABLE user_preferences_new RENAME TO user_preferences;
+          CREATE INDEX IF NOT EXISTS idx_user_preferences_api_address ON user_preferences(api_address);
+        `);
+        logger.info('Migrated user_preferences to model_preferences column', { module: 'db-connection', operation: 'db_migration' });
+      }
       
       logger.debug('Database tables created', { operation: 'db_schema', module: 'db-connection' });
     } catch (error) {
