@@ -1,8 +1,9 @@
-import { Response as ExpressResponse } from 'express';
+import { Request, Response as ExpressResponse } from 'express';
 import { logger } from '../utils/logger.js';
 import { AuthenticationError, PaymentError, ProviderError } from '../../shared/errors/index.js';
 import { CONTENT_TYPES } from '../../domain/types/provider.js';
 import { ModelUtils } from '../utils/model-utils.js';
+import { getApiKeyFromUserContext } from '../crypto/key-manager.js';
 
 type UsageFormat = 'anthropic_messages';
 
@@ -45,6 +46,8 @@ export class MessagesPassthrough {
   private x402FetchFunction: typeof fetch | null = null;
   private x402Initialized = false;
   private lastX402PaymentAmount: string | undefined = undefined;
+  private currentRequest: Request | undefined = undefined;
+  private currentModel: string | undefined = undefined;
 
   constructor(private readonly config: MessagesPassthroughConfig) {
     // Initialize x402 payment wrapper once if needed
@@ -98,22 +101,17 @@ export class MessagesPassthrough {
     return this.config.baseUrl;
   }
 
-  private get apiKey(): string | undefined {
-    if (!this.config.auth) return undefined;
-    const envVar = this.config.auth.envVar;
-    const token = process.env[envVar];
-    if (!token) {
-      throw new AuthenticationError(`${this.config.provider} API key not configured`, { provider: this.config.provider });
+  private async getApiKey(): Promise<string> {
+    if (!this.currentRequest || !this.currentModel) {
+      throw new AuthenticationError('Request context not available', { provider: this.config.provider });
     }
-    return token;
+    return getApiKeyFromUserContext(this.currentRequest, this.config.provider, this.currentModel);
   }
 
-  private buildAuthHeader(): string | undefined {
+  private async buildAuthHeader(): Promise<string | undefined> {
     if (!this.config.auth) return undefined;
     const { scheme, template } = this.config.auth;
-    const token = this.apiKey;
-    
-    if (!token) return undefined;
+    const token = await this.getApiKey();
 
     if (template) {
       return template.replace('{{token}}', token);
@@ -126,7 +124,7 @@ export class MessagesPassthrough {
     return token;
   }
 
-  private buildHeaders(): Record<string, string> {
+  private async buildHeaders(): Promise<Record<string, string>> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...this.config.staticHeaders,
@@ -134,7 +132,7 @@ export class MessagesPassthrough {
 
     // Only add auth header if auth is configured (not x402 mode)
     if (this.config.auth) {
-      const authHeader = this.buildAuthHeader();
+      const authHeader = await this.buildAuthHeader();
       if (authHeader) {
         headers[this.config.auth.header] = authHeader;
       }
@@ -217,9 +215,10 @@ export class MessagesPassthrough {
       // Bulletproof fix: replace ALL variations of required:null for xAI compatibility
       payloadJson = payloadJson.replace(/"required"\s*:\s*null/g, '"required":[]');
 
+      const headers = await this.buildHeaders();
       response = await fetchFunction(this.resolveBaseUrl(), {
         method: 'POST',
-        headers: this.buildHeaders(),
+        headers,
         body: payloadJson,
       });
     } catch (error) {
@@ -403,10 +402,12 @@ export class MessagesPassthrough {
     }
   }
 
-  async handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string): Promise<void> {
+  async handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string, req?: Request): Promise<void> {
     this.initialUsage = null;
     this.streamBuffer = '';
     this.lastX402PaymentAmount = undefined;
+    this.currentRequest = req;
+    this.currentModel = request?.model;
 
     this.applyModelOptions(request);
 

@@ -1,8 +1,8 @@
-import { BaseProvider } from './base-provider.js';
+import { BaseProvider, ApiKeyContext } from './base-provider.js';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
 import { pricingLoader } from '../../infrastructure/utils/pricing-loader.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
-import { getConfig } from '../../infrastructure/config/app-config.js';
+import { getKeyManager } from '../../infrastructure/crypto/key-manager.js';
 
 interface OpenRouterRequest {
   model: string;
@@ -34,21 +34,26 @@ interface OpenRouterResponse {
 export class OpenRouterProvider extends BaseProvider {
   readonly name = 'openrouter';
   protected readonly baseUrl = 'https://openrouter.ai/api/v1';
-  protected get apiKey(): string | undefined {
-    return getConfig().providers.openrouter.apiKey;
+
+  /**
+   * Get API key via ROFL authorization workflow
+   */
+  protected async getApiKey(context?: ApiKeyContext): Promise<string | undefined> {
+    if (!context?.sapphireContext) {
+      throw new Error('Sapphire context required for API key retrieval');
+    }
+    const keyManager = getKeyManager();
+    return keyManager.getKey(context.sapphireContext);
   }
 
   isConfigured(): boolean {
-    const config = getConfig();
-    if (config.x402.enabled) {
-      return true;
-    }
-    return super.isConfigured();
+    // Always configured - key retrieval happens via Sapphire
+    return true;
   }
 
-  protected getHeaders(): Record<string, string> {
+  protected getHeaders(apiKey: string): Record<string, string> {
     return {
-      'Authorization': `Bearer ${this.apiKey}`,
+      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
       'HTTP-Referer': 'https://ekai-proxy',
       'X-Title': 'EKAI Proxy'
@@ -95,7 +100,7 @@ export class OpenRouterProvider extends BaseProvider {
 
     // Look up the model in OpenRouter pricing to get the actual ID
     const openRouterPricing = pricingLoader.getModelPricing('openrouter', modelName);
-    
+
     if (openRouterPricing?.id) {
       return openRouterPricing.id;
     }
@@ -106,7 +111,7 @@ export class OpenRouterProvider extends BaseProvider {
 
   protected transformResponse(response: OpenRouterResponse): CanonicalResponse {
     const choice = response.choices[0];
-    
+
     return {
       id: response.id,
       model: response.model,
@@ -130,7 +135,7 @@ export class OpenRouterProvider extends BaseProvider {
   private mapFinishReason(reason: string): 'stop' | 'length' | 'tool_calls' | 'error' {
     switch (reason) {
       case 'stop': return 'stop';
-      case 'length': return 'length'; 
+      case 'length': return 'length';
       case 'function_call': return 'tool_calls';
       case 'tool_calls': return 'tool_calls';
       default: return 'stop';

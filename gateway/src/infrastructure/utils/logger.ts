@@ -109,3 +109,28 @@ class PinoLogger implements Logger {
 
 // Singleton
 export const logger: Logger = new PinoLogger();
+
+/**
+ * Create a module-specific logger that automatically includes the module name in logs
+ */
+export function createLogger(module: string): {
+  info: (context: Record<string, unknown>, message: string) => void;
+  error: (context: Record<string, unknown>, message: string) => void;
+  warn: (context: Record<string, unknown>, message: string) => void;
+  debug: (context: Record<string, unknown>, message: string) => void;
+} {
+  return {
+    info: (context: Record<string, unknown>, message: string) => {
+      logger.info(message, { module, ...context });
+    },
+    error: (context: Record<string, unknown>, message: string) => {
+      logger.error(message, context.error as unknown, { module, ...context });
+    },
+    warn: (context: Record<string, unknown>, message: string) => {
+      logger.warn(message, { module, ...context });
+    },
+    debug: (context: Record<string, unknown>, message: string) => {
+      logger.debug(message, { module, ...context });
+    },
+  };
+}

@@ -1,6 +1,7 @@
-import { BaseProvider } from './base-provider.js';
+import { BaseProvider, ApiKeyContext } from './base-provider.js';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
 import { getConfig } from '../../infrastructure/config/app-config.js';
+import { getKeyManager } from '../../infrastructure/crypto/key-manager.js';
 
 interface GrokRequest {
   model: string;
@@ -31,17 +32,21 @@ interface GrokResponse {
 export class XAIProvider extends BaseProvider {
   readonly name = 'xAI';
   protected readonly baseUrl = 'https://api.x.ai/v1';
-  protected get apiKey(): string | undefined {
-    return getConfig().providers.xai.apiKey;
+
+  /**
+   * Get API key via ROFL authorization workflow
+   */
+  protected async getApiKey(context?: ApiKeyContext): Promise<string | undefined> {
+    if (!context?.sapphireContext) {
+      throw new Error('Sapphire context required for API key retrieval');
+    }
+    const keyManager = getKeyManager();
+    return keyManager.getKey(context.sapphireContext);
   }
 
   isConfigured(): boolean {
-    const config = getConfig();
-    // xAI is available via x402 for /v1/messages
-    if (config.x402.enabled) {
-      return true;
-    }
-    return super.isConfigured();
+    // Always configured - key retrieval happens via Sapphire
+    return true;
   }
 
   protected transformRequest(request: CanonicalRequest): GrokRequest {

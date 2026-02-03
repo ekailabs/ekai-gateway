@@ -1,8 +1,8 @@
-import { BaseProvider } from './base-provider.js';
+import { BaseProvider, ApiKeyContext } from './base-provider.js';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
 import { AuthenticationError } from '../../shared/errors/index.js';
 import fetch, { Response } from 'node-fetch';
-import { getConfig } from '../../infrastructure/config/app-config.js';
+import { getKeyManager } from '../../infrastructure/crypto/key-manager.js';
 
 interface AnthropicRequest {
   model: string;
@@ -36,35 +36,41 @@ const REQUEST_TIMEOUT = 30000;
 export class AnthropicProvider extends BaseProvider {
   readonly name = 'anthropic';
   protected readonly baseUrl = 'https://api.anthropic.com/v1';
-  protected get apiKey(): string | undefined {
-    return getConfig().providers.anthropic.apiKey;
+
+  /**
+   * Get API key via ROFL authorization workflow
+   */
+  protected async getApiKey(context?: ApiKeyContext): Promise<string | undefined> {
+    if (!context?.sapphireContext) {
+      throw new AuthenticationError('Sapphire context required for API key retrieval', { provider: this.name });
+    }
+    const keyManager = getKeyManager();
+    return keyManager.getKey(context.sapphireContext);
   }
 
   isConfigured(): boolean {
-    const config = getConfig();
-    // Anthropic is available via x402 for /v1/messages
-    if (config.x402.enabled) {
-      return true;
-    }
-    return super.isConfigured();
+    // Always configured - key retrieval happens via Sapphire
+    return true;
   }
 
-  private validateApiKey(): void {
-    if (!this.apiKey) {
+  private async validateAndGetApiKey(context?: ApiKeyContext): Promise<string> {
+    const apiKey = await this.getApiKey(context);
+    if (!apiKey) {
       throw new AuthenticationError(`${this.name} API key not configured`, { provider: this.name });
     }
+    return apiKey;
   }
 
-  private async makeRequest(url: string, body: any, stream: boolean = false): Promise<Response> {
-    this.validateApiKey();
-    
+  private async makeRequest(url: string, body: any, stream: boolean = false, context?: ApiKeyContext): Promise<Response> {
+    const apiKey = await this.validateAndGetApiKey(context);
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
-    
+
     try {
       const response = await fetch(url, {
         method: 'POST',
-        headers: this.getHeaders(),
+        headers: this.getHeaders(apiKey),
         body: JSON.stringify({ ...body, stream }),
         signal: controller.signal
       });
@@ -80,26 +86,26 @@ export class AnthropicProvider extends BaseProvider {
     }
   }
 
-  async chatCompletion(request: CanonicalRequest): Promise<CanonicalResponse> {
+  async chatCompletion(request: CanonicalRequest, context?: ApiKeyContext): Promise<CanonicalResponse> {
     // For non-streaming, collect the stream and parse it
-    const streamResponse = await this.getStreamingResponse(request);
+    const streamResponse = await this.getStreamingResponse(request, context);
     const text = await streamResponse.text();
     return this.parseStreamToCanonical(text, request);
   }
 
-  // Get raw streaming response  
-  async getStreamingResponse(request: CanonicalRequest): Promise<Response> {
+  // Get raw streaming response
+  async getStreamingResponse(request: CanonicalRequest, context?: ApiKeyContext): Promise<Response> {
     const transformedRequest = this.transformRequest(request);
     const url = `${this.baseUrl}${this.getChatCompletionEndpoint()}`;
-    
-    return await this.makeRequest(url, transformedRequest, true);
+
+    return await this.makeRequest(url, transformedRequest, true, context);
   }
 
   private parseStreamToCanonical(streamText: string, originalRequest: CanonicalRequest): CanonicalResponse {
     let finalMessage = '';
-    let usage = { 
-      input_tokens: 0, 
-      output_tokens: 0, 
+    let usage = {
+      input_tokens: 0,
+      output_tokens: 0,
       cache_creation_input_tokens: 0,
       cache_read_input_tokens: 0
     };
@@ -110,7 +116,7 @@ export class AnthropicProvider extends BaseProvider {
       if (line.startsWith('data: ')) {
         const dataStr = line.slice(6);
         if (dataStr === '[DONE]') break;
-        
+
         try {
           const data = JSON.parse(dataStr);
           if (data.type === 'content_block_delta' && data.delta?.text) {
@@ -151,10 +157,9 @@ export class AnthropicProvider extends BaseProvider {
     };
   }
 
-  protected getHeaders(): Record<string, string> {
-    this.validateApiKey();
+  protected getHeaders(apiKey: string): Record<string, string> {
     return {
-      'x-api-key': this.apiKey!,
+      'x-api-key': apiKey,
       'Content-Type': 'application/json',
       'anthropic-version': ANTHROPIC_VERSION
     };
@@ -182,7 +187,7 @@ export class AnthropicProvider extends BaseProvider {
           .filter(c => c.type === 'text')
           .map(c => c.text)
           .join('');
-        
+
         messages.push({
           role: message.role,
           content

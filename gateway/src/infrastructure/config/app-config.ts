@@ -74,6 +74,16 @@ export class AppConfig {
     usageTracking: this.getBoolean('ENABLE_USAGE_TRACKING', true),
   };
 
+  // Oasis Sapphire configuration for ROFL authorization
+  readonly sapphire = {
+    rpcUrl: this.getString('SAPPHIRE_RPC_URL', 'https://testnet.sapphire.oasis.io'),
+    chainId: this.getNumber('SAPPHIRE_CHAIN_ID', 23295),
+    controlPlaneAddress: this.getString(
+      'EKAI_CONTROL_PLANE_ADDRESS',
+      '0x1647A17be7Ad7A01C6657aC05FA10349E7f32268'
+    ),
+  };
+
   // Helper methods
   private has(key: string): boolean {
     return !!process.env[key];

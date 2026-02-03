@@ -1,7 +1,8 @@
-import { Response as ExpressResponse } from 'express';
+import { Request, Response as ExpressResponse } from 'express';
 import { AuthenticationError, PaymentError, ProviderError } from '../../shared/errors/index.js';
 import { logger } from '../utils/logger.js';
 import { CONTENT_TYPES, HTTP_STATUS } from '../../domain/types/provider.js';
+import { getApiKeyFromUserContext } from '../crypto/key-manager.js';
 
 export type ChatUsageFormat = 'openai_chat';
 
@@ -64,6 +65,8 @@ export class ChatCompletionsPassthrough {
   private x402FetchFunction: typeof fetch | null = null;
   private x402Initialized = false;
   private lastX402PaymentAmount: string | undefined = undefined;
+  private currentRequest: Request | undefined = undefined;
+  private currentModel: string | undefined = undefined;
 
   constructor(private readonly config: ChatCompletionsPassthroughConfig) {
     // Initialize x402 payment wrapper once if needed
@@ -116,22 +119,19 @@ export class ChatCompletionsPassthrough {
     }
   }
 
-  private get apiKey(): string | undefined {
-    const auth = this.config.auth;
-    if (!auth) return undefined;
-    const token = process.env[auth.envVar];
-    if (!token) {
-      throw new AuthenticationError(`${this.config.provider} API key not configured`, { provider: this.config.provider });
+  private async getApiKey(): Promise<string> {
+    if (!this.currentRequest || !this.currentModel) {
+      throw new AuthenticationError('Request context not available', { provider: this.config.provider });
     }
-    return token;
+    return getApiKeyFromUserContext(this.currentRequest, this.config.provider, this.currentModel);
   }
 
-  private buildAuthHeader(): string | undefined {
+  private async buildAuthHeader(): Promise<string | undefined> {
     const auth = this.config.auth;
     if (!auth) return undefined;
 
     const { scheme, template } = auth;
-    const token = this.apiKey!;
+    const token = await this.getApiKey();
 
     if (template) {
       return template.replace('{{token}}', token);
@@ -144,7 +144,7 @@ export class ChatCompletionsPassthrough {
     return token;
   }
 
-  private buildHeaders(): Record<string, string> {
+  private async buildHeaders(): Promise<Record<string, string>> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
@@ -153,7 +153,7 @@ export class ChatCompletionsPassthrough {
       Object.assign(headers, this.config.staticHeaders);
     }
 
-    const authHeader = this.buildAuthHeader();
+    const authHeader = await this.buildAuthHeader();
     if (authHeader && this.config.auth) {
       headers[this.config.auth.header] = authHeader;
     }
@@ -208,11 +208,12 @@ export class ChatCompletionsPassthrough {
     }
 
     let response: globalThis.Response;
-    
+
     try {
+      const headers = await this.buildHeaders();
       response = await fetchFunction(this.config.baseUrl, {
         method: 'POST',
-        headers: this.buildHeaders(),
+        headers,
         body: JSON.stringify(this.buildPayload(body, stream)),
       });
     } catch (error) {
@@ -378,9 +379,11 @@ export class ChatCompletionsPassthrough {
     }
   }
 
-  async handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string): Promise<void> {
+  async handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string, req?: Request): Promise<void> {
     this.eventBuffer = '';
     this.lastX402PaymentAmount = undefined;
+    this.currentRequest = req;
+    this.currentModel = request?.model;
 
     if (request?.stream) {
       const response = await this.makeRequest(request, true);

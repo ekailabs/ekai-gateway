@@ -1,32 +1,29 @@
-import { Response as ExpressResponse } from 'express';
+import { Request, Response as ExpressResponse } from 'express';
 import { logger } from '../utils/logger.js';
 import { AuthenticationError, ProviderError } from '../../shared/errors/index.js';
 import { CONTENT_TYPES } from '../../domain/types/provider.js';
-import { getConfig } from '../config/app-config.js';
 import { ResponsesPassthrough, ResponsesPassthroughConfig } from './responses-passthrough.js';
+import { getApiKeyFromUserContext } from '../crypto/key-manager.js';
 
 export class OpenAIResponsesPassthrough implements ResponsesPassthrough {
+  private currentRequest: Request | undefined = undefined;
+  private currentModel: string | undefined = undefined;
+
   constructor(private readonly config: ResponsesPassthroughConfig) {}
 
   private get baseUrl(): string {
     return this.config.baseUrl;
   }
 
-  private get apiKey(): string {
-    const envVar = this.config.auth?.envVar;
-    if (envVar) {
-      const token = process.env[envVar];
-      if (token) return token;
+  private async getApiKey(): Promise<string> {
+    if (!this.currentRequest || !this.currentModel) {
+      throw new AuthenticationError('Request context not available', { provider: this.config.provider });
     }
-
-    const fallback = getConfig().providers.openai.apiKey;
-    if (fallback) return fallback;
-
-    throw new AuthenticationError('OpenAI API key not configured', { provider: this.config.provider });
+    return getApiKeyFromUserContext(this.currentRequest, this.config.provider, this.currentModel);
   }
 
-  private buildAuthHeader(): string {
-    const token = this.apiKey;
+  private async buildAuthHeader(): Promise<string> {
+    const token = await this.getApiKey();
     const { auth } = this.config;
     if (!auth) {
       return `Bearer ${token}`;
@@ -43,14 +40,14 @@ export class OpenAIResponsesPassthrough implements ResponsesPassthrough {
     return token;
   }
 
-  private buildHeaders(): Record<string, string> {
+  private async buildHeaders(): Promise<Record<string, string>> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...this.config.staticHeaders,
     };
 
     const headerName = this.config.auth?.header ?? 'Authorization';
-    headers[headerName] = this.buildAuthHeader();
+    headers[headerName] = await this.buildAuthHeader();
     return headers;
   }
 
@@ -65,9 +62,10 @@ export class OpenAIResponsesPassthrough implements ResponsesPassthrough {
   private eventBuffer: string = '';
 
   private async makeRequest(body: any, stream: boolean): Promise<globalThis.Response> {
+    const headers = await this.buildHeaders();
     const response = await fetch(this.baseUrl, {
       method: 'POST',
-      headers: this.buildHeaders(),
+      headers,
       body: JSON.stringify({ ...body, stream, store: false }) // Not storing responses
     });
 
@@ -167,10 +165,12 @@ export class OpenAIResponsesPassthrough implements ResponsesPassthrough {
     }
   }
 
-  async handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string): Promise<void> {
+  async handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string, req?: Request): Promise<void> {
     // Reset usage tracking for new request
     this.usage = null;
     this.eventBuffer = '';
+    this.currentRequest = req;
+    this.currentModel = request?.model;
 
     if (request.stream) {
       const response = await this.makeRequest(request, true);

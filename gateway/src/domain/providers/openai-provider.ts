@@ -1,9 +1,9 @@
-import { BaseProvider } from './base-provider.js';
+import { BaseProvider, ApiKeyContext } from './base-provider.js';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
 import fetch, { Response } from 'node-fetch';
 import { AuthenticationError, ProviderError } from '../../shared/errors/index.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
-import { getConfig } from '../../infrastructure/config/app-config.js';
+import { getKeyManager } from '../../infrastructure/crypto/key-manager.js';
 
 interface OpenAIRequest {
   model: string;
@@ -34,8 +34,21 @@ interface OpenAIResponse {
 export class OpenAIProvider extends BaseProvider {
   readonly name = 'openai';
   protected readonly baseUrl = 'https://api.openai.com/v1';
-  protected get apiKey(): string | undefined {
-    return getConfig().providers.openai.apiKey;
+
+  /**
+   * Get API key via ROFL authorization workflow
+   */
+  protected async getApiKey(context?: ApiKeyContext): Promise<string | undefined> {
+    if (!context?.sapphireContext) {
+      throw new AuthenticationError('Sapphire context required for API key retrieval', { provider: this.name });
+    }
+    const keyManager = getKeyManager();
+    return keyManager.getKey(context.sapphireContext);
+  }
+
+  isConfigured(): boolean {
+    // Always configured - key retrieval happens via Sapphire
+    return true;
   }
 
   private isResponsesAPI(request: CanonicalRequest): boolean {
@@ -115,28 +128,30 @@ export class OpenAIProvider extends BaseProvider {
   }
 
   // Add streaming support
-  async getStreamingResponse(request: CanonicalRequest): Promise<Response> {
+  async getStreamingResponse(request: CanonicalRequest, context?: ApiKeyContext): Promise<Response> {
     if (this.isResponsesAPI(request)) {
       const transformed = this.transformRequestForResponses(request);
-      return this.fetchStreaming('/responses', transformed);
+      return this.fetchStreaming('/responses', transformed, context);
     }
 
     const transformedRequest = this.transformRequest(request);
     transformedRequest.stream = true;
 
-    if (!this.apiKey) {
+    const apiKey = await this.getApiKey(context);
+    if (!apiKey) {
       throw new AuthenticationError(`${this.name} API key not configured`, { provider: this.name });
     }
 
-    return this.fetchStreaming(this.getChatCompletionEndpoint(), transformedRequest);
+    return this.fetchStreaming(this.getChatCompletionEndpoint(), transformedRequest, context);
   }
 
-  private async fetchStreaming(endpoint: string, body: any): Promise<Response> {
-    if (!this.apiKey) {
+  private async fetchStreaming(endpoint: string, body: any, context?: ApiKeyContext): Promise<Response> {
+    const apiKey = await this.getApiKey(context);
+    if (!apiKey) {
       throw new AuthenticationError(`${this.name} API key not configured`, { provider: this.name });
     }
     const url = `${this.baseUrl}${endpoint}`;
-    const headers = this.getHeaders();
+    const headers = this.getHeaders(apiKey);
     const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
     if (!response.ok) {
       const errorText = await response.text();
@@ -148,7 +163,7 @@ export class OpenAIProvider extends BaseProvider {
 
   protected transformResponse(response: OpenAIResponse): CanonicalResponse {
     const choice = response.choices[0];
-    
+
     return {
       id: response.id,
       model: response.model,
@@ -172,22 +187,22 @@ export class OpenAIProvider extends BaseProvider {
   private mapFinishReason(reason: string): 'stop' | 'length' | 'tool_calls' | 'error' {
     switch (reason) {
       case 'stop': return 'stop';
-      case 'length': return 'length'; 
+      case 'length': return 'length';
       case 'function_call': return 'tool_calls';
       case 'tool_calls': return 'tool_calls';
       default: return 'stop';
     }
   }
 
-  async chatCompletion(request: CanonicalRequest): Promise<CanonicalResponse> {
+  async chatCompletion(request: CanonicalRequest, context?: ApiKeyContext): Promise<CanonicalResponse> {
     if (this.isResponsesAPI(request)) {
       const body = this.transformRequestForResponses(request);
       const resp = await this.makeAPIRequest<any>('/responses', {
         method: 'POST',
         body: JSON.stringify(body)
-      });
+      }, context);
       return this.transformResponsesToCanonical(resp);
     }
-    return super.chatCompletion(request);
+    return super.chatCompletion(request, context);
   }
 }

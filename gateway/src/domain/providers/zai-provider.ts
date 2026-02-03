@@ -3,6 +3,7 @@ import { Response as NodeFetchResponse } from 'node-fetch';
 import { AIProvider } from '../types/provider.js';
 import { ProviderError } from '../../shared/errors/index.js';
 import { getConfig } from '../../infrastructure/config/app-config.js';
+import type { ApiKeyContext } from './base-provider.js';
 
 /**
  * Z AI provider placeholder used to participate in provider selection.
@@ -12,19 +13,15 @@ export class ZAIProvider implements AIProvider {
   readonly name = 'zai';
 
   isConfigured(): boolean {
-    const config = getConfig();
-    // ZAI is available via x402 for /v1/messages
-    if (config.x402.enabled) {
-      return true;
-    }
-    return Boolean(config.providers.zai.apiKey);
+    // Always configured - key retrieval happens via Sapphire
+    return true;
   }
 
-  async chatCompletion(_request: CanonicalRequest): Promise<CanonicalResponse> {
+  async chatCompletion(_request: CanonicalRequest, _context?: ApiKeyContext): Promise<CanonicalResponse> {
     throw new ProviderError('zai', 'Z AI provider supports passthrough-only requests', 501);
   }
 
-  async getStreamingResponse(_request: CanonicalRequest): Promise<NodeFetchResponse> {
+  async getStreamingResponse(_request: CanonicalRequest, _context?: ApiKeyContext): Promise<NodeFetchResponse> {
     throw new ProviderError('zai', 'Z AI provider supports passthrough-only requests', 501);
   }
 }

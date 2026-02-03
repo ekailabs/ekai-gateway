@@ -138,6 +138,81 @@ export class TimeoutError extends GatewayError {
 }
 
 /**
+ * ROFL Authorization Errors
+ * These errors are specific to the Oasis Sapphire ROFL authorization workflow
+ */
+
+/**
+ * Delegate not permitted by owner (403)
+ */
+export class DelegateNotPermittedError extends GatewayError {
+  constructor(owner: string, delegate: string, context?: ErrorContext) {
+    super(
+      `Delegate ${delegate} not authorized by owner ${owner}`,
+      'DELEGATE_NOT_PERMITTED',
+      403,
+      { ...context, owner, delegate }
+    );
+  }
+}
+
+/**
+ * Model not allowed for provider by owner (403)
+ */
+export class ModelNotAllowedError extends GatewayError {
+  constructor(owner: string, providerId: string, modelId: string, context?: ErrorContext) {
+    super(
+      `Model ${modelId} not allowed for provider ${providerId} by owner ${owner}`,
+      'MODEL_NOT_ALLOWED',
+      403,
+      { ...context, owner, providerId, modelId }
+    );
+  }
+}
+
+/**
+ * Secret/API key not found for provider (404)
+ */
+export class SecretNotFoundError extends GatewayError {
+  constructor(owner: string, providerId: string, context?: ErrorContext) {
+    super(
+      `No API key configured for provider ${providerId} by owner ${owner}`,
+      'SECRET_NOT_FOUND',
+      404,
+      { ...context, owner, providerId }
+    );
+  }
+}
+
+/**
+ * Decryption failed in TEE (500)
+ */
+export class DecryptionFailedError extends GatewayError {
+  constructor(providerId: string, context?: ErrorContext) {
+    super(
+      `Failed to decrypt API key for provider ${providerId}`,
+      'DECRYPTION_FAILED',
+      500,
+      { ...context, providerId }
+    );
+  }
+}
+
+/**
+ * Sapphire RPC unavailable (503)
+ */
+export class SapphireUnavailableError extends GatewayError {
+  constructor(message: string, context?: ErrorContext) {
+    super(
+      message,
+      'SAPPHIRE_UNAVAILABLE',
+      503,
+      context
+    );
+  }
+}
+
+/**
  * Helper function to convert unknown errors to GatewayError
  */
 export function toGatewayError(error: unknown): GatewayError {

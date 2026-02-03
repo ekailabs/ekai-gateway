@@ -1,3 +1,4 @@
+import { Request } from 'express';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
 import { logger } from '../../infrastructure/utils/logger.js';
 import { pricingLoader } from '../../infrastructure/utils/pricing-loader.js';
@@ -7,6 +8,8 @@ import {
   ProviderRegistry,
   createDefaultProviderRegistry
 } from './provider-registry.js';
+import { createSapphireContext } from '../../infrastructure/middleware/sapphire-context.js';
+import type { ApiKeyContext } from '../providers/base-provider.js';
 
 export class ProviderService {
   constructor(private readonly registry: ProviderRegistry = createDefaultProviderRegistry()) {}
@@ -55,7 +58,7 @@ export class ProviderService {
     }
 
     if (!cheapestProvider) {
-      logger.warn('No providers found for model', { 
+      logger.warn('No providers found for model', {
         operation: 'provider_selection',
         module: 'provider-service',
         model: normalizedModel,
@@ -73,6 +76,24 @@ export class ProviderService {
     return { provider: cheapestProvider };
   }
 
+  /**
+   * Build API key context from Express request
+   * Uses user preferences for owner/delegate addresses
+   */
+  private buildApiKeyContext(req: Request | undefined, providerName: string, modelName: string): ApiKeyContext | undefined {
+    if (!req?.user) {
+      return undefined;
+    }
+
+    // Create or get Sapphire context from user preferences
+    const sapphireContext = req.sapphireContext || createSapphireContext(req, providerName, modelName);
+
+    if (!sapphireContext) {
+      return undefined;
+    }
+
+    return { sapphireContext };
+  }
 
   async processChatCompletion(
     request: CanonicalRequest,
@@ -80,7 +101,8 @@ export class ProviderService {
     clientType?: 'openai' | 'anthropic',
     originalRequest?: unknown,
     requestId?: string,
-    clientIp?: string
+    clientIp?: string,
+    expressReq?: Request
   ): Promise<CanonicalResponse> {
     const provider = this.registry.getOrCreateProvider(providerName);
 
@@ -89,15 +111,19 @@ export class ProviderService {
       request.model = ModelUtils.ensureAnthropicSuffix(request.model);
     }
 
+    // Build API key context from user preferences
+    const context = this.buildApiKeyContext(expressReq, providerName, request.model);
+
     logger.info(`Processing chat completion`, {
       provider: providerName,
       model: request.model,
       streaming: request.stream,
+      hasSapphireContext: !!context?.sapphireContext,
       requestId,
       module: 'provider-service'
     });
 
-    const resp = await provider.chatCompletion(request);
+    const resp = await provider.chatCompletion(request, context);
     // attach IP on response object for downstream (optional)
     (resp as any)._clientIp = clientIp;
     return resp;
@@ -109,7 +135,8 @@ export class ProviderService {
     clientType?: 'openai' | 'anthropic',
     originalRequest?: unknown,
     requestId?: string,
-    clientIp?: string
+    clientIp?: string,
+    expressReq?: Request
   ): Promise<any> {
     const provider = this.registry.getOrCreateProvider(providerName);
 
@@ -118,14 +145,18 @@ export class ProviderService {
       request.model = ModelUtils.ensureAnthropicSuffix(request.model);
     }
 
+    // Build API key context from user preferences
+    const context = this.buildApiKeyContext(expressReq, providerName, request.model);
+
     logger.info(`Processing streaming request`, {
       provider: providerName,
       model: request.model,
+      hasSapphireContext: !!context?.sapphireContext,
       requestId,
       module: 'provider-service'
     });
 
-    const stream = await provider.getStreamingResponse(request);
+    const stream = await provider.getStreamingResponse(request, context);
     (stream as any)._clientIp = clientIp;
     return stream;
   }

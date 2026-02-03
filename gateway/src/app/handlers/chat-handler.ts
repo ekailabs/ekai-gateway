@@ -135,8 +135,7 @@ export class ChatHandler {
       });
 
       if (passThrough) {
-        
-        await this.handlePassThrough(originalRequest, res, clientFormat, providerName, clientIp);
+        await this.handlePassThrough(originalRequest, res, clientFormat, providerName, clientIp, req);
         return;
       }
 
@@ -160,13 +159,13 @@ export class ChatHandler {
 
   private async handleNonStreaming(canonicalRequest: CanonicalRequest, res: Response, clientFormat: ClientFormat, providerName?: ProviderName, originalRequest?: any, req?: Request, clientIp?: string): Promise<void> {
     if (clientFormat === 'openai_responses') {
-      const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, 'openai' as any, 'openai', originalRequest, req.requestId, clientIp);
+      const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, 'openai' as any, 'openai', originalRequest, req?.requestId, clientIp, req);
       const clientResponse = this.adapters[clientFormat].fromCanonical(canonicalResponse);
       res.status(HTTP_STATUS.OK).json(clientResponse);
       return;
     }
 
-    const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, providerName as any, clientFormat, originalRequest, req.requestId, clientIp);
+    const canonicalResponse = await this.providerService.processChatCompletion(canonicalRequest, providerName as any, clientFormat, originalRequest, req?.requestId, clientIp, req);
     const clientResponse = this.adapters[clientFormat].fromCanonical(canonicalResponse);
 
     res.status(HTTP_STATUS.OK).json(clientResponse);
@@ -174,7 +173,7 @@ export class ChatHandler {
 
   private async handleStreaming(canonicalRequest: CanonicalRequest, res: Response, clientFormat: ClientFormat, providerName?: ProviderName, originalRequest?: any, req?: Request, clientIp?: string): Promise<void> {
     if (clientFormat === 'openai_responses') {
-      const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest, 'openai' as any, 'openai', originalRequest, req.requestId, clientIp);
+      const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest, 'openai' as any, 'openai', originalRequest, req?.requestId, clientIp, req);
 
       res.writeHead(HTTP_STATUS.OK, {
         'Content-Type': CONTENT_TYPES.EVENT_STREAM,
@@ -191,7 +190,7 @@ export class ChatHandler {
       return;
     }
 
-    const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest, providerName as any, clientFormat, originalRequest, req.requestId, clientIp);
+    const streamResponse = await this.providerService.processStreamingRequest(canonicalRequest, providerName as any, clientFormat, originalRequest, req?.requestId, clientIp, req);
 
     this.setStreamingHeaders(res);
 
@@ -229,14 +228,14 @@ export class ChatHandler {
     res.writeHead(HTTP_STATUS.OK, headers);
   }
 
-  private async handlePassThrough(originalRequest: any, res: Response, clientFormat: ClientFormat, providerName: ProviderName, clientIp?: string): Promise<void> {
+  private async handlePassThrough(originalRequest: any, res: Response, clientFormat: ClientFormat, providerName: ProviderName, clientIp?: string, req?: Request): Promise<void> {
     const responsesPassthrough = responsesPassthroughRegistry.getPassthrough(providerName);
     const responsesSupportsFormat = responsesPassthroughRegistry
       .getSupportedClientFormats(providerName)
       .includes(clientFormat);
 
     if (responsesPassthrough && responsesSupportsFormat) {
-      await responsesPassthrough.handleDirectRequest(originalRequest, res, clientIp);
+      await responsesPassthrough.handleDirectRequest(originalRequest, res, clientIp, req);
       return;
     }
 
@@ -246,7 +245,7 @@ export class ChatHandler {
       .includes(clientFormat);
 
     if (chatPassthrough && chatSupportsFormat) {
-      await chatPassthrough.handleDirectRequest(originalRequest, res, clientIp);
+      await chatPassthrough.handleDirectRequest(originalRequest, res, clientIp, req);
       return;
     }
 
@@ -259,7 +258,7 @@ export class ChatHandler {
       throw new ConfigurationError(`Passthrough not configured for provider ${providerName}`, { provider: providerName, format: clientFormat });
     }
 
-    await passthrough.handleDirectRequest(originalRequest, res, clientIp);
+    await passthrough.handleDirectRequest(originalRequest, res, clientIp, req);
   }
 
 }

@@ -1,4 +1,4 @@
-import { Response as ExpressResponse } from 'express';
+import { Request, Response as ExpressResponse } from 'express';
 
 export interface ResponsesAuthConfig {
   envVar: string;
@@ -16,5 +16,5 @@ export interface ResponsesPassthroughConfig {
 }
 
 export interface ResponsesPassthrough {
-  handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string): Promise<void>;
+  handleDirectRequest(request: any, res: ExpressResponse, clientIp?: string, req?: Request): Promise<void>;
 }

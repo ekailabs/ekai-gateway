@@ -1,12 +1,13 @@
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
 import { Response as NodeFetchResponse } from 'node-fetch';
+import type { ApiKeyContext } from '../providers/base-provider.js';
 
 // Proper interface with all required methods
 export interface AIProvider {
   readonly name: string;
   isConfigured(): boolean;
-  chatCompletion(request: CanonicalRequest): Promise<CanonicalResponse>;
-  getStreamingResponse(request: CanonicalRequest): Promise<NodeFetchResponse>;
+  chatCompletion(request: CanonicalRequest, context?: ApiKeyContext): Promise<CanonicalResponse>;
+  getStreamingResponse(request: CanonicalRequest, context?: ApiKeyContext): Promise<NodeFetchResponse>;
 }
 
 // Type-safe provider transformation interfaces

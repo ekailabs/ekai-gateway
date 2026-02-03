@@ -1,10 +1,11 @@
 import fetch, { Response as FetchResponse } from 'node-fetch';
 import { CanonicalRequest, CanonicalResponse } from 'shared/types/index.js';
-import { BaseProvider } from './base-provider.js';
+import { BaseProvider, ApiKeyContext } from './base-provider.js';
 import { getConfig } from '../../infrastructure/config/app-config.js';
 import { ModelUtils } from '../../infrastructure/utils/model-utils.js';
 import { ProviderError, AuthenticationError } from '../../shared/errors/index.js';
 import { usageTracker } from '../../infrastructure/utils/usage-tracker.js';
+import { getKeyManager } from '../../infrastructure/crypto/key-manager.js';
 
 interface GoogleContentPart {
   text?: string;
@@ -34,21 +35,26 @@ export class GoogleProvider extends BaseProvider {
   protected readonly baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
   private lastRequestedModel: string | null = null;
 
-  protected get apiKey(): string | undefined {
-    return getConfig().providers.google.apiKey;
+  /**
+   * Get API key via ROFL authorization workflow
+   */
+  protected async getApiKey(context?: ApiKeyContext): Promise<string | undefined> {
+    if (!context?.sapphireContext) {
+      throw new AuthenticationError('Sapphire context required for API key retrieval', { provider: this.name });
+    }
+    const keyManager = getKeyManager();
+    return keyManager.getKey(context.sapphireContext);
   }
 
   isConfigured(): boolean {
-    return !!this.apiKey;
+    // Always configured - key retrieval happens via Sapphire
+    return true;
   }
 
-  protected getHeaders(): Record<string, string> {
-    if (!this.apiKey) {
-      throw new AuthenticationError('Google API key not configured', { provider: this.name });
-    }
+  protected getHeaders(apiKey: string): Record<string, string> {
     return {
       'Content-Type': 'application/json',
-      'x-goog-api-key': this.apiKey
+      'x-goog-api-key': apiKey
     };
   }
 
@@ -146,8 +152,9 @@ export class GoogleProvider extends BaseProvider {
     }
   }
 
-  async chatCompletion(request: CanonicalRequest): Promise<CanonicalResponse> {
-    if (!this.apiKey) {
+  async chatCompletion(request: CanonicalRequest, context?: ApiKeyContext): Promise<CanonicalResponse> {
+    const apiKey = await this.getApiKey(context);
+    if (!apiKey) {
       throw new AuthenticationError('Google API key not configured', { provider: this.name });
     }
 
@@ -156,7 +163,7 @@ export class GoogleProvider extends BaseProvider {
     const body = JSON.stringify(this.transformRequest(request));
     const response = await fetch(url, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers: this.getHeaders(apiKey),
       body
     });
 
@@ -180,8 +187,9 @@ export class GoogleProvider extends BaseProvider {
     return canonical;
   }
 
-  async getStreamingResponse(request: CanonicalRequest): Promise<FetchResponse> {
-    if (!this.apiKey) {
+  async getStreamingResponse(request: CanonicalRequest, context?: ApiKeyContext): Promise<FetchResponse> {
+    const apiKey = await this.getApiKey(context);
+    if (!apiKey) {
       throw new AuthenticationError('Google API key not configured', { provider: this.name });
     }
 
@@ -189,7 +197,7 @@ export class GoogleProvider extends BaseProvider {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        ...this.getHeaders(),
+        ...this.getHeaders(apiKey),
         Accept: 'text/event-stream'
       },
       body: JSON.stringify(this.transformRequest(request))
