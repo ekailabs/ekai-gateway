@@ -33,10 +33,11 @@ import { handleConfigStatus } from './app/handlers/config-handler.js';
 import { handleModelsRequest } from './app/handlers/models-handler.js';
 import { handleGetBudget, handleUpdateBudget } from './app/handlers/budget-handler.js';
 import { handleLogin } from './app/handlers/auth-handler.js';
+import { handleGetPreferences, handleUpdatePreferences } from './app/handlers/preferences-handler.js';
 import { logger } from './infrastructure/utils/logger.js';
 import { requestContext } from './infrastructure/middleware/request-context.js';
 import { requestLogging } from './infrastructure/middleware/request-logging.js';
-import { authenticate } from './infrastructure/middleware/auth.js';
+import { authenticate, optionalAuth } from './infrastructure/middleware/auth.js';
 import { ProviderService } from './domain/services/provider-service.js';
 import { pricingLoader } from './infrastructure/utils/pricing-loader.js';
 import { getConfig } from './infrastructure/config/app-config.js';
@@ -104,8 +105,12 @@ async function bootstrap(): Promise<void> {
   app.post('/v1/chat/completions', authenticate, handleOpenAIFormatChat);
   app.post('/v1/messages', authenticate, handleAnthropicFormatChat);
   app.post('/v1/responses', authenticate, handleOpenAIResponses);
-  // Public dashboard endpoints (community dashboard)
-  app.get('/v1/models', handleModelsRequest);
+
+  // User preferences (auth required)
+  app.get('/user/preferences', authenticate, handleGetPreferences);
+  app.put('/user/preferences', authenticate, handleUpdatePreferences);
+  // Models endpoint (optional auth - returns only default model if user has one set)
+  app.get('/v1/models', optionalAuth, handleModelsRequest);
   app.get('/usage', handleUsageRequest);
   app.get('/config/status', handleConfigStatus);
   app.get('/budget', handleGetBudget);

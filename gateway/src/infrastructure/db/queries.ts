@@ -29,6 +29,14 @@ export interface SpendLimitRecord {
   updated_at: string;
 }
 
+export interface UserPreferences {
+  address: string;
+  api_address: string;
+  model_preferences: string[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export class DatabaseQueries {
   private db = dbConnection.getDatabase();
 
@@ -183,6 +191,37 @@ export class DatabaseQueries {
     `);
 
     stmt.run(amountUsd, alertOnly ? 1 : 0);
+  }
+
+  // Get user preferences by address
+  getUserPreferences(address: string): UserPreferences | null {
+    const stmt = this.db.prepare(`
+      SELECT address, api_address, model_preferences, created_at, updated_at
+      FROM user_preferences
+      WHERE address = ?
+    `);
+    const result = stmt.get(address) as { address: string; api_address: string; model_preferences: string | null; created_at: string; updated_at: string } | undefined;
+    if (!result) return null;
+
+    return {
+      ...result,
+      model_preferences: result.model_preferences ? JSON.parse(result.model_preferences) : null
+    };
+  }
+
+  // Upsert user preferences
+  upsertUserPreferences(address: string, apiAddress: string, modelPreferences: string[] | null): UserPreferences {
+    const stmt = this.db.prepare(`
+      INSERT INTO user_preferences (address, api_address, model_preferences, created_at, updated_at)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT(address) DO UPDATE SET
+        api_address = excluded.api_address,
+        model_preferences = excluded.model_preferences,
+        updated_at = CURRENT_TIMESTAMP
+    `);
+
+    stmt.run(address, apiAddress, modelPreferences ? JSON.stringify(modelPreferences) : null);
+    return this.getUserPreferences(address)!;
   }
 
 }

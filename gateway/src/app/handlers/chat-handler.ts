@@ -51,6 +51,31 @@ export class ChatHandler {
   async handleChatRequest(req: Request, res: Response, clientFormat: ClientFormat): Promise<void> {
     try {
       logger.debug('Processing chat request', { requestId: req.requestId, module: 'chat-handler' });
+
+      // Check if user has model_preferences configured
+      const modelPreferences = req.user?.modelPreferences;
+
+      if (!modelPreferences || modelPreferences.length === 0) {
+        throw new ConfigurationError(
+          'No model preferences configured. Please set your model preferences at /user/preferences before making requests.',
+          { code: 'MODEL_PREFERENCES_REQUIRED' }
+        );
+      }
+
+      // Check if requested model is in user's preferences, fallback to first if not
+      const requestedModel = req.body.model;
+      if (!modelPreferences.includes(requestedModel)) {
+        const fallbackModel = modelPreferences[0];
+        logger.info('Requested model not in preferences, using fallback', {
+          requestedModel,
+          fallbackModel,
+          modelPreferences,
+          requestId: req.requestId,
+          module: 'chat-handler'
+        });
+        req.body.model = fallbackModel;
+      }
+
       const originalRequest = req.body;
       const clientIp = this.bestClientIp(req);
 

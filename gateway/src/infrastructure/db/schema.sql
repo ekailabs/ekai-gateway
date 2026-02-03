@@ -38,3 +38,14 @@ CREATE TABLE IF NOT EXISTS spend_limits (
   window TEXT NOT NULL DEFAULT 'monthly',
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+-- User preferences (keyed by wallet address)
+CREATE TABLE IF NOT EXISTS user_preferences (
+  address TEXT PRIMARY KEY,
+  api_address TEXT NOT NULL,
+  model_preferences TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_preferences_api_address ON user_preferences(api_address);

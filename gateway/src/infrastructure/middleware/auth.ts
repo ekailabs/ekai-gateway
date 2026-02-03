@@ -2,12 +2,15 @@ import { Request, Response, NextFunction } from 'express';
 import { tokenManager } from '../../domain/services/token-manager.js';
 import { logger } from '../utils/logger.js';
 import { AuthenticationError } from '../../shared/errors/gateway-errors.js';
+import { dbQueries } from '../db/queries.js';
 
 declare global {
   namespace Express {
     interface Request {
       user?: {
         address: string;
+        apiAddress: string;
+        modelPreferences: string[] | null;
       };
     }
   }
@@ -67,11 +70,20 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
       throw new AuthenticationError('Authorization error. Please login again.');
     }
 
+    // Load user preferences
+    const prefs = dbQueries.getUserPreferences(address);
+
     // Attach user to request for downstream handlers
-    req.user = { address };
+    req.user = {
+      address,
+      apiAddress: prefs?.api_address ?? address,
+      modelPreferences: prefs?.model_preferences ?? null
+    };
 
     logger.debug('Authentication successful', {
       address,
+      apiAddress: req.user.apiAddress,
+      modelPreferences: req.user.modelPreferences,
       requestId: req.requestId,
       module: 'auth-middleware'
     });
@@ -114,9 +126,16 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction): v
     if (token) {
       const address = tokenManager.validateToken(token);
       if (address) {
-        req.user = { address };
+        const prefs = dbQueries.getUserPreferences(address);
+        req.user = {
+          address,
+          apiAddress: prefs?.api_address ?? address,
+          modelPreferences: prefs?.model_preferences ?? null
+        };
         logger.debug('Optional authentication successful', {
           address,
+          apiAddress: req.user.apiAddress,
+          modelPreferences: req.user.modelPreferences,
           requestId: req.requestId,
           module: 'auth-middleware'
         });

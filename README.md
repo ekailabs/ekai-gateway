@@ -14,7 +14,8 @@ Multi-provider AI proxy supporting Anthropic, OpenAI, Google Gemini, xAI, and Op
 - **Dual APIs**: OpenAI-compatible + Anthropic-compatible endpoints
 - **Cost-optimized routing**: Automatic selection of cheapest provider for each model
 - **Usage tracking**: Track token usage and costs
-- **Database storage**: SQLite database for persistent usage tracking
+- **User preferences**: Per-user model preferences and API key delegation
+- **Database storage**: SQLite database for persistent usage and preferences
 
 ## Quick Start (Beta)
 
@@ -111,9 +112,17 @@ ekai-gateway/
 ## API Endpoints
 
 ```bash
+# Chat endpoints (auth required)
 POST /v1/chat/completions  # OpenAI-compatible chat endpoint
 POST /v1/messages          # Anthropic-compatible messages endpoint
 POST /v1/responses         # OpenAI Responses endpoint
+
+# User preferences (auth required)
+GET  /user/preferences     # Get user preferences
+PUT  /user/preferences     # Update user preferences
+
+# Public endpoints
+GET  /v1/models           # List available models
 GET  /usage               # View token usage and costs
 GET  /health              # Health check endpoint
 ```
@@ -121,32 +130,76 @@ GET  /health              # Health check endpoint
 ```bash
 # OpenAI-compatible endpoint (works with all providers)
 curl -X POST http://localhost:3001/v1/chat/completions \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "Hello"}]}'
 
 # Use Claude models via OpenAI-compatible endpoint
 curl -X POST http://localhost:3001/v1/chat/completions \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"model": "claude-3-5-sonnet-20241022", "messages": [{"role": "user", "content": "Hello"}]}'
 
 # Use xAI Grok models
 curl -X POST http://localhost:3001/v1/chat/completions \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"model": "grok-code-fast", "messages": [{"role": "user", "content": "Hello"}]}'
 
 # Anthropic-compatible endpoint
 curl -X POST http://localhost:3001/v1/messages \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"model": "claude-3-5-sonnet-20241022", "max_tokens": 100, "messages": [{"role": "user", "content": "Hello"}]}'
 
 # OpenAI Responses endpoint
 curl -X POST http://localhost:3001/v1/responses \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"model": "gpt-4o-mini", "input": "Say hi in one short sentence.", "temperature": 0.7, "max_output_tokens": 128}'
 
 # Check usage and costs
 curl http://localhost:3001/usage
 ```
+
+## User Preferences
+
+Each authenticated user **must** configure their preferences before making API calls:
+- **`api_address`** - Whose API keys to bill (own wallet or delegate to another)
+- **`model_preferences`** - List of models the user can access (required)
+
+```bash
+# Get current preferences
+curl http://localhost:3001/user/preferences \
+  -H "Authorization: Bearer <token>"
+
+# Set model preferences (required before making API calls)
+curl -X PUT http://localhost:3001/user/preferences \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"model_preferences": ["claude-sonnet-4-20250514", "claude-3-5-haiku-20241022", "gpt-4o"]}'
+
+# Delegate to another wallet's API keys
+curl -X PUT http://localhost:3001/user/preferences \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"api_address": "0x1234..."}'
+```
+
+**Response format:**
+```json
+{
+  "address": "0x5272...",
+  "api_address": "0x5272...",
+  "model_preferences": ["claude-sonnet-4-20250514", "claude-3-5-haiku-20241022"],
+  "updated_at": "2026-02-03T11:41:23.000Z"
+}
+```
+
+**Behavior:**
+- **`/v1/models`**: Returns only user's `model_preferences` (or full catalog if not set)
+- **Chat requests**: If requested model is not in `model_preferences`, uses the first model in the list
+- **Validation**: Models must exist in catalog and have accessible providers (API keys configured)
 
 ## Model Routing (Cost-Optimized)
 
