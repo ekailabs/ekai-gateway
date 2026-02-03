@@ -4,24 +4,17 @@
 [![GitHub stars](https://img.shields.io/github/stars/ekailabs/ekai-gateway.svg?style=social)](https://github.com/ekailabs/ekai-gateway)
 [![Discord](https://img.shields.io/badge/Discord-Join%20Server-7289da?logo=discord&logoColor=white)](https://discord.com/invite/5VsUUEfbJk)
 
-Multi-provider AI proxy with usage dashboard supporting Anthropic, OpenAI, Google Gemini, xAI, and OpenRouter models through OpenAI-compatible and Anthropic-compatible APIs.
+Multi-provider AI proxy supporting Anthropic, OpenAI, Google Gemini, xAI, and OpenRouter models through OpenAI-compatible and Anthropic-compatible APIs.
 
 **Designed for self-hosted personal use** - run your own instance to securely proxy AI requests using your API keys.
 
 ## Features
 
-- 🤖 **Multi-provider**: Anthropic + OpenAI + Google (Gemini) + xAI + OpenRouter models
-- 🔄 **Dual APIs**: OpenAI-compatible + Anthropic-compatible endpoints
-- 🔀 **Cost-optimized routing**: Automatic selection of cheapest provider for each model
-- 💰 **Usage tracking**: Track token usage and costs with visual dashboard
-- 🗄️ **Database storage**: SQLite database for persistent usage tracking
-- 📊 **Analytics dashboard**: Real-time cost analysis and usage breakdowns
-
-## 🎥 Demo Video
-
-<a href="https://youtu.be/hZC1Y_dWdhI" target="_blank">
-  <img src="https://img.youtube.com/vi/hZC1Y_dWdhI/0.jpg" alt="Demo Video" width="560" height="315">
-</a>
+- **Multi-provider**: Anthropic + OpenAI + Google (Gemini) + xAI + OpenRouter models
+- **Dual APIs**: OpenAI-compatible + Anthropic-compatible endpoints
+- **Cost-optimized routing**: Automatic selection of cheapest provider for each model
+- **Usage tracking**: Track token usage and costs
+- **Database storage**: SQLite database for persistent usage tracking
 
 ## Quick Start (Beta)
 
@@ -50,36 +43,25 @@ docker compose up -d
 
 # Optional: run without Compose
 docker pull ghcr.io/ekailabs/ekai-gateway:latest
-docker run --env-file .env -p 3001:3001 -p 3000:3000 ghcr.io/ekailabs/ekai-gateway:latest
+docker run --env-file .env -p 3001:3001 ghcr.io/ekailabs/ekai-gateway:latest
 ```
-
-Important: The dashboard is initially empty. After setup, send a query using your own client/tool (IDE, app, or API) through the gateway; usage appears once at least one request is processed.
 
 **Access Points:**
 - Gateway API: `http://localhost:3001`
-- Dashboard UI: `http://localhost:3000`
 - Detailed setup steps live in `docs/getting-started.md`; check `docs/` for additional guides.
 
 ### Build the Image Yourself (optional)
 
-If you’re contributing changes or need a custom build:
+If you're contributing changes or need a custom build:
 
 ```bash
 docker build --target ekai-gateway-runtime -t ekai-gateway .
-docker run --env-file .env -p 3001:3001 -p 3000:3000 ekai-gateway
+docker run --env-file .env -p 3001:3001 ekai-gateway
 ```
-
-## Populate the Dashboard
-
-- Point your client/tool to the gateway (`http://localhost:3001` or `http://localhost:3001/v1`), see integration guides below.
-- Send a query using your usual workflow; both OpenAI-compatible and Anthropic-compatible endpoints are tracked.
-- Open `http://localhost:3000` to view usage and costs after your first request.
-
-**Required:** At least one API key from Anthropic, OpenAI, Google Gemini, xAI, or OpenRouter (see `.env.example` for configuration details).
 
 ## Integration Guides
 
-### 🤖 **Claude Code Integration**
+### **Claude Code Integration**
 Use the gateway with Claude Code for multi-provider AI assistance:
 
 ```bash
@@ -91,23 +73,24 @@ export ANTHROPIC_MODEL="grok-code-fast-1"  # or "gpt-4o","claude-sonnet-4-202505
 claude
 ```
 
-📖 **[Complete Claude Code Guide →](./docs/USAGE_WITH_CLAUDE_CODE.md)**
+**[Complete Claude Code Guide →](./docs/USAGE_WITH_CLAUDE_CODE.md)**
 
-### 💻 **Codex Integration** 
+### **Codex Integration**
 Use the gateway with Codex for OpenAI-compatible development tools:
 
 ```bash
 # Point Codex to the gateway
 export OPENAI_BASE_URL="http://localhost:3001/v1"
 
-# Start Codex as usual  
+# Start Codex as usual
 codex
 ```
 
-📖 **[Complete Codex Guide →](./docs/USAGE_WITH_CODEX.md)**
+**[Complete Codex Guide →](./docs/USAGE_WITH_CODEX.md)**
+
 ## Beta Testing Notes
 
-🚧 **This is a beta release** - please report any issues or feedback!
+**This is a beta release** - please report any issues or feedback!
 
 **Known Limitations:**
 - Some edge cases in model routing may exist
@@ -122,9 +105,8 @@ codex
 ```
 ekai-gateway/
 ├── gateway/          # Backend API and routing
-├── ui/              # Dashboard frontend
-├── shared/          # Shared types and utilities
-└── package.json     # Root package configuration
+├── memory/           # Memory service (optional)
+└── package.json      # Root package configuration
 ```
 
 ## API Endpoints
@@ -163,9 +145,6 @@ curl -X POST http://localhost:3001/v1/responses \
   -H "Content-Type: application/json" \
   -d '{"model": "gpt-4o-mini", "input": "Say hi in one short sentence.", "temperature": 0.7, "max_output_tokens": 128}'
 
-# Both endpoints support all models and share conversation context
-# Client A uses OpenAI format, Client B uses Anthropic format - same conversation!
-
 # Check usage and costs
 curl http://localhost:3001/usage
 ```
@@ -190,25 +169,14 @@ The proxy uses **cost-based optimization** to automatically select the cheapest 
 
 ```bash
 npm run build  # Build TypeScript for production
-npm start      # Start both gateway and dashboard
-```
-
-**Individual services:**
-```bash
-npm run start:gateway  # Gateway API only (port 3001)
-npm run start:ui       # Dashboard UI only (port 3000)
+npm start      # Start gateway
 ```
 
 ## Development
 
 ```bash
-npm run dev    # Start both gateway and dashboard in development mode
-```
-
-**Individual services:**
-```bash
-cd gateway && npm run dev    # Gateway only (port 3001)
-cd ui/dashboard && npm run dev    # Dashboard only (port 3000)
+npm run dev        # Start gateway in development mode
+npm run dev:all    # Start gateway + memory service
 ```
 
 ## Contributing
