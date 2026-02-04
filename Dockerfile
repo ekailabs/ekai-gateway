@@ -24,6 +24,7 @@ FROM node:20-alpine
 WORKDIR /app/gateway
 
 ENV NODE_ENV=production
+ENV npm_package_version=0.1.0-beta.6
 
 COPY gateway/package.json gateway/package-lock.json ./
 RUN npm install --omit=dev

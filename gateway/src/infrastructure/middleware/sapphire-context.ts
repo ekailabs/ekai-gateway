@@ -77,10 +77,11 @@ export function stringToBytes32(str: string): Hex {
 
 /**
  * Get provider ID in bytes32 format
+ * Uses keccak256(toUpperCase()) to match client SDK format
  */
 export function getProviderIdBytes32(providerName: string): Hex {
-  const normalized = providerName.toLowerCase();
-  return stringToBytes32(normalized);
+  const normalized = providerName.toUpperCase();
+  return keccak256(stringToHex(normalized));
 }
 
 /**

@@ -193,10 +193,11 @@ export class PricingLoader {
    * Get pricing for a specific model (with automatic model name normalization)
    */
   getModelPricing(provider: string, model: string): ModelPricing | null {
-    let config = this.pricingCache.get(provider);
+    const normalizedProvider = provider.toLowerCase();
+    let config = this.pricingCache.get(normalizedProvider);
     if (!config) {
       this.loadAllPricing();
-      config = this.pricingCache.get(provider);
+      config = this.pricingCache.get(normalizedProvider);
       if (!config) return null;
     }
     
@@ -208,7 +209,7 @@ export class PricingLoader {
    * Get all available models for a provider
    */
   getProviderModels(provider: string): string[] {
-    const config = this.pricingCache.get(provider);
+    const config = this.pricingCache.get(provider.toLowerCase());
     if (!config) return [];
     
     return Object.keys(config.models);
@@ -251,7 +252,7 @@ export class PricingLoader {
     const outputCost = (outputTokens / 1_000_000) * pricing.output;
     const totalCost = inputCost + cacheWriteCost + cacheReadCost + outputCost;
 
-    const config = this.pricingCache.get(provider);
+    const config = this.pricingCache.get(provider.toLowerCase());
 
     return {
       inputCost: Math.round(inputCost * 1000000) / 1000000, // Round to 6 decimal places
