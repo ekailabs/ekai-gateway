@@ -82,7 +82,7 @@ docker push ghcr.io/ekailabs/ekai-gateway:oasis
 
 # 2. Rebuild & redeploy ROFL app
 oasis rofl build
-oasis rofl deploy
+oasis rofl update
 ```
 
 ## ROFL Key Setup (Sapphire Integration)
@@ -114,20 +114,6 @@ curl https://p3001.<your-rofl-domain>.rofl.app/rofl/public-key
 **Option 3: From machine logs**:
 ```bash
 oasis rofl machine logs
-```
-
-### Register Public Key on Contract
-
-Call `setRoflKey()` on your EkaiControlPlane contract:
-
-```solidity
-// Using the public key from above
-controlPlane.setRoflKey(bytes(publicKeyHex), true);
-```
-
-Or via cast:
-```bash
-cast send <CONTRACT_ADDRESS> "setRoflKey(bytes,bool)" 0x<public-key> true --rpc-url <SAPPHIRE_RPC>
 ```
 
 ## Integration Guides

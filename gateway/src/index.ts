@@ -2,7 +2,7 @@
 import dotenv from 'dotenv';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -23,6 +23,30 @@ function findProjectRoot(startPath: string): string {
 
 const projectRoot = findProjectRoot(__dirname);
 dotenv.config({ path: join(projectRoot, '.env') });
+
+// Read version from package.json (try multiple paths for dev vs Docker)
+function getPackageVersion(): string {
+  const possiblePaths = [
+    join(projectRoot, 'gateway', 'package.json'),  // Dev: from repo root
+    join(projectRoot, 'package.json'),              // Docker: /app/gateway/package.json
+    join(__dirname, '..', '..', '..', 'package.json'), // Relative from dist/gateway/src
+  ];
+
+  for (const packagePath of possiblePaths) {
+    try {
+      if (existsSync(packagePath)) {
+        const packageJson = JSON.parse(readFileSync(packagePath, 'utf-8'));
+        if (packageJson.name === 'gateway' && packageJson.version) {
+          return packageJson.version;
+        }
+      }
+    } catch {
+      // Try next path
+    }
+  }
+  return 'unknown';
+}
+const APP_VERSION = getPackageVersion();
 
 // Import application modules
 import express from 'express';
@@ -95,7 +119,7 @@ async function bootstrap(): Promise<void> {
     res.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
-      version: '1.0.0'
+      version: APP_VERSION
     });
   });
 
@@ -108,12 +132,14 @@ async function bootstrap(): Promise<void> {
       const isAvailable = await decryptor.isAvailable();
 
       if (!publicKey) {
+        const lastError = decryptor.getLastError();
         res.status(503).json({
           error: 'ROFL key not available',
           isInsideRofl,
+          lastError,
           hint: isInsideRofl
-            ? 'Key derivation failed - check ROFL appd socket'
-            : 'Set ROFL_PRIVATE_KEY environment variable'
+            ? 'Key derivation failed - check logs for details'
+            : 'Must run inside ROFL container'
         });
         return;
       }

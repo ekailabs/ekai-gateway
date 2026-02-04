@@ -10,6 +10,7 @@ services:
     ports:
       - "3001:3001"
     volumes:
+      - /run/rofl-appd.sock:/run/rofl-appd.sock
       - gateway_logs:/app/gateway/logs
       - gateway_db:/app/gateway/data
     restart: unless-stopped

@@ -106,6 +106,7 @@ export class KeyDecryptor {
   private initialized = false;
   private initPromise: Promise<void> | null = null;
   private isInsideRofl = false;
+  private lastError: string | null = null;
 
   private constructor() {
     // Initialization happens async
@@ -144,8 +145,8 @@ export class KeyDecryptor {
       logger.info({}, 'Running inside ROFL container - using ROFL key derivation');
       await this.loadKeyFromRofl();
     } else {
-      logger.info({}, 'Running outside ROFL - using environment variable');
-      await this.loadKeyFromEnv();
+      logger.warn({}, 'Not running inside ROFL - key derivation not available');
+      this.lastError = 'Not running inside ROFL container';
     }
 
     // Derive public key if we have a private key
@@ -161,15 +162,21 @@ export class KeyDecryptor {
    */
   private async loadKeyFromRofl(): Promise<void> {
     try {
+      logger.info({}, 'Attempting ROFL key derivation...');
+
       // Dynamic import to avoid issues when running outside ROFL
       const { RoflClient, KeyKind } = await import('@oasisprotocol/rofl-client');
+      logger.info({}, 'RoflClient imported successfully');
 
       // RoflClient defaults to ROFL_SOCKET_PATH when no url is specified
       const client = new RoflClient();
+      logger.info({}, 'RoflClient instantiated');
 
       // Generate/derive a deterministic 256-bit key
       // This key is deterministic based on the ROFL app identity
+      logger.info({ keyId: ROFL_ENCRYPTION_KEY_ID }, 'Calling generateKey...');
       const keyHex = await client.generateKey(ROFL_ENCRYPTION_KEY_ID, KeyKind.RAW_256);
+      logger.info({}, 'generateKey returned successfully');
 
       // Remove 0x prefix if present
       const cleanHex = keyHex.startsWith('0x') ? keyHex.slice(2) : keyHex;
@@ -178,48 +185,12 @@ export class KeyDecryptor {
         cleanHex.match(/.{2}/g)!.map((byte: string) => parseInt(byte, 16))
       );
 
+      this.lastError = null;
       logger.info({}, 'ROFL private key derived successfully from app identity');
     } catch (error) {
-      logger.error({ error }, 'Failed to derive key from ROFL client');
-      // Fall back to env var
-      await this.loadKeyFromEnv();
-    }
-  }
-
-  /**
-   * Load the ROFL private key from environment variable
-   * The key should be hex-encoded (with or without 0x prefix)
-   */
-  private async loadKeyFromEnv(): Promise<void> {
-    const keyHex = process.env.ROFL_PRIVATE_KEY;
-
-    if (!keyHex) {
-      logger.warn({}, 'ROFL_PRIVATE_KEY not set - decryption will not be available');
-      return;
-    }
-
-    try {
-      // Remove 0x prefix if present
-      const cleanHex = keyHex.startsWith('0x') ? keyHex.slice(2) : keyHex;
-
-      // Validate hex string
-      if (!/^[0-9a-fA-F]+$/.test(cleanHex)) {
-        throw new Error('Invalid hex format');
-      }
-
-      // X25519 private keys are 32 bytes
-      if (cleanHex.length !== 64) {
-        throw new Error(`Invalid key length: expected 64 hex chars (32 bytes), got ${cleanHex.length}`);
-      }
-
-      this.privateKey = new Uint8Array(
-        cleanHex.match(/.{2}/g)!.map(byte => parseInt(byte, 16))
-      );
-
-      logger.info({}, 'ROFL private key loaded from environment variable');
-    } catch (error) {
-      logger.error({ error }, 'Failed to load ROFL private key from environment');
-      this.privateKey = null;
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.lastError = errorMsg;
+      logger.error({ error: errorMsg }, 'Failed to derive key from ROFL client');
     }
   }
 
@@ -421,6 +392,13 @@ export class KeyDecryptor {
    */
   isRunningInsideRofl(): boolean {
     return this.isInsideRofl;
+  }
+
+  /**
+   * Get the last error message from key derivation (for debugging)
+   */
+  getLastError(): string | null {
+    return this.lastError;
   }
 
   /**
