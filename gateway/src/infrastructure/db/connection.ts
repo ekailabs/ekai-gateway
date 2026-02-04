@@ -1,11 +1,15 @@
 import Database from 'better-sqlite3';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Use persistent data directory if available, otherwise fall back to code directory
+const DATA_DIR = process.env.DATA_DIR || '/app/gateway/data';
+const USE_PERSISTENT_STORAGE = existsSync(DATA_DIR) || process.env.NODE_ENV === 'production';
 
 class DatabaseConnection {
   private db: Database.Database | null = null;
@@ -16,8 +20,19 @@ class DatabaseConnection {
 
   private initialize() {
     try {
-      // Create database file in the same directory as this file
-      const dbPath = join(__dirname, 'proxy.db');
+      // Use persistent storage in production, local storage in development
+      let dbPath: string;
+      if (USE_PERSISTENT_STORAGE) {
+        // Ensure data directory exists
+        if (!existsSync(DATA_DIR)) {
+          mkdirSync(DATA_DIR, { recursive: true });
+        }
+        dbPath = join(DATA_DIR, 'proxy.db');
+        logger.info('Using persistent database storage', { dbPath, module: 'db-connection' });
+      } else {
+        dbPath = join(__dirname, 'proxy.db');
+        logger.info('Using local database storage', { dbPath, module: 'db-connection' });
+      }
       this.db = new Database(dbPath);
       
       // Enable WAL mode for better concurrency
