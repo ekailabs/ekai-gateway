@@ -4,10 +4,14 @@
  * After each successful API call, this service logs usage to the
  * EkaiControlPlane contract via the logReceipt() function.
  *
+ * Signing modes:
+ * - Inside ROFL: Uses @oasisprotocol/rofl-client for transaction signing
+ * - Outside ROFL: Falls back to PRIVATE_KEY environment variable
+ *
  * This provides an immutable audit trail of all API usage on Sapphire.
  */
 
-import { createPublicClient, createWalletClient, http, type Hex } from 'viem';
+import { createPublicClient, createWalletClient, http, type Hex, encodeFunctionData } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { getConfig } from '../config/app-config.js';
 import { createLogger } from '../utils/logger.js';
@@ -17,6 +21,9 @@ import {
 } from '../middleware/sapphire-context.js';
 
 const logger = createLogger('usage-logger');
+
+/** ROFL socket path - only exists inside ROFL container */
+const ROFL_SOCKET_PATH = '/run/rofl-appd.sock';
 
 /**
  * EkaiControlPlane ABI for logReceipt function
@@ -71,14 +78,21 @@ const sapphireTestnet = {
 
 /**
  * UsageLogger handles on-chain logging of API usage
+ *
+ * Supports two modes:
+ * 1. ROFL mode: Uses ROFL client for authenticated transactions
+ * 2. Fallback mode: Uses PRIVATE_KEY for local development
  */
 export class UsageLogger {
   private static instance: UsageLogger | null = null;
   private publicClient: ReturnType<typeof createPublicClient> | null = null;
   private walletClient: ReturnType<typeof createWalletClient> | null = null;
   private account: ReturnType<typeof privateKeyToAccount> | null = null;
+  private roflClient: any = null;
   private initialized = false;
+  private initPromise: Promise<boolean> | null = null;
   private chain: typeof sapphireTestnet | null = null;
+  private isInsideRofl = false;
 
   private constructor() {}
 
@@ -91,16 +105,28 @@ export class UsageLogger {
 
   /**
    * Initialize the logger with Sapphire connection
-   * Uses the gateway's private key for signing transactions
    */
   private async initialize(): Promise<boolean> {
     if (this.initialized) {
       return true;
     }
 
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+
+    this.initPromise = this.doInitialize();
+    return this.initPromise;
+  }
+
+  private async doInitialize(): Promise<boolean> {
     const config = getConfig();
 
     try {
+      // Check if we're inside ROFL
+      const fs = await import('fs');
+      this.isInsideRofl = fs.existsSync(ROFL_SOCKET_PATH);
+
       // Build chain config
       this.chain = {
         ...sapphireTestnet,
@@ -117,29 +143,60 @@ export class UsageLogger {
         transport: http(config.sapphire.rpcUrl),
       });
 
-      // For wallet client, we need a private key
-      // In ROFL, this would be the ROFL app's signing key
-      const privateKey = process.env.ROFL_SIGNING_KEY || process.env.PRIVATE_KEY;
-
-      if (privateKey) {
-        this.account = privateKeyToAccount(privateKey as Hex);
-        this.walletClient = createWalletClient({
-          account: this.account,
-          chain: this.chain,
-          transport: http(config.sapphire.rpcUrl),
-        });
+      if (this.isInsideRofl) {
+        // Inside ROFL - use ROFL client for signing
+        logger.info({}, 'Running inside ROFL - using ROFL client for transaction signing');
+        await this.initializeRoflClient();
       } else {
-        logger.warn({}, 'No signing key available - usage logging will be disabled');
-        return false;
+        // Outside ROFL - use private key fallback
+        logger.info({}, 'Running outside ROFL - using PRIVATE_KEY for signing');
+        await this.initializeWalletClient();
       }
 
       this.initialized = true;
-      logger.info({ chainId: config.sapphire.chainId }, 'UsageLogger initialized');
+      logger.info({ chainId: config.sapphire.chainId, isRofl: this.isInsideRofl }, 'UsageLogger initialized');
       return true;
     } catch (error) {
       logger.error({ error }, 'Failed to initialize UsageLogger');
       return false;
     }
+  }
+
+  /**
+   * Initialize ROFL client for signing transactions inside ROFL container
+   */
+  private async initializeRoflClient(): Promise<void> {
+    try {
+      const { RoflClient, ROFL_SOCKET_PATH: socketPath } = await import('@oasisprotocol/rofl-client');
+      this.roflClient = new RoflClient(socketPath);
+      logger.info({}, 'ROFL client initialized for transaction signing');
+    } catch (error) {
+      logger.error({ error }, 'Failed to initialize ROFL client - falling back to PRIVATE_KEY');
+      await this.initializeWalletClient();
+    }
+  }
+
+  /**
+   * Initialize wallet client using PRIVATE_KEY (fallback for non-ROFL)
+   */
+  private async initializeWalletClient(): Promise<void> {
+    const privateKey = process.env.PRIVATE_KEY;
+
+    if (!privateKey) {
+      logger.warn({}, 'No PRIVATE_KEY available - usage logging will be disabled');
+      return;
+    }
+
+    const config = getConfig();
+
+    this.account = privateKeyToAccount(privateKey as Hex);
+    this.walletClient = createWalletClient({
+      account: this.account,
+      chain: this.chain!,
+      transport: http(config.sapphire.rpcUrl),
+    });
+
+    logger.info({}, 'Wallet client initialized with PRIVATE_KEY');
   }
 
   /**
@@ -153,8 +210,14 @@ export class UsageLogger {
     usage: TokenUsage
   ): Promise<void> {
     const initialized = await this.initialize();
-    if (!initialized || !this.walletClient || !this.account || !this.chain) {
-      logger.warn({ context }, 'UsageLogger not initialized - skipping receipt logging');
+    if (!initialized) {
+      logger.warn({}, 'UsageLogger not initialized - skipping receipt logging');
+      return;
+    }
+
+    // Check if we have any signing capability
+    if (!this.roflClient && !this.walletClient) {
+      logger.warn({}, 'No signing capability available - skipping receipt logging');
       return;
     }
 
@@ -184,25 +247,41 @@ export class UsageLogger {
         completionTokens,
       }, 'Logging receipt on-chain');
 
-      // Call logReceipt on the contract
-      const hash = await this.walletClient.writeContract({
-        address: config.sapphire.controlPlaneAddress as Hex,
-        abi: LogReceiptABI,
-        functionName: 'logReceipt',
-        args: [
+      let txHash: string;
+
+      if (this.roflClient) {
+        // Use ROFL client for signing (inside ROFL container)
+        txHash = await this.logReceiptViaRofl(
+          config.sapphire.controlPlaneAddress as Hex,
           requestHash,
-          context.owner,
-          context.delegate,
-          context.providerId,
-          context.modelId,
+          context,
           promptTokens,
-          completionTokens,
-        ],
-        chain: this.chain,
-      } as any);
+          completionTokens
+        );
+      } else if (this.walletClient && this.account && this.chain) {
+        // Use wallet client (fallback)
+        txHash = await this.walletClient.writeContract({
+          address: config.sapphire.controlPlaneAddress as Hex,
+          abi: LogReceiptABI,
+          functionName: 'logReceipt',
+          args: [
+            requestHash,
+            context.owner,
+            context.delegate,
+            context.providerId,
+            context.modelId,
+            promptTokens,
+            completionTokens,
+          ],
+          chain: this.chain,
+        } as any);
+      } else {
+        logger.warn({}, 'No signing method available');
+        return;
+      }
 
       logger.info({
-        txHash: hash,
+        txHash,
         owner: context.owner,
         provider: context.providerName,
         model: context.modelName,
@@ -219,6 +298,42 @@ export class UsageLogger {
         model: context.modelName,
       }, 'Failed to log receipt on-chain');
     }
+  }
+
+  /**
+   * Log receipt using ROFL client's transaction signing
+   */
+  private async logReceiptViaRofl(
+    contractAddress: Hex,
+    requestHash: Hex,
+    context: SapphireRequestContext,
+    promptTokens: number,
+    completionTokens: number
+  ): Promise<string> {
+    // Encode the function call data
+    const data = encodeFunctionData({
+      abi: LogReceiptABI,
+      functionName: 'logReceipt',
+      args: [
+        requestHash,
+        context.owner,
+        context.delegate,
+        context.providerId,
+        context.modelId,
+        promptTokens,
+        completionTokens,
+      ],
+    });
+
+    // Use ROFL client to submit the transaction
+    // The ROFL runtime handles authentication via roflEnsureAuthorizedOrigin
+    const txHash = await this.roflClient.submitTransaction({
+      to: contractAddress,
+      data,
+      value: '0x0',
+    });
+
+    return txHash;
   }
 
   /**
@@ -258,7 +373,15 @@ export class UsageLogger {
    * Check if usage logging is available
    */
   async isAvailable(): Promise<boolean> {
-    return this.initialize();
+    const initialized = await this.initialize();
+    return initialized && (this.roflClient !== null || this.walletClient !== null);
+  }
+
+  /**
+   * Check if running inside ROFL container
+   */
+  isRunningInsideRofl(): boolean {
+    return this.isInsideRofl;
   }
 }
 

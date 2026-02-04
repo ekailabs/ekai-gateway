@@ -30,8 +30,18 @@ const logger = createLogger('key-manager');
 
 /**
  * EkaiControlPlane ABI for key management functions
+ * Must match the contract at github.com/ekailabs/api-vault/contracts/EkaiControlPlane.sol
  */
 const EkaiControlPlaneABI = [
+  // Check if contract is paused
+  {
+    name: 'isPaused',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'bool' }],
+  },
+
   // Step 1: Check delegate permission
   {
     name: 'isDelegatePermitted',
@@ -212,6 +222,13 @@ export class KeyManager {
       model: context.modelName,
     }, 'Starting ROFL authorization workflow');
 
+    // Step 0: Check if contract is paused
+    const isPaused = await this.checkIfPaused(client, contractAddress);
+    if (isPaused) {
+      logger.warn({}, 'EkaiControlPlane contract is paused');
+      throw new SapphireUnavailableError('Service temporarily unavailable - contract paused');
+    }
+
     // Step 1: Check delegate permission
     const isDelegatePermitted = await this.checkDelegatePermission(
       client,
@@ -294,6 +311,30 @@ export class KeyManager {
   async getKey(context: SapphireRequestContext): Promise<string> {
     const result = await this.authorize(context);
     return result.apiKey;
+  }
+
+  /**
+   * Step 0: Check if contract is paused
+   */
+  private async checkIfPaused(
+    client: NonNullable<typeof this.client>,
+    contractAddress: Hex
+  ): Promise<boolean> {
+    try {
+      const result = await client.readContract({
+        address: contractAddress,
+        abi: EkaiControlPlaneABI,
+        functionName: 'isPaused',
+        args: [],
+      } as any);
+
+      return result as boolean;
+    } catch (error) {
+      // If we can't check pause status, log warning but continue
+      // The contract might not be accessible, which will fail later anyway
+      logger.warn({ error }, 'Failed to check if contract is paused');
+      return false;
+    }
   }
 
   /**

@@ -6,7 +6,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { keccak256, toHex, stringToHex, type Hex } from 'viem';
+import { keccak256, toHex, stringToHex, encodePacked, type Hex } from 'viem';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('sapphire-context');
@@ -98,6 +98,7 @@ export function getModelIdBytes32(modelName: string): Hex {
 
 /**
  * Generate a unique request hash for on-chain logging
+ * Uses ABI-encoded packing to ensure correct byte alignment
  */
 export function generateRequestHash(
   owner: Hex,
@@ -106,9 +107,13 @@ export function generateRequestHash(
   modelId: Hex,
   timestamp: number
 ): Hex {
-  // Concatenate all fields and hash
-  const packed = `${owner}${delegate.slice(2)}${providerId.slice(2)}${modelId.slice(2)}${timestamp.toString(16).padStart(16, '0')}`;
-  return keccak256(packed as Hex);
+  // Use encodePacked for proper ABI encoding
+  // This matches Solidity's abi.encodePacked(owner, delegate, providerId, modelId, timestamp)
+  const packed = encodePacked(
+    ['address', 'address', 'bytes32', 'bytes32', 'uint64'],
+    [owner, delegate, providerId, modelId, BigInt(timestamp)]
+  );
+  return keccak256(packed);
 }
 
 /**
@@ -116,7 +121,9 @@ export function generateRequestHash(
  * Models may be prefixed with provider (e.g., "anthropic/claude-3-opus")
  */
 export function extractProviderFromModel(model: string): { provider: string | null; model: string } {
-  // Check for provider prefix
+  const lowerModel = model.toLowerCase();
+
+  // Check for provider prefix (e.g., "anthropic/claude-3-opus")
   const prefixMatch = model.match(/^(anthropic|openai|openrouter|google|xai|zai)\/(.*)/i);
   if (prefixMatch) {
     return {
@@ -126,16 +133,24 @@ export function extractProviderFromModel(model: string): { provider: string | nu
   }
 
   // Infer provider from model name patterns
-  if (model.includes('claude') || model.includes('anthropic')) {
+  // Anthropic: claude-* models
+  if (lowerModel.includes('claude')) {
     return { provider: 'anthropic', model };
   }
-  if (model.includes('gpt') || model.includes('o1') || model.includes('o3') || model.includes('o4')) {
+
+  // OpenAI: gpt-*, o1-*, o3-*, o4-* models (with word boundary check)
+  // Use regex to avoid false positives like "pro1" matching "o1"
+  if (lowerModel.includes('gpt') || /\bo[134]-|\bo[134]$|\bo[134]\b/.test(lowerModel)) {
     return { provider: 'openai', model };
   }
-  if (model.includes('grok')) {
+
+  // xAI: grok-* models
+  if (lowerModel.includes('grok')) {
     return { provider: 'xai', model };
   }
-  if (model.includes('gemini')) {
+
+  // Google: gemini-* models
+  if (lowerModel.includes('gemini')) {
     return { provider: 'google', model };
   }
 

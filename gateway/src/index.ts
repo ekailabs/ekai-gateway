@@ -42,6 +42,7 @@ import { ProviderService } from './domain/services/provider-service.js';
 import { pricingLoader } from './infrastructure/utils/pricing-loader.js';
 import { getConfig } from './infrastructure/config/app-config.js';
 import { errorHandler } from './infrastructure/middleware/error-handler.js';
+import { getKeyDecryptor } from './infrastructure/crypto/key-decryptor.js';
 
 async function bootstrap(): Promise<void> {
   // Initialize and validate config
@@ -98,6 +99,38 @@ async function bootstrap(): Promise<void> {
     });
   });
 
+  // ROFL public key endpoint (for contract registration)
+  app.get('/rofl/public-key', async (req, res) => {
+    try {
+      const decryptor = getKeyDecryptor();
+      const publicKey = await decryptor.getPublicKey();
+      const isInsideRofl = decryptor.isRunningInsideRofl();
+      const isAvailable = await decryptor.isAvailable();
+
+      if (!publicKey) {
+        res.status(503).json({
+          error: 'ROFL key not available',
+          isInsideRofl,
+          hint: isInsideRofl
+            ? 'Key derivation failed - check ROFL appd socket'
+            : 'Set ROFL_PRIVATE_KEY environment variable'
+        });
+        return;
+      }
+
+      res.json({
+        publicKey: `0x${publicKey}`,
+        publicKeyBytes: publicKey,
+        isInsideRofl,
+        isAvailable,
+        usage: 'Call setRoflKey(bytes) on EkaiControlPlane contract with publicKeyBytes'
+      });
+    } catch (error) {
+      logger.error('Failed to get ROFL public key', { error, module: 'rofl-endpoint' });
+      res.status(500).json({ error: 'Failed to get ROFL public key' });
+    }
+  });
+
   // Authentication routes (no auth required)
   app.post('/auth/login', handleLogin);
 
@@ -118,6 +151,30 @@ async function bootstrap(): Promise<void> {
 
   // Error handler MUST be last middleware
   app.use(errorHandler);
+
+  // Initialize ROFL key decryptor and log public key
+  const decryptor = getKeyDecryptor();
+  await decryptor.initialize();
+  const publicKey = await decryptor.getPublicKey();
+  const isInsideRofl = decryptor.isRunningInsideRofl();
+
+  if (publicKey) {
+    logger.info('ROFL encryption key initialized', {
+      publicKey: `0x${publicKey}`,
+      isInsideRofl,
+      module: 'rofl-key'
+    });
+    console.log('\n========================================');
+    console.log('ROFL PUBLIC KEY (for contract registration):');
+    console.log(`0x${publicKey}`);
+    console.log('========================================\n');
+  } else {
+    logger.warn('ROFL encryption key not available - decryption disabled', {
+      isInsideRofl,
+      hint: isInsideRofl ? 'Check ROFL appd socket' : 'Set ROFL_PRIVATE_KEY env var',
+      module: 'rofl-key'
+    });
+  }
 
   // Start server
   app.listen(PORT, () => {

@@ -56,8 +56,78 @@ docker run --env-file .env -p 3001:3001 ghcr.io/ekailabs/ekai-gateway:latest
 If you're contributing changes or need a custom build:
 
 ```bash
-docker build --target ekai-gateway-runtime -t ekai-gateway .
+docker build -t ekai-gateway .
 docker run --env-file .env -p 3001:3001 ekai-gateway
+```
+
+### Push to GHCR (maintainers)
+
+```bash
+# Login to ghcr.io (requires GitHub PAT with packages:write)
+echo "$GITHUB_TOKEN" | docker login ghcr.io -u USERNAME --password-stdin
+
+# Build and push
+docker build -t ghcr.io/ekailabs/ekai-gateway:oasis .
+docker push ghcr.io/ekailabs/ekai-gateway:oasis
+```
+
+### Update ROFL Deployment
+
+After updating code, rebuild and redeploy the ROFL app:
+
+```bash
+# 1. Build & push new Docker image
+docker build -t ghcr.io/ekailabs/ekai-gateway:oasis .
+docker push ghcr.io/ekailabs/ekai-gateway:oasis
+
+# 2. Rebuild & redeploy ROFL app
+oasis rofl build
+oasis rofl deploy
+```
+
+## ROFL Key Setup (Sapphire Integration)
+
+The gateway uses X25519-DeoxysII encryption for secure API key storage on Sapphire. When running inside ROFL, the gateway automatically derives a deterministic encryption keypair from its app identity.
+
+### How It Works
+
+1. **Inside ROFL**: The gateway derives an X25519 keypair using `@oasisprotocol/rofl-client`
+2. **Outside ROFL**: Falls back to `ROFL_PRIVATE_KEY` environment variable (for local dev)
+
+### Getting the Public Key
+
+After deployment, retrieve the public key:
+
+**Option 1: From logs** - The public key is printed on startup:
+```
+========================================
+ROFL PUBLIC KEY (for contract registration):
+0x<your-public-key-hex>
+========================================
+```
+
+**Option 2: Via API endpoint**:
+```bash
+curl https://p3001.<your-rofl-domain>.rofl.app/rofl/public-key
+```
+
+**Option 3: From machine logs**:
+```bash
+oasis rofl machine logs
+```
+
+### Register Public Key on Contract
+
+Call `setRoflKey()` on your EkaiControlPlane contract:
+
+```solidity
+// Using the public key from above
+controlPlane.setRoflKey(bytes(publicKeyHex), true);
+```
+
+Or via cast:
+```bash
+cast send <CONTRACT_ADDRESS> "setRoflKey(bytes,bool)" 0x<public-key> true --rpc-url <SAPPHIRE_RPC>
 ```
 
 ## Integration Guides

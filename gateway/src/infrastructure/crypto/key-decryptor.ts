@@ -1,17 +1,33 @@
 /**
- * TEE-specific decryption using ROFL SDK
+ * TEE-specific decryption using X25519-DeoxysII
  *
- * This module handles decryption of secrets using the Oasis ROFL private key.
- * It only works when running as a ROFL app inside a TEE (Trusted Execution Environment).
+ * This module handles decryption of secrets encrypted with the ROFL public key.
+ * It uses the @oasisprotocol/sapphire-paratime cipher module for X25519-DeoxysII decryption.
  *
- * Secrets are encrypted with the ROFL public key by the EkaiControlPlane contract,
- * and can only be decrypted by the ROFL app running in the enclave.
+ * Key derivation:
+ * - Inside ROFL: Uses @oasisprotocol/rofl-client to derive a deterministic key from app identity
+ * - Outside ROFL: Falls back to ROFL_PRIVATE_KEY environment variable
+ *
+ * Secrets are encrypted client-side using the ROFL public key (stored in EkaiControlPlane),
+ * and can only be decrypted by the ROFL app using its private key.
+ *
+ * Encryption format: CBOR-encoded envelope with { pk, nonce, data, epoch? }
  */
 
+import { decode as cborDecode } from 'cborg';
+import { cipher } from '@oasisprotocol/sapphire-paratime';
 import { DecryptionFailedError } from '../../shared/errors/gateway-errors.js';
 import { createLogger } from '../utils/logger.js';
 
+const { X25519DeoxysII, Kind: CipherKind } = cipher;
+
 const logger = createLogger('key-decryptor');
+
+/** Key ID used for ROFL key derivation */
+const ROFL_ENCRYPTION_KEY_ID = 'ekai-gateway-encryption-key';
+
+/** ROFL socket path - only exists inside ROFL container */
+const ROFL_SOCKET_PATH = '/run/rofl-appd.sock';
 
 /**
  * Interface for the decryption result
@@ -21,26 +37,79 @@ export interface DecryptionResult {
 }
 
 /**
- * ROFL SDK interface (available only in TEE environment)
- * The actual SDK is injected by the Oasis runtime when running as a ROFL app
+ * CBOR-encoded envelope format from client-side encryption
+ * This matches the format produced by X25519DeoxysII.ephemeral().encryptCall()
+ *
+ * Format:
+ * {
+ *   format: CipherKind.X25519DeoxysII (= 1),
+ *   body: {
+ *     pk: Uint8Array,     // Sender's ephemeral public key
+ *     nonce: Uint8Array,  // Random nonce
+ *     data: Uint8Array,   // Encrypted data
+ *     epoch?: number      // Optional epoch
+ *   }
+ * }
  */
-interface RoflSdk {
-  getPrivateKey(): Promise<Uint8Array>;
-  decrypt(ciphertext: Uint8Array, privateKey: Uint8Array): Promise<Uint8Array>;
+interface CiphertextEnvelope {
+  format: number;
+  body: {
+    pk: Uint8Array;      // Sender's ephemeral public key
+    nonce: Uint8Array;   // Random nonce
+    data: Uint8Array;    // Encrypted data
+    epoch?: number;      // Optional epoch
+  };
+}
+
+/**
+ * Derive X25519 public key from private key
+ * Uses the curve25519 scalar multiplication with basepoint
+ */
+function deriveX25519PublicKey(privateKey: Uint8Array): Uint8Array {
+  // X25519 basepoint (little-endian encoding of 9)
+  const basepoint = new Uint8Array(32);
+  basepoint[0] = 9;
+
+  // Use the sapphire-paratime's X25519DeoxysII to derive public key
+  // The public key is derived by creating a cipher and extracting the public key
+  // For X25519, we need to do scalar multiplication: publicKey = privateKey * G
+
+  // Since sapphire-paratime doesn't expose raw X25519 scalar mult,
+  // we use tweetnacl-compatible derivation
+  // The private key needs to be "clamped" for X25519:
+  // - Clear bits 0, 1, 2 of the first byte
+  // - Clear bit 7 of the last byte
+  // - Set bit 6 of the last byte
+  const clampedKey = new Uint8Array(privateKey);
+  clampedKey[0] &= 248;
+  clampedKey[31] &= 127;
+  clampedKey[31] |= 64;
+
+  // We'll use dynamic import of tweetnacl for the scalar multiplication
+  // For now, return null and handle async initialization
+  return clampedKey; // Placeholder - actual derivation happens in async init
 }
 
 /**
  * KeyDecryptor handles decryption of secrets in TEE environment
  *
- * In ROFL deployment:
- * - Secrets are encrypted with ROFL public key by the contract
- * - Only the ROFL app running in TEE can decrypt using its private key
- * - The ROFL SDK provides access to the private key within the enclave
+ * Key sources (in order of priority):
+ * 1. ROFL client (when running inside ROFL container)
+ * 2. ROFL_PRIVATE_KEY environment variable (for local development)
+ *
+ * The derived/loaded key is used for X25519-DeoxysII decryption.
  */
 export class KeyDecryptor {
   private static instance: KeyDecryptor | null = null;
+  private privateKey: Uint8Array | null = null;
+  private publicKey: Uint8Array | null = null;
+  private initialized = false;
+  private initPromise: Promise<void> | null = null;
+  private isInsideRofl = false;
 
-  private constructor() {}
+  private constructor() {
+    // Initialization happens async
+  }
 
   static getInstance(): KeyDecryptor {
     if (!KeyDecryptor.instance) {
@@ -50,122 +119,318 @@ export class KeyDecryptor {
   }
 
   /**
-   * Decrypt ciphertext using ROFL private key
-   *
-   * This method requires the gateway to be running as a ROFL app inside a TEE.
-   * The ROFL_APP_ID environment variable must be set by the Oasis runtime.
-   *
-   * @param ciphertext - The encrypted data from the contract
-   * @param providerId - Provider ID for error context
-   * @returns Decrypted plaintext (API key)
-   * @throws DecryptionFailedError if decryption fails or not in TEE
+   * Initialize the decryptor - must be called before use
+   * Attempts to load key from ROFL client first, then falls back to env var
    */
-  async decrypt(ciphertext: Uint8Array, providerId: string): Promise<string> {
-    logger.debug({ providerId }, 'Attempting ROFL decryption in TEE');
+  async initialize(): Promise<void> {
+    if (this.initialized) {
+      return;
+    }
+
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+
+    this.initPromise = this.doInitialize();
+    await this.initPromise;
+  }
+
+  private async doInitialize(): Promise<void> {
+    // Check if we're inside ROFL (socket exists)
+    const fs = await import('fs');
+    this.isInsideRofl = fs.existsSync(ROFL_SOCKET_PATH);
+
+    if (this.isInsideRofl) {
+      logger.info({}, 'Running inside ROFL container - using ROFL key derivation');
+      await this.loadKeyFromRofl();
+    } else {
+      logger.info({}, 'Running outside ROFL - using environment variable');
+      await this.loadKeyFromEnv();
+    }
+
+    // Derive public key if we have a private key
+    if (this.privateKey) {
+      await this.derivePublicKey();
+    }
+
+    this.initialized = true;
+  }
+
+  /**
+   * Load key from ROFL client using deterministic key derivation
+   */
+  private async loadKeyFromRofl(): Promise<void> {
+    try {
+      // Dynamic import to avoid issues when running outside ROFL
+      const { RoflClient, KeyKind, ROFL_SOCKET_PATH: socketPath } = await import('@oasisprotocol/rofl-client');
+
+      const client = new RoflClient(socketPath);
+
+      // Generate/derive a deterministic 256-bit key
+      // This key is deterministic based on the ROFL app identity
+      const keyHex = await client.generateKey(ROFL_ENCRYPTION_KEY_ID, KeyKind.RAW_256);
+
+      // Remove 0x prefix if present
+      const cleanHex = keyHex.startsWith('0x') ? keyHex.slice(2) : keyHex;
+
+      this.privateKey = new Uint8Array(
+        cleanHex.match(/.{2}/g)!.map((byte: string) => parseInt(byte, 16))
+      );
+
+      logger.info({}, 'ROFL private key derived successfully from app identity');
+    } catch (error) {
+      logger.error({ error }, 'Failed to derive key from ROFL client');
+      // Fall back to env var
+      await this.loadKeyFromEnv();
+    }
+  }
+
+  /**
+   * Load the ROFL private key from environment variable
+   * The key should be hex-encoded (with or without 0x prefix)
+   */
+  private async loadKeyFromEnv(): Promise<void> {
+    const keyHex = process.env.ROFL_PRIVATE_KEY;
+
+    if (!keyHex) {
+      logger.warn({}, 'ROFL_PRIVATE_KEY not set - decryption will not be available');
+      return;
+    }
 
     try {
-      // Check if we're in a ROFL environment
-      const roflAppId = process.env.ROFL_APP_ID;
+      // Remove 0x prefix if present
+      const cleanHex = keyHex.startsWith('0x') ? keyHex.slice(2) : keyHex;
 
-      if (!roflAppId) {
-        logger.error({ providerId }, 'ROFL_APP_ID not set - not running in TEE');
-        throw new Error('Not running in ROFL TEE environment. ROFL_APP_ID is required.');
+      // Validate hex string
+      if (!/^[0-9a-fA-F]+$/.test(cleanHex)) {
+        throw new Error('Invalid hex format');
       }
 
-      // Attempt to use ROFL SDK for decryption
-      // This will be available when running inside the TEE
-      const plaintext = await this.roflDecrypt(ciphertext);
+      // X25519 private keys are 32 bytes
+      if (cleanHex.length !== 64) {
+        throw new Error(`Invalid key length: expected 64 hex chars (32 bytes), got ${cleanHex.length}`);
+      }
+
+      this.privateKey = new Uint8Array(
+        cleanHex.match(/.{2}/g)!.map(byte => parseInt(byte, 16))
+      );
+
+      logger.info({}, 'ROFL private key loaded from environment variable');
+    } catch (error) {
+      logger.error({ error }, 'Failed to load ROFL private key from environment');
+      this.privateKey = null;
+    }
+  }
+
+  /**
+   * Derive X25519 public key from the private key
+   */
+  private async derivePublicKey(): Promise<void> {
+    if (!this.privateKey) {
+      return;
+    }
+
+    try {
+      // Use tweetnacl for X25519 scalar multiplication
+      const nacl = await import('tweetnacl');
+
+      // tweetnacl's scalarMult.base does X25519 basepoint multiplication
+      // First, we need to clamp the private key for X25519
+      const clampedKey = new Uint8Array(this.privateKey);
+      clampedKey[0] &= 248;
+      clampedKey[31] &= 127;
+      clampedKey[31] |= 64;
+
+      this.publicKey = nacl.scalarMult.base(clampedKey);
+
+      const pubKeyHex = Buffer.from(this.publicKey).toString('hex');
+      logger.info({ publicKey: pubKeyHex }, 'X25519 public key derived');
+    } catch (error) {
+      logger.error({ error }, 'Failed to derive X25519 public key');
+    }
+  }
+
+  /**
+   * Decrypt ciphertext using ROFL private key with X25519-DeoxysII
+   *
+   * The ciphertext is expected to be a CBOR-encoded envelope containing:
+   * - pk: sender's ephemeral public key (32 bytes)
+   * - nonce: random nonce for DeoxysII
+   * - data: encrypted data
+   *
+   * @param ciphertext - The encrypted data from the contract (raw bytes, not CBOR-wrapped)
+   * @param providerId - Provider ID for error context
+   * @returns Decrypted plaintext (API key)
+   * @throws DecryptionFailedError if decryption fails
+   */
+  async decrypt(ciphertext: Uint8Array, providerId: string): Promise<string> {
+    await this.initialize();
+
+    logger.debug({ providerId, ciphertextLength: ciphertext.length }, 'Attempting X25519-DeoxysII decryption');
+
+    if (!this.privateKey) {
+      logger.error({ providerId }, 'ROFL private key not available');
+      throw new DecryptionFailedError(providerId, {
+        reason: 'private_key_not_available',
+        error: 'Encryption not available - ROFL key not set or inactive',
+      });
+    }
+
+    try {
+      // Parse the CBOR-encoded envelope
+      const envelope = this.parseEnvelope(ciphertext);
+
+      // Extract components from body
+      const { pk, nonce, data, epoch } = envelope.body;
+
+      // Create cipher with our private key and sender's ephemeral public key
+      const decryptCipher = X25519DeoxysII.fromSecretKey(
+        this.privateKey,
+        pk,
+        epoch
+      );
+
+      // Decrypt the data (cipher.decrypt may be sync or async depending on version)
+      const plaintextResult = decryptCipher.decrypt(nonce, data);
+      const plaintext = plaintextResult instanceof Promise ? await plaintextResult : plaintextResult;
 
       if (!plaintext || plaintext.length === 0) {
         throw new Error('Decryption returned empty result');
       }
 
-      logger.info({ providerId }, 'ROFL decryption successful');
-      return plaintext;
+      // Convert to string (UTF-8)
+      const result = new TextDecoder().decode(plaintext);
+
+      logger.info({ providerId }, 'X25519-DeoxysII decryption successful');
+      return result;
 
     } catch (error) {
-      logger.error({ error, providerId }, 'ROFL decryption failed');
+      logger.error({ error, providerId }, 'X25519-DeoxysII decryption failed');
+
+      if (error instanceof DecryptionFailedError) {
+        throw error;
+      }
+
       throw new DecryptionFailedError(providerId, {
-        reason: 'rofl_decryption_failed',
+        reason: 'decryption_failed',
         error: error instanceof Error ? error.message : String(error),
       });
     }
   }
 
   /**
-   * Perform ROFL decryption using the enclave's private key
+   * Parse the CBOR-encoded ciphertext envelope
    *
-   * This method uses the Oasis ROFL SDK to access the enclave's private key
-   * and decrypt the ciphertext that was encrypted with the corresponding public key.
-   *
-   * The ROFL SDK is injected by the Oasis runtime when running as a ROFL app.
-   * It provides access to the enclave's cryptographic capabilities.
+   * The envelope format matches what X25519DeoxysII.ephemeral().encryptCall() produces:
+   * {
+   *   format: CipherKind.X25519DeoxysII (= 1),
+   *   body: { pk, nonce, data, epoch? }
+   * }
    */
-  private async roflDecrypt(ciphertext: Uint8Array): Promise<string> {
+  private parseEnvelope(ciphertext: Uint8Array): CiphertextEnvelope {
     try {
-      // The ROFL SDK is available as a global when running in TEE
-      // or can be accessed via the Oasis runtime injection
-      const rofl = await this.getRoflSdk();
+      const decoded = cborDecode(ciphertext);
 
-      // Get the ROFL private key from the enclave
-      const privateKey = await rofl.getPrivateKey();
+      // Validate envelope structure
+      if (!decoded || typeof decoded !== 'object') {
+        throw new Error('Invalid envelope: not an object');
+      }
 
-      // Decrypt the ciphertext
-      // The ciphertext was encrypted using x25519-xsalsa20-poly1305
-      // with the ROFL public key
-      const decrypted = await rofl.decrypt(ciphertext, privateKey);
+      const { format, body } = decoded as any;
 
-      // Convert decrypted bytes to string (UTF-8)
-      return new TextDecoder().decode(decrypted);
+      // Verify cipher format
+      if (format !== CipherKind.X25519DeoxysII) {
+        throw new Error(`Unsupported cipher format: expected ${CipherKind.X25519DeoxysII}, got ${format}`);
+      }
+
+      // Validate body exists
+      if (!body || typeof body !== 'object') {
+        throw new Error('Invalid envelope: missing or invalid body');
+      }
+
+      const { pk, nonce, data, epoch } = body;
+
+      if (!pk || !(pk instanceof Uint8Array)) {
+        throw new Error('Invalid envelope: missing or invalid pk (ephemeral public key)');
+      }
+
+      if (pk.length !== 32) {
+        throw new Error(`Invalid envelope: pk must be 32 bytes, got ${pk.length}`);
+      }
+
+      if (!nonce || !(nonce instanceof Uint8Array)) {
+        throw new Error('Invalid envelope: missing or invalid nonce');
+      }
+
+      if (!data || !(data instanceof Uint8Array)) {
+        throw new Error('Invalid envelope: missing or invalid data');
+      }
+
+      return {
+        format,
+        body: {
+          pk,
+          nonce,
+          data,
+          epoch: typeof epoch === 'number' ? epoch : undefined,
+        },
+      };
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-
-      if (message.includes('ROFL SDK not available')) {
+      if (error instanceof Error && (
+        error.message.startsWith('Invalid envelope:') ||
+        error.message.startsWith('Unsupported cipher format:')
+      )) {
         throw error;
       }
-
-      throw new Error(`ROFL decryption failed: ${message}`);
+      throw new Error(`Failed to parse CBOR envelope: ${error instanceof Error ? error.message : String(error)}`);
     }
-  }
-
-  /**
-   * Get the ROFL SDK instance
-   *
-   * The SDK is provided by the Oasis runtime when running as a ROFL app.
-   * This method attempts to access the SDK through various mechanisms:
-   * 1. Global injection by Oasis runtime
-   * 2. Dynamic import of ROFL-specific module
-   */
-  private async getRoflSdk(): Promise<RoflSdk> {
-    // Check for globally injected ROFL SDK (set by Oasis runtime in TEE)
-    const globalRofl = (globalThis as any).__OASIS_ROFL_SDK__;
-    if (globalRofl) {
-      return globalRofl as RoflSdk;
-    }
-
-    // Try to import ROFL SDK from the runtime-injected module
-    // This module path is provided by Oasis when running as a ROFL app
-    try {
-      const roflModule = await import('@oasis-rofl/sdk' as string);
-      if (roflModule.default || roflModule.rofl) {
-        return (roflModule.default || roflModule.rofl) as RoflSdk;
-      }
-    } catch {
-      // Module not available - not in TEE
-    }
-
-    throw new Error(
-      'ROFL SDK not available. Ensure the gateway is running as a ROFL app in TEE. ' +
-      'The SDK is injected by the Oasis runtime and is only available inside the enclave.'
-    );
   }
 
   /**
    * Check if decryption is available
-   * Returns true only if running in TEE with ROFL_APP_ID set
+   * Returns true only if ROFL private key is configured
    */
-  isAvailable(): boolean {
-    return !!process.env.ROFL_APP_ID;
+  async isAvailable(): Promise<boolean> {
+    await this.initialize();
+    return this.privateKey !== null;
+  }
+
+  /**
+   * Get the X25519 public key for contract registration
+   * Returns hex-encoded public key (without 0x prefix)
+   */
+  async getPublicKey(): Promise<string | null> {
+    await this.initialize();
+    if (!this.publicKey) {
+      return null;
+    }
+    return Buffer.from(this.publicKey).toString('hex');
+  }
+
+  /**
+   * Get the X25519 public key as bytes for contract registration
+   */
+  async getPublicKeyBytes(): Promise<Uint8Array | null> {
+    await this.initialize();
+    return this.publicKey;
+  }
+
+  /**
+   * Check if running inside ROFL container
+   */
+  isRunningInsideRofl(): boolean {
+    return this.isInsideRofl;
+  }
+
+  /**
+   * Reload the private key (useful for testing or key rotation)
+   */
+  async reloadKey(): Promise<void> {
+    this.initialized = false;
+    this.initPromise = null;
+    this.privateKey = null;
+    this.publicKey = null;
+    await this.initialize();
   }
 }
 
