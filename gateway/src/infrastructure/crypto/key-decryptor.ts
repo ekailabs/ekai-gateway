@@ -162,9 +162,10 @@ export class KeyDecryptor {
   private async loadKeyFromRofl(): Promise<void> {
     try {
       // Dynamic import to avoid issues when running outside ROFL
-      const { RoflClient, KeyKind, ROFL_SOCKET_PATH: socketPath } = await import('@oasisprotocol/rofl-client');
+      const { RoflClient, KeyKind } = await import('@oasisprotocol/rofl-client');
 
-      const client = new RoflClient(socketPath);
+      // RoflClient defaults to ROFL_SOCKET_PATH when no url is specified
+      const client = new RoflClient();
 
       // Generate/derive a deterministic 256-bit key
       // This key is deterministic based on the ROFL app identity

@@ -167,8 +167,9 @@ export class UsageLogger {
    */
   private async initializeRoflClient(): Promise<void> {
     try {
-      const { RoflClient, ROFL_SOCKET_PATH: socketPath } = await import('@oasisprotocol/rofl-client');
-      this.roflClient = new RoflClient(socketPath);
+      const { RoflClient } = await import('@oasisprotocol/rofl-client');
+      // RoflClient defaults to ROFL_SOCKET_PATH when no url is specified
+      this.roflClient = new RoflClient();
       logger.info({}, 'ROFL client initialized for transaction signing');
     } catch (error) {
       logger.error({ error }, 'Failed to initialize ROFL client - falling back to PRIVATE_KEY');
@@ -325,15 +326,20 @@ export class UsageLogger {
       ],
     });
 
-    // Use ROFL client to submit the transaction
+    // Use ROFL client to sign and submit the transaction
     // The ROFL runtime handles authentication via roflEnsureAuthorizedOrigin
-    const txHash = await this.roflClient.submitTransaction({
+    const result = await this.roflClient.signAndSubmit({
+      kind: 'eth',
       to: contractAddress,
       data,
-      value: '0x0',
+      value: '0',
+      gas_limit: 500000, // Reasonable gas limit for logReceipt call
     });
 
-    return txHash;
+    // signAndSubmit returns CBOR-encoded CallResult bytes
+    // For now, we'll use a hash of the result as the tx identifier
+    const txHash = Buffer.from(result).toString('hex').slice(0, 64);
+    return `0x${txHash}`;
   }
 
   /**
