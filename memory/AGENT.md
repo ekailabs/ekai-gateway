@@ -17,9 +17,10 @@ The memory service is a **neuroscience-inspired cognitive memory system** that r
 ### Architecture Summary
 
 ```
-POST /v1/ingest → extract(LLM) → 4 sectors → embed → SQLite
-POST /v1/search → embed query → brute-force cosine → PBWM gate → working memory (cap 8)
-GET  /v1/graph/* → BFS traversal over semantic_memory triples
+POST /v1/ingest           → extract(LLM) → 4 sectors → embed → SQLite
+POST /v1/ingest/documents → read .md files → chunk → extract → dedup → store with source
+POST /v1/search           → embed query → brute-force cosine → PBWM gate → working memory (cap 8)
+GET  /v1/graph/*          → BFS traversal over semantic_memory triples
 ```
 
 ---
@@ -39,6 +40,7 @@ memory/
     ├── index.ts            # Barrel re-export of all modules
     ├── server.ts           # Express app, all route definitions, env loading
     ├── sqlite-store.ts     # Core storage: schema, ingest, query, CRUD
+    ├── documents.ts        # Document ingestion: markdown chunking + orchestration
     ├── types.ts            # All TypeScript interfaces and type aliases
     ├── scoring.ts          # PBWM gate scoring algorithm
     ├── wm.ts               # Working memory filter and cap logic
@@ -94,6 +96,7 @@ Env files are loaded from `memory/.env` first, then root `.env` (see `server.ts:
 | `GET` | `/v1/profiles` | List all profiles |
 | `DELETE` | `/v1/profiles/:slug` | Delete a profile and all its memories |
 | `POST` | `/v1/ingest` | Ingest experience → extract → embed → store |
+| `POST` | `/v1/ingest/documents` | Ingest markdown files from a directory with dedup |
 | `POST` | `/v1/search` | Search memories with PBWM-gated retrieval |
 | `GET` | `/v1/summary` | Per-sector counts + recent items |
 | `PUT` | `/v1/memory/:id` | Update a memory's content |
@@ -230,6 +233,7 @@ For episodic and affective memories.
 | `event_end` | integer | nullable |
 | `retrieval_count` | integer | NOT NULL DEFAULT 0 |
 | `profile_id` | text | NOT NULL DEFAULT 'default' |
+| `source` | text | DEFAULT NULL — relative file path for document-ingested memories |
 
 Indexes: `idx_memory_sector`, `idx_memory_last_accessed`, `idx_memory_profile_sector`
 
@@ -247,6 +251,7 @@ Indexes: `idx_memory_sector`, `idx_memory_last_accessed`, `idx_memory_profile_se
 | `created_at` | integer | NOT NULL |
 | `last_accessed` | integer | NOT NULL |
 | `profile_id` | text | NOT NULL DEFAULT 'default' |
+| `source` | text | DEFAULT NULL — relative file path for document-ingested memories |
 
 Indexes: `idx_proc_last_accessed`, `idx_proc_profile`
 
@@ -268,6 +273,7 @@ Knowledge graph triples with temporal validity.
 | `metadata` | json | nullable |
 | `profile_id` | text | NOT NULL DEFAULT 'default' |
 | `strength` | REAL | NOT NULL DEFAULT 1.0 — consolidation evidence count |
+| `source` | text | DEFAULT NULL — relative file path for document-ingested memories |
 
 Indexes: `idx_semantic_subject_pred`, `idx_semantic_object`, `idx_semantic_profile`, `idx_semantic_slot`
 
@@ -335,14 +341,19 @@ The provider layer abstracts LLM and embedding API calls behind a two-provider r
 ### Core Modules
 
 **`sqlite-store.ts`** — The largest module. Class `SqliteMemoryStore`:
-- `prepareSchema()` — DDL + migrations
-- `ingest(components, profile)` — Main ingest pipeline; handles all 4 sectors + consolidation
+- `prepareSchema()` — DDL + migrations (including `ensureSourceColumn()`)
+- `ingest(components, profile, options?)` — Main ingest pipeline; handles all 4 sectors + consolidation. When `options.deduplicate` is true, skips near-duplicate memories (cosine > 0.9) and skips strength bumps on semantic merges.
 - `search(query, profile)` — Retrieval pipeline; embed → cosine filter → PBWM score → top-k → working memory
 - `updateMemory(id, content, profile)` — Re-embeds and updates `memory` table rows
 - `deleteMemory(id, profile)` — Deletes across all 3 tables
 - `getSummary(limit, profile)` — UNION ALL across tables for dashboard
 - `getAvailableProfiles()` / `deleteProfile(slug)` — Profile CRUD
 - Graph helpers: `findActiveFactsForSubject()`, `findSemanticallyMatchingFacts()`, `strengthenFact()`, `supersedeFact()`
+- Dedup helpers: `findDuplicateMemory()`, `findDuplicateProcedural()`, `setMemorySource()`, `setProceduralSource()`, `setSemanticSource()`
+
+**`documents.ts`** — Document ingestion module:
+- `chunkMarkdown(content, filePath)` — Strips YAML frontmatter, splits on `#{1,3}` headings, sub-splits at `\n\n` if > 12K chars. Returns `Array<{ text, source, index }>`.
+- `ingestDocuments(dirPath, store, profile)` — Reads `.md` files recursively, chunks each, extracts via LLM, stores with `{ source, deduplicate: true }`. Returns `{ ingested, chunks, stored, skipped, errors, profile }`.
 
 **`scoring.ts`** — `scoreRowPBWM(row, queryEmbedding, sectorWeight)` — PBWM gate scoring
 
@@ -387,6 +398,40 @@ POST /v1/ingest { messages, profile }
             │    ├─ supersede → supersedeFact(targetId) + INSERT new
             │    └─ insert → INSERT new with strength=1.0
             └─ INSERT into semantic_memory (if not merge)
+```
+
+### Document Ingestion Data Flow
+
+```
+POST /v1/ingest/documents { path, profile }
+  │
+  ├─ Validate: path exists (file or directory)
+  ├─ collectMarkdownFiles(path) — recursive, sorted alphabetically
+  │
+  └─ For each .md file:
+       ├─ Read file, skip if empty
+       ├─ chunkMarkdown(content, relativePath)
+       │    ├─ Strip YAML frontmatter
+       │    ├─ Split on #{1,3} headings
+       │    └─ Sub-split at \n\n if section > 12K chars
+       │
+       └─ For each chunk:
+            ├─ extract(chunk.text) → IngestComponents
+            └─ store.ingest(components, profile, { source: relativePath, deduplicate: true })
+                 │
+                 ├─ Episodic/Affective: embed → findDuplicateMemory (cosine > 0.9)
+                 │    ├─ Duplicate found → skip (add source attribution to existing)
+                 │    └─ No duplicate → INSERT with source
+                 │
+                 ├─ Semantic: consolidation as normal, but on merge:
+                 │    ├─ deduplicate=true → skip strengthenFact, just add source
+                 │    └─ deduplicate=false → strengthenFact as before
+                 │
+                 └─ Procedural: embed trigger → findDuplicateProcedural (cosine > 0.9)
+                      ├─ Duplicate found → skip (add source attribution to existing)
+                      └─ No duplicate → INSERT with source
+
+  Return { ingested, chunks, stored, skipped, errors, profile }
 ```
 
 ### Retrieval Data Flow
@@ -447,6 +492,36 @@ Ingest an experience. Extracts memories via LLM, embeds, and stores.
 ```json
 { "stored": 3, "ids": ["uuid-1", "uuid-2", "uuid-3"], "profile": "alice" }
 ```
+
+### `POST /v1/ingest/documents`
+
+Ingest markdown files from a directory (or single file). Chunks by headings, extracts memories via LLM, stores with deduplication and source attribution. Safe to re-run — duplicates are skipped.
+
+**Request:**
+```json
+{ "path": "/path/to/markdown/folder", "profile": "project-x" }
+```
+
+**Validation:** `path` is required and must exist on disk. Can be a directory or a single `.md` file.
+
+**Response:**
+```json
+{
+  "ingested": 5,
+  "chunks": 18,
+  "stored": 31,
+  "skipped": 4,
+  "errors": ["notes/broken.md[2]: extraction failed"],
+  "profile": "project-x"
+}
+```
+
+**Errors:** `400 path_required`, `400 path_not_found`, `400 invalid_profile`
+
+**Deduplication strategy:**
+- **Episodic/Affective**: Embed content, compare against existing rows for same sector+profile. Skip if cosine similarity > 0.9.
+- **Semantic**: Uses existing consolidation. On merge (same subject+predicate+object), skips the strength bump to avoid inflating ranking. Adds source attribution to existing fact.
+- **Procedural**: Embed trigger, compare against existing procedural rows. Skip if cosine similarity > 0.9.
 
 ### `POST /v1/search`
 
@@ -657,6 +732,7 @@ Graph data for UI rendering. BFS expansion from optional center entity.
 | New provider | `providers/registry.ts` + `embed.ts` + `extract.ts` |
 | Working memory logic | `wm.ts` |
 | Consolidation logic | `consolidation.ts` |
+| Document ingestion | `documents.ts` (chunking, orchestration) |
 
 ---
 
@@ -710,6 +786,19 @@ curl -X DELETE "http://localhost:4005/v1/memory/MEMORY_ID"
 
 # 12. Delete all memories for a profile
 curl -X DELETE "http://localhost:4005/v1/memory?profile=default"
+
+# 13. Ingest markdown documents from a directory
+curl -X POST http://localhost:4005/v1/ingest/documents \
+  -H 'Content-Type: application/json' \
+  -d '{"path": "/path/to/markdown/folder", "profile": "docs"}'
+
+# 14. Re-ingest same folder (should show skipped > 0, stored ≈ 0)
+curl -X POST http://localhost:4005/v1/ingest/documents \
+  -H 'Content-Type: application/json' \
+  -d '{"path": "/path/to/markdown/folder", "profile": "docs"}'
+
+# 15. Check source attribution
+sqlite3 memory/memory.db "SELECT source, content FROM memory WHERE source IS NOT NULL LIMIT 5;"
 ```
 
 ### Verify Embeddings Are Working

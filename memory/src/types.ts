@@ -27,6 +27,7 @@ export interface MemoryRecord {
   lastAccessed: number;
   eventStart?: number | null;
   eventEnd?: number | null;
+  source?: string;
 }
 
 export interface ProceduralMemoryRecord {
@@ -40,6 +41,7 @@ export interface ProceduralMemoryRecord {
   embedding: number[];
   createdAt: number;
   lastAccessed: number;
+  source?: string;
 }
 
 export interface SemanticMemoryRecord {
@@ -91,4 +93,9 @@ export interface GraphTraversalOptions {
 export interface GraphPath {
   path: SemanticMemoryRecord[];
   depth: number;
+}
+
+export interface IngestOptions {
+  source?: string;
+  deduplicate?: boolean;
 }
