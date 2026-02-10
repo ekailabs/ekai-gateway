@@ -14,7 +14,7 @@ Env (root `.env` or `memory/.env`):
 
 - `GOOGLE_API_KEY` (required for Gemini extract/embeds)
 - Optional: `GEMINI_EXTRACT_MODEL` (default `gemini-2.5-flash`)
-- Optional: `GEMINI_EMBED_MODEL` (default `text-embedding-004`)
+- Optional: `GEMINI_EMBED_MODEL` (default `gemini-embedding-001`)
 - Optional: `MEMORY_PORT` (default `4005`)
 - Optional: `MEMORY_DB_PATH` (default `./memory.db`)
 - Optional: `MEMORY_CORS_ORIGIN`
