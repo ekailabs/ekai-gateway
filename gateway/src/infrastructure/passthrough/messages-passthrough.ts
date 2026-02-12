@@ -345,7 +345,7 @@ export class MessagesPassthrough {
   }
 
 
-  private trackUsage(payloadChunk: string, model: string, clientIp?: string): void {
+  private trackUsage(payloadChunk: string, model: string): void {
     if (this.config.usage?.format !== 'anthropic_messages') {
       return;
     }
@@ -448,7 +448,6 @@ export class MessagesPassthrough {
                   outputTokens,
                   cacheCreationTokens,
                   cacheReadTokens,
-                  clientIp,
                   this.lastX402PaymentAmount, // Pass x402 payment amount if available
                 );
                 // Clear payment amount after tracking
@@ -518,7 +517,7 @@ export class MessagesPassthrough {
         if (done) break;
 
         const chunkText = new TextDecoder().decode(value);
-        setImmediate(() => this.trackUsage(chunkText, request.model, clientIp));
+        setImmediate(() => this.trackUsage(chunkText, request.model));
 
         res.write(value);
       }
@@ -571,7 +570,6 @@ export class MessagesPassthrough {
             outputTokens,
             cacheCreationTokens,
             cacheReadTokens,
-            clientIp,
             this.lastX402PaymentAmount, // Pass x402 payment amount if available
           );
           // Clear payment amount after tracking

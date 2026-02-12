@@ -56,12 +56,6 @@ export class AppConfig {
     },
   };
 
-  // Telemetry configuration
-  readonly telemetry = {
-    enabled: this.getBoolean('ENABLE_TELEMETRY', true),
-    endpoint: this.getOptionalString('TELEMETRY_ENDPOINT'),
-  };
-
   // OpenRouter-specific configuration
   readonly openrouter = {
     skipPricingRefresh: this.getBoolean('SKIP_OPENROUTER_PRICING_REFRESH', false),

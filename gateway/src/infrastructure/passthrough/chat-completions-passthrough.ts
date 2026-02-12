@@ -275,7 +275,7 @@ export class ChatCompletionsPassthrough {
   }
 
 
-  private recordOpenAIUsage(usage: OpenAIChatUsage, model: string, clientIp?: string): void {
+  private recordOpenAIUsage(usage: OpenAIChatUsage, model: string): void {
     const totalInputTokens = usage.prompt_tokens ?? 0;
     const cachedPromptTokens = usage.prompt_tokens_details?.cached_tokens ?? 0;
     const nonCachedPromptTokens = totalInputTokens - cachedPromptTokens;
@@ -304,7 +304,6 @@ export class ChatCompletionsPassthrough {
           completionTokens,
           Math.max(cachedPromptTokens, 0),
           0,
-          clientIp,
           this.lastX402PaymentAmount, // Pass x402 payment amount if available
         );
         // Clear payment amount after tracking
@@ -319,12 +318,12 @@ export class ChatCompletionsPassthrough {
       });
   }
 
-  private recordUsage(usage: unknown, model: string, clientIp?: string): void {
+  private recordUsage(usage: unknown, model: string): void {
     if (!usage || !this.config.usage?.format) return;
 
     switch (this.config.usage.format) {
       case 'openai_chat':
-        this.recordOpenAIUsage(usage as OpenAIChatUsage, model, clientIp);
+        this.recordOpenAIUsage(usage as OpenAIChatUsage, model);
         break;
       default:
         logger.warn('Unsupported usage format for chat completions passthrough', {
@@ -335,7 +334,7 @@ export class ChatCompletionsPassthrough {
     }
   }
 
-  private processStreamingChunk(chunk: string, model: string, clientIp?: string): void {
+  private processStreamingChunk(chunk: string, model: string): void {
     try {
       this.eventBuffer += chunk;
 
@@ -360,7 +359,7 @@ export class ChatCompletionsPassthrough {
           }
           
           if (parsed?.usage) {
-            this.recordUsage(parsed.usage, model, clientIp);
+            this.recordUsage(parsed.usage, model);
             // reset buffer after successful usage capture to avoid duplicate processing
             this.eventBuffer = '';
           }
@@ -433,7 +432,7 @@ export class ChatCompletionsPassthrough {
         if (done) break;
 
         const text = new TextDecoder().decode(value);
-        setImmediate(() => this.processStreamingChunk(text, request?.model, clientIp));
+        setImmediate(() => this.processStreamingChunk(text, request?.model));
         res.write(value);
       }
 
@@ -464,7 +463,7 @@ export class ChatCompletionsPassthrough {
     const json = await response.json();
 
     if (json?.usage) {
-      this.recordUsage(json.usage, request?.model, clientIp);
+      this.recordUsage(json.usage, request?.model);
     }
 
     // Extract assistant response from non-streaming response
