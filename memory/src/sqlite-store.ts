@@ -17,12 +17,11 @@ import { cosineSimilarity, DEFAULT_PROFILE, normalizeProfileSlug } from './utils
 import { filterAndCapWorkingMemory } from './wm.js';
 import { SemanticGraphTraversal } from './semantic-graph.js';
 
-const SECTORS: SectorName[] = ['episodic', 'semantic', 'procedural', 'affective'];
+const SECTORS: SectorName[] = ['episodic', 'semantic', 'procedural'];
 const DEFAULT_WEIGHTS: Record<SectorName, number> = {
   episodic: 1,
   semantic: 1,
   procedural: 1,
-  affective: 1,
 };
 const PER_SECTOR_K = 4;
 const WORKING_MEMORY_CAP = 8;
@@ -256,7 +255,7 @@ export class SqliteMemoryStore {
             break;
         }
       } else {
-        // Episodic / Affective
+        // Episodic
         if (dedup) {
           const existingDup = this.findDuplicateMemory(embedding, sector as SectorName, profileId, 0.9);
           if (existingDup) {
@@ -312,7 +311,6 @@ export class SqliteMemoryStore {
       episodic: [],
       semantic: [],
       procedural: [],
-      affective: [],
     };
 
     for (const sector of SECTORS) {
@@ -543,7 +541,7 @@ export class SqliteMemoryStore {
   }
 
   /**
-   * Find a near-duplicate in the memory table (episodic/affective) by embedding similarity.
+   * Find a near-duplicate in the memory table (episodic) by embedding similarity.
    */
   private findDuplicateMemory(
     embedding: number[],
@@ -1005,6 +1003,5 @@ function normalizeComponents(input: IngestComponents): Record<SectorName, string
     episodic: input.episodic ?? '',
     semantic: input.semantic ?? '',
     procedural: input.procedural ?? '',
-    affective: input.affective ?? '',
   };
 }

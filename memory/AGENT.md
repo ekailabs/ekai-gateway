@@ -4,10 +4,10 @@
 
 ## 1. Overview
 
-The memory service is a **neuroscience-inspired cognitive memory system** that runs as a standalone Express server (default port `4005`). It provides four memory sectors — episodic, semantic, procedural, and affective — with PBWM-inspired scoring for retrieval gating and semantic fact consolidation for knowledge graph maintenance.
+The memory service is a **neuroscience-inspired cognitive memory system** that runs as a standalone Express server (default port `4005`). It provides three memory sectors — episodic, semantic, and procedural — with PBWM-inspired scoring for retrieval gating and semantic fact consolidation for knowledge graph maintenance.
 
 ### Key Features
-- **4 memory sectors**: episodic (events), semantic (knowledge graph triples), procedural (step-by-step workflows), affective (emotional preferences)
+- **3 memory sectors**: episodic (events), semantic (knowledge graph triples), procedural (step-by-step workflows)
 - **PBWM gating**: Prefrontal–basal-ganglia-inspired scoring with relevance, expected value, control signal, and noise
 - **Semantic consolidation**: Merge/supersede/insert logic for knowledge graph facts using embedding similarity
 - **Working memory cap**: Gate threshold of 0.5, hard cap of 8 items
@@ -17,7 +17,7 @@ The memory service is a **neuroscience-inspired cognitive memory system** that r
 ### Architecture Summary
 
 ```
-POST /v1/ingest           → extract(LLM) → 4 sectors → embed → SQLite
+POST /v1/ingest           → extract(LLM) → 3 sectors → embed → SQLite
 POST /v1/ingest/documents → read .md files → chunk → extract → dedup → store with source
 POST /v1/search           → embed query → brute-force cosine → PBWM gate → working memory (cap 8)
 GET  /v1/graph/*          → BFS traversal over semantic_memory triples
@@ -112,7 +112,7 @@ Env files are loaded from `memory/.env` first, then root `.env` (see `server.ts:
 
 ## 3. Core Concepts
 
-### 3a. Four Memory Sectors
+### 3a. Three Memory Sectors
 
 Each sector models a distinct cognitive function. The extraction LLM (`providers/prompt.ts`) classifies incoming text into these sectors.
 
@@ -131,14 +131,9 @@ Each sector models a distinct cognitive function. The extraction LLM (`providers
 - Embedded on the `trigger` field
 - Example: `{ trigger: "deploy to production", goal: "ship new release", steps: ["run tests", "build docker image", "push to registry", "kubectl apply"], result: "deployment complete" }`
 
-**Affective** — Emotional preferences, likes, dislikes, sentiment.
-- Stored in `memory` table with `sector = 'affective'`
-- Example: `"User dislikes verbose error messages"`
-
 **Extraction rules** (from `prompt.ts`):
 - "I" is rewritten as "User"
-- Personal facts about the user (identity, relationships, preferences-as-facts) go to **semantic**, not affective
-- Only emotional tone and subjective preferences go to **affective**
+- Personal facts about the user (identity, relationships, preferences-as-facts, likes/dislikes) go to **semantic** as triples
 - Only valid JSON is returned; empty fields use `""` or `{}`
 
 ### 3b. PBWM Scoring
@@ -219,12 +214,12 @@ All DDL in `SqliteMemoryStore.prepareSchema()` (`sqlite-store.ts:550-611`) with 
 
 #### `memory` table (`sqlite-store.ts:552-568`)
 
-For episodic and affective memories.
+For episodic memories.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | text | PRIMARY KEY (crypto.randomUUID) |
-| `sector` | text | NOT NULL — `'episodic'` or `'affective'` |
+| `sector` | text | NOT NULL — `'episodic'` |
 | `content` | text | NOT NULL |
 | `embedding` | json | NOT NULL — float array |
 | `created_at` | integer | NOT NULL — Unix ms |
@@ -291,14 +286,13 @@ All sectors use the same embedding model (the `_sector` param in `embed()` is ac
 | Sector | Text embedded |
 |--------|--------------|
 | Episodic | Full `content` string |
-| Affective | Full `content` string |
 | Procedural | `trigger` field only |
 | Semantic | `"subject predicate object"` concatenation |
 
 ### Key Constants (`sqlite-store.ts:19-29`)
 
 ```typescript
-const SECTORS: SectorName[] = ['episodic', 'semantic', 'procedural', 'affective'];
+const SECTORS: SectorName[] = ['episodic', 'semantic', 'procedural'];
 const PER_SECTOR_K = 4;           // Top-k results per sector
 const WORKING_MEMORY_CAP = 8;     // Max items in working memory
 const SECTOR_SCAN_LIMIT = 200;    // Max rows scanned per sector (brute-force)
@@ -334,15 +328,15 @@ The provider layer abstracts LLM and embedding API calls behind a two-provider r
 **`extract.ts`** — `extract(text) → IngestComponents`:
 - Gemini: `POST {contents, generationConfig: {temperature: 0, responseMimeType: 'application/json'}}`
 - OpenAI: `POST {messages, temperature: 0, response_format: {type: 'json_object'}}`
-- Returns `{episodic?, semantic?, procedural?, affective?}`
+- Returns `{episodic?, semantic?, procedural?}`
 
-**`prompt.ts`** — System prompt instructing the LLM to classify text into the four memory sectors.
+**`prompt.ts`** — System prompt instructing the LLM to classify text into the three memory sectors.
 
 ### Core Modules
 
 **`sqlite-store.ts`** — The largest module. Class `SqliteMemoryStore`:
 - `prepareSchema()` — DDL + migrations (including `ensureSourceColumn()`)
-- `ingest(components, profile, options?)` — Main ingest pipeline; handles all 4 sectors + consolidation. When `options.deduplicate` is true, skips near-duplicate memories (cosine > 0.9) and skips strength bumps on semantic merges.
+- `ingest(components, profile, options?)` — Main ingest pipeline; handles all 3 sectors + consolidation. When `options.deduplicate` is true, skips near-duplicate memories (cosine > 0.9) and skips strength bumps on semantic merges.
 - `search(query, profile)` — Retrieval pipeline; embed → cosine filter → PBWM score → top-k → working memory
 - `updateMemory(id, content, profile)` — Re-embeds and updates `memory` table rows
 - `deleteMemory(id, profile)` — Deletes across all 3 tables
@@ -381,11 +375,11 @@ POST /v1/ingest { messages, profile }
   │
   ├─ Validate: ≥1 user message with content (server.ts:105-111)
   ├─ Concatenate: sourceText = userMessages.map(m => m.content).join('\n\n')
-  ├─ extract(sourceText) → LLM → { episodic, semantic, procedural, affective }
+  ├─ extract(sourceText) → LLM → { episodic, semantic, procedural }
   │
   └─ store.ingest(components, profile) (sqlite-store.ts:45-235)
        │
-       ├─ episodic/affective → embed(content) → INSERT into memory
+       ├─ episodic → embed(content) → INSERT into memory
        │
        ├─ procedural → normalize to {trigger, steps, ...} → embed(trigger) → INSERT into procedural_memory
        │
@@ -419,7 +413,7 @@ POST /v1/ingest/documents { path, profile }
             ├─ extract(chunk.text) → IngestComponents
             └─ store.ingest(components, profile, { source: relativePath, deduplicate: true })
                  │
-                 ├─ Episodic/Affective: embed → findDuplicateMemory (cosine > 0.9)
+                 ├─ Episodic: embed → findDuplicateMemory (cosine > 0.9)
                  │    ├─ Duplicate found → skip (add source attribution to existing)
                  │    └─ No duplicate → INSERT with source
                  │
@@ -442,7 +436,7 @@ POST /v1/search { query, profile }
   ├─ For each sector: queryEmbeddings[sector] = embed(query, sector)
   │
   ├─ For each sector: load candidates (up to SECTOR_SCAN_LIMIT=200)
-  │    ├─ episodic/affective: SELECT from memory WHERE sector=? AND profile_id=?
+  │    ├─ episodic: SELECT from memory WHERE sector=? AND profile_id=?
   │    ├─ procedural: SELECT from procedural_memory (content = trigger)
   │    └─ semantic: SELECT from semantic_memory WHERE (valid_to IS NULL OR valid_to > now)
   │                 content = "subject predicate object"
@@ -519,7 +513,7 @@ Ingest markdown files from a directory (or single file). Chunks by headings, ext
 **Errors:** `400 path_required`, `400 path_not_found`, `400 invalid_profile`
 
 **Deduplication strategy:**
-- **Episodic/Affective**: Embed content, compare against existing rows for same sector+profile. Skip if cosine similarity > 0.9.
+- **Episodic**: Embed content, compare against existing rows for same sector+profile. Skip if cosine similarity > 0.9.
 - **Semantic**: Uses existing consolidation. On merge (same subject+predicate+object), skips the strength bump to avoid inflating ranking. Adds source attribution to existing fact.
 - **Procedural**: Embed trigger, compare against existing procedural rows. Skip if cosine similarity > 0.9.
 
@@ -546,8 +540,7 @@ Search memories with PBWM-gated retrieval.
   "perSector": {
     "episodic": [...],
     "semantic": [...],
-    "procedural": [],
-    "affective": []
+    "procedural": []
   },
   "profileId": "alice"
 }
@@ -563,8 +556,7 @@ Search memories with PBWM-gated retrieval.
   "summary": [
     { "sector": "episodic", "count": 5, "lastCreatedAt": 1700000000000 },
     { "sector": "semantic", "count": 12, "lastCreatedAt": 1700000000000 },
-    { "sector": "procedural", "count": 2, "lastCreatedAt": 1700000000000 },
-    { "sector": "affective", "count": 3, "lastCreatedAt": 1700000000000 }
+    { "sector": "procedural", "count": 2, "lastCreatedAt": 1700000000000 }
   ],
   "recent": [
     {
@@ -580,7 +572,7 @@ Search memories with PBWM-gated retrieval.
 
 ### `PUT /v1/memory/:id`
 
-Update a memory's content (re-embeds automatically). Only works on `memory` table rows (episodic/affective).
+Update a memory's content (re-embeds automatically). Only works on `memory` table rows (episodic).
 
 **Request:**
 ```json
@@ -708,9 +700,9 @@ Graph data for UI rendering. BFS expansion from optional center entity.
 4. Wrap in try/catch, return JSON errors with appropriate status codes
 
 **Adding a new memory sector:**
-1. Add to `SectorName` union in `types.ts:1`
-2. Add to `SECTORS` array in `sqlite-store.ts:19`
-3. Add to `IngestComponents` interface in `types.ts:3`
+1. Add to `SectorName` union in `types.ts`
+2. Add to `SECTORS` array in `sqlite-store.ts`
+3. Add to `IngestComponents` interface in `types.ts`
 4. Handle in `ingest()` method in `sqlite-store.ts`
 5. Handle in `search()` candidate loading in `sqlite-store.ts`
 6. Update extraction prompt in `providers/prompt.ts`

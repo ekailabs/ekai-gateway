@@ -1,4 +1,4 @@
-export type SectorName = 'episodic' | 'semantic' | 'procedural' | 'affective';
+export type SectorName = 'episodic' | 'semantic' | 'procedural';
 
 export interface IngestComponents {
   episodic?: string;
@@ -14,7 +14,6 @@ export interface IngestComponents {
     result?: string;
     context?: string;
   };
-  affective?: string;
 }
 
 export interface MemoryRecord {

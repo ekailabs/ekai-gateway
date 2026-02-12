@@ -96,14 +96,14 @@ export interface BudgetResponse {
 }
 
 export interface MemorySectorSummary {
-  sector: 'episodic' | 'semantic' | 'procedural' | 'affective';
+  sector: 'episodic' | 'semantic' | 'procedural';
   count: number;
   lastCreatedAt: number | null;
 }
 
 export interface MemoryRecentItem {
   id: string;
-  sector: 'episodic' | 'semantic' | 'procedural' | 'affective';
+  sector: 'episodic' | 'semantic' | 'procedural';
   createdAt: number;
   lastAccessed: number;
   preview: string;

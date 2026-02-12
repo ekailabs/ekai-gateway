@@ -60,7 +60,7 @@ Env (root `.env` or `memory/.env`):
 
 ## Data model (SQLite)
 
-- `memory` table for episodic / semantic / affective:
+- `memory` table for episodic:
   `id, sector, content, embedding, created_at, last_accessed, event_start, event_end, source`.
 - `procedural_memory` table for structured procedures:
   `trigger, goal, context, result, steps[], embedding, timestamps, source`.
@@ -110,12 +110,11 @@ graph TB
   classDef outputStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#1b5e20
 
   EXP["Experience Ingest<br>messages + reasoning/feedback"]:::inputStyle
-  EXTRACT["Extractor (Gemini)<br>episodic / semantic / procedural / affective"]:::processStyle
+  EXTRACT["Extractor (Gemini)<br>episodic / semantic / procedural"]:::processStyle
 
   EPISODIC["Episodic"]:::sectorStyle
   SEMANTIC["Semantic"]:::sectorStyle
   PROCEDURAL["Procedural<br>structured: trigger / goal / steps"]:::sectorStyle
-  AFFECTIVE["Affective"]:::sectorStyle
 
   EMBED["Embedder (Gemini)<br>text-embedding-004"]:::processStyle
 
@@ -136,14 +135,12 @@ graph TB
   EXTRACT --> EPISODIC
   EXTRACT --> SEMANTIC
   EXTRACT --> PROCEDURAL
-  EXTRACT --> AFFECTIVE
 
   EPISODIC --> EMBED
   SEMANTIC --> FACTGRAPH
   FACTGRAPH --> EMBED
   PROCEDURAL --> STEPGRAPH
   STEPGRAPH --> EMBED
-  AFFECTIVE --> EMBED
 
   EMBED --> STORE
 
