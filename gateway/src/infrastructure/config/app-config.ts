@@ -63,17 +63,6 @@ export class AppConfig {
     pricingRetries: this.getNumber('OPENROUTER_PRICING_RETRIES', 2),
   };
 
-  // Feature flags
-  readonly features = {
-    usageTracking: this.getBoolean('ENABLE_USAGE_TRACKING', true),
-  };
-
-  // Memory service configuration (FIFO file backend by default)
-  readonly memory = {
-    backend: this.getString('MEMORY_BACKEND', 'file'),
-    maxItems: this.getNumber('MEMORY_MAX_ITEMS', 20),
-  } as const;
-
   // Helper methods
   private has(key: string): boolean {
     return !!process.env[key];
