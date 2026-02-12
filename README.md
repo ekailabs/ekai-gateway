@@ -8,6 +8,12 @@ Multi-provider AI proxy supporting Anthropic, OpenAI, Google Gemini, xAI, and Op
 
 **Designed for secure, decentralized AI access** - run inside Oasis ROFL (Runtime OFf-chain Logic) for confidential API key storage and on-chain usage tracking on Sapphire.
 
+## Demo
+
+[![Ekai Gateway Demo](https://img.youtube.com/vi/sLg9YmYtg64/maxresdefault.jpg)](https://www.youtube.com/watch?v=sLg9YmYtg64)
+
+*Click to watch the demo video*
+
 ## Features
 
 - **Multi-provider**: Anthropic + OpenAI + Google (Gemini) + xAI + OpenRouter models
