@@ -7,6 +7,10 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       XAI_API_KEY: ${XAI_API_KEY:-}
+      # Oasis Sapphire MAINNET (keys are fetched from the on-chain control plane, not env)
+      SAPPHIRE_RPC_URL: ${SAPPHIRE_RPC_URL:-https://sapphire.oasis.io}
+      SAPPHIRE_CHAIN_ID: ${SAPPHIRE_CHAIN_ID:-23294}
+      EKAI_CONTROL_PLANE_ADDRESS: ${EKAI_CONTROL_PLANE_ADDRESS:-0x98782c35ed89a829FC1997BD54CFc95B653fE20E}
     ports:
       - "3001:3001"
     volumes:
