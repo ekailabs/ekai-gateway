@@ -55,26 +55,25 @@ export interface TokenUsage {
 }
 
 /**
- * Sapphire Testnet chain configuration
+ * Base Sapphire chain shape. The concrete id/name/rpcUrls are filled in at
+ * runtime from config.sapphire so the same code targets testnet or mainnet.
  */
-const sapphireTestnet = {
-  id: 23295,
-  name: 'Oasis Sapphire Testnet',
-  network: 'sapphire-testnet',
+const SAPPHIRE_MAINNET_CHAIN_ID = 23294;
+
+const sapphireChainBase = {
+  network: 'sapphire',
   nativeCurrency: {
     decimals: 18,
-    name: 'TEST',
-    symbol: 'TEST',
-  },
-  rpcUrls: {
-    default: {
-      http: ['https://testnet.sapphire.oasis.io'],
-    },
-    public: {
-      http: ['https://testnet.sapphire.oasis.io'],
-    },
+    name: 'ROSE',
+    symbol: 'ROSE',
   },
 } as const;
+
+type SapphireChain = typeof sapphireChainBase & {
+  id: number;
+  name: string;
+  rpcUrls: { default: { http: string[] }; public: { http: string[] } };
+};
 
 /**
  * UsageLogger handles on-chain logging of API usage
@@ -91,7 +90,7 @@ export class UsageLogger {
   private roflClient: any = null;
   private initialized = false;
   private initPromise: Promise<boolean> | null = null;
-  private chain: typeof sapphireTestnet | null = null;
+  private chain: SapphireChain | null = null;
   private isInsideRofl = false;
 
   private constructor() {}
@@ -129,13 +128,16 @@ export class UsageLogger {
 
       // Build chain config
       this.chain = {
-        ...sapphireTestnet,
+        ...sapphireChainBase,
         id: config.sapphire.chainId,
+        name: config.sapphire.chainId === SAPPHIRE_MAINNET_CHAIN_ID
+          ? 'Oasis Sapphire'
+          : 'Oasis Sapphire Testnet',
         rpcUrls: {
           default: { http: [config.sapphire.rpcUrl] },
           public: { http: [config.sapphire.rpcUrl] },
         },
-      } as typeof sapphireTestnet;
+      };
 
       // Create public client for reading
       this.publicClient = createPublicClient({

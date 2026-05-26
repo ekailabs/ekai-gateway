@@ -3,6 +3,7 @@ import { recoverTypedDataAddress, getAddress, isAddress } from 'viem';
 import { logger } from '../../infrastructure/utils/logger.js';
 import { tokenManager } from '../../domain/services/token-manager.js';
 import { ValidationError, AuthenticationError } from '../../shared/errors/gateway-errors.js';
+import { getConfig } from '../../infrastructure/config/app-config.js';
 
 // Configuration
 const TOKEN_TTL = parseInt(process.env.AUTH_TOKEN_TTL || '604800', 10); // 7 days default
@@ -142,7 +143,8 @@ export class AuthHandler {
       const domain = {
         name: 'Ekai Gateway',
         version: '1',
-        chainId: 23295 // Oasis Sapphire Testnet (0x5aff)
+        // Must match the network the frontend signs against (testnet 23295 / mainnet 23294)
+        chainId: getConfig().sapphire.chainId
       };
 
       const types = {

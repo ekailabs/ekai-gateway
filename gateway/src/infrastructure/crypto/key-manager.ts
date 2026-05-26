@@ -105,24 +105,17 @@ export interface AuthorizationResult {
 }
 
 /**
- * Sapphire Testnet chain configuration
+ * Base Sapphire chain shape. The concrete id/name/rpcUrls are filled in at
+ * runtime from config.sapphire so the same code targets testnet or mainnet.
  */
-const sapphireTestnet = {
-  id: 23295,
-  name: 'Oasis Sapphire Testnet',
-  network: 'sapphire-testnet',
+const SAPPHIRE_MAINNET_CHAIN_ID = 23294;
+
+const sapphireChainBase = {
+  network: 'sapphire',
   nativeCurrency: {
     decimals: 18,
-    name: 'TEST',
-    symbol: 'TEST',
-  },
-  rpcUrls: {
-    default: {
-      http: ['https://testnet.sapphire.oasis.io'],
-    },
-    public: {
-      http: ['https://testnet.sapphire.oasis.io'],
-    },
+    name: 'ROSE',
+    symbol: 'ROSE',
   },
 } as const;
 
@@ -159,8 +152,11 @@ export class KeyManager {
     try {
       this.client = createPublicClient({
         chain: {
-          ...sapphireTestnet,
+          ...sapphireChainBase,
           id: config.sapphire.chainId,
+          name: config.sapphire.chainId === SAPPHIRE_MAINNET_CHAIN_ID
+            ? 'Oasis Sapphire'
+            : 'Oasis Sapphire Testnet',
           rpcUrls: {
             default: { http: [config.sapphire.rpcUrl] },
             public: { http: [config.sapphire.rpcUrl] },
