@@ -8,6 +8,32 @@ Deploy your own private ekai-gateway instance on Oasis Network using ROFL (Runti
 - **Isolated**: Each user deploys their own instance
 - **Verifiable**: Code execution can be verified on-chain
 
+## Live Mainnet Deployment
+
+The gateway runs on **Oasis Sapphire Mainnet** (chainId `23294`). API keys are stored
+encrypted in an on-chain `EkaiControlPlane` control plane and decrypted only inside the
+attested ROFL enclave.
+
+| Component | Value |
+|-----------|-------|
+| Network / ParaTime | Sapphire **Mainnet** (`23294`) / sapphire |
+| RPC | `https://sapphire.oasis.io` |
+| EkaiControlPlane contract | `0x98782c35ed89a829FC1997BD54CFc95B653fE20E` |
+| ROFL app ID (bech32) | `rofl1qz2j0yhj3rza2ye5jcq2r2s52ard4z88fvst39rg` |
+| ROFL app ID (bytes21) | `0x00952792f288c5d513349600a1aa145746da88e74b` |
+
+The gateway image is network-agnostic; the network is selected via env in
+`docker-compose.yaml`:
+
+```yaml
+SAPPHIRE_RPC_URL: https://sapphire.oasis.io
+SAPPHIRE_CHAIN_ID: 23294
+EKAI_CONTROL_PLANE_ADDRESS: 0x98782c35ed89a829FC1997BD54CFc95B653fE20E
+```
+
+To target Mainnet, omit `--network testnet` (mainnet is the default) and fund your wallet
+with **ROSE** instead of testnet tokens. Everything else below is identical.
+
 ## Prerequisites
 
 1. **Oasis CLI** (v0.18.x+)
@@ -37,32 +63,42 @@ Deploy your own private ekai-gateway instance on Oasis Network using ROFL (Runti
 git clone https://github.com/ekailabs/ekai-gateway.git
 cd ekai-gateway
 
-# 2. Create rofl.yaml from template
-cp rofl.yaml.template rofl.yaml
+# 2. Initialize the manifest (creates rofl.yaml)
+oasis rofl init
 
 # 3. Register app
+#    Mainnet (default): oasis rofl create --network mainnet --paratime sapphire
 oasis rofl create --network testnet --paratime sapphire
 
-# 4. Set secrets (at least one)
-echo -n "sk-your-openai-key" | oasis rofl secret set OPENAI_API_KEY -
-echo -n "sk-ant-your-anthropic-key" | oasis rofl secret set ANTHROPIC_API_KEY -
-echo -n "xai-your-xai-key" | oasis rofl secret set XAI_API_KEY -
-
-# 5. Build
+# 4. Build
 oasis rofl build
 
-# 6. Update on-chain config
+# 5. Update on-chain config
 oasis rofl update
 
-# 7. Push
-oasis rofl push
-
-# 8. Deploy
+# 6. Deploy + rent a machine
 oasis rofl deploy
 
-# 9. Get your endpoints
+# 7. Get your endpoints
 oasis rofl machine show
 ```
+
+### Loading provider API keys
+
+This deployment stores API keys **encrypted in the on-chain `EkaiControlPlane`
+contract**, not as ROFL env secrets. Keys are encrypted to the gateway's X25519
+public key so only the attested enclave can decrypt them:
+
+1. Read the running gateway's key: `curl https://<endpoint>/rofl/public-key`
+2. Register it on-chain (admin): `npx hardhat ekai-set-rofl-key --address <contract> --pubkey 0x<publicKeyBytes> --network sapphire`
+3. Encrypt + store each key via the api-vault dashboard (`encryptSecret`), which
+   produces the CBOR `X25519-DeoxysII` envelope the gateway decrypts.
+
+> ⚠️ Do **not** use the `ekai-set-secret` Hardhat task for real keys — it stores
+> plaintext bytes and the gateway's decryptor will reject it. It's a localnet demo stub.
+
+Simpler BYOK alternative (no control plane): inject keys as ROFL secrets instead —
+`echo -n "sk-..." | oasis rofl secret set OPENAI_API_KEY -` then `oasis rofl update`.
 
 ## Your Endpoints
 
