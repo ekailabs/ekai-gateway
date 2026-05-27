@@ -18,7 +18,7 @@ attested ROFL enclave.
 |-----------|-------|
 | Network / ParaTime | Sapphire **Mainnet** (`23294`) / sapphire |
 | RPC | `https://sapphire.oasis.io` |
-| EkaiControlPlane contract | `0x98782c35ed89a829FC1997BD54CFc95B653fE20E` |
+| EkaiControlPlane contract | `0x8212Da9695946dc97B89d2F7D2B47E623CE5d87b` ([Sourcify](https://repo.sourcify.dev/contracts/full_match/23294/0x8212Da9695946dc97B89d2F7D2B47E623CE5d87b/)) |
 | ROFL app ID (bech32) | `rofl1qz2j0yhj3rza2ye5jcq2r2s52ard4z88fvst39rg` |
 | ROFL app ID (bytes21) | `0x00952792f288c5d513349600a1aa145746da88e74b` |
 
@@ -28,7 +28,7 @@ The gateway image is network-agnostic; the network is selected via env in
 ```yaml
 SAPPHIRE_RPC_URL: https://sapphire.oasis.io
 SAPPHIRE_CHAIN_ID: 23294
-EKAI_CONTROL_PLANE_ADDRESS: 0x98782c35ed89a829FC1997BD54CFc95B653fE20E
+EKAI_CONTROL_PLANE_ADDRESS: 0x8212Da9695946dc97B89d2F7D2B47E623CE5d87b
 ```
 
 To target Mainnet, omit `--network testnet` (mainnet is the default) and fund your wallet
