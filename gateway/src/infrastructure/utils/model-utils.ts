@@ -44,7 +44,16 @@ export class ModelUtils {
     if (/-\d{8}$/.test(modelName) || /-(latest|preview|beta|alpha)$/.test(modelName)) {
       return modelName;
     }
-    
+
+    // Claude 4.6 generation and later use dateless canonical IDs (the bare ID is the
+    // pinned snapshot — there is no -YYYYMMDD or -latest variant), so pass them through.
+    if (modelName.includes('claude-opus-4-8') ||
+        modelName.includes('claude-opus-4-7') ||
+        modelName.includes('claude-opus-4-6') ||
+        modelName.includes('claude-sonnet-4-6')) {
+      return modelName;
+    }
+
     // Add default suffixes for known models (Claude 4.5 series)
     if (modelName.includes('claude-opus-4-5')) {
       return modelName + '-20251101';
@@ -83,8 +92,8 @@ export class ModelUtils {
   static requiresMaxCompletionTokens(modelName: string): boolean {
     const normalizedName = this.removeProviderPrefix(modelName.toLowerCase());
     
-    // OpenAI o1, o3, o4 series models and GPT-5 series models
-    return /^o[1-4](-|$)/.test(normalizedName) || /^gpt-5(-|$)/.test(normalizedName);
+    // OpenAI o1, o3, o4 series models and GPT-5 series models (incl. minor versions like gpt-5.4)
+    return /^o[1-4](-|$)/.test(normalizedName) || /^gpt-5(\.\d+)?(-|$)/.test(normalizedName);
   }
 
 }

@@ -3,7 +3,36 @@ currency: "USD"
 unit: "MTok"
 
 models:
-  # Current flagship models (Claude 4.5 series)
+  # Current flagship models (Claude 4.6+ series — dateless canonical IDs)
+  claude-opus-4-8:
+    input: 5.00
+    output: 25.00
+    5m_cache_write: 6.25
+    1h_cache_write: 10.00
+    cache_read: 0.50
+
+  claude-opus-4-7:
+    input: 5.00
+    output: 25.00
+    5m_cache_write: 6.25
+    1h_cache_write: 10.00
+    cache_read: 0.50
+
+  claude-opus-4-6:
+    input: 5.00
+    output: 25.00
+    5m_cache_write: 6.25
+    1h_cache_write: 10.00
+    cache_read: 0.50
+
+  claude-sonnet-4-6:
+    input: 3.00
+    output: 15.00
+    5m_cache_write: 3.75
+    1h_cache_write: 6.00
+    cache_read: 0.30
+
+  # Claude 4.5 series
   claude-opus-4-5:
     input: 5.00
     output: 25.00
@@ -83,7 +112,7 @@ models:
     cache_read: 0.03
 
 metadata:
-  last_updated: "2026-01-28"
+  last_updated: "2026-05-29"
   source: "https://platform.claude.com/docs/en/about-claude/pricing"
-  notes: "Prices in USD per 1M tokens"
-  version: "0.2"
+  notes: "Prices in USD per 1M tokens. Claude 4.6+ uses dateless canonical IDs (the bare ID is the pinned snapshot)."
+  version: "0.3"

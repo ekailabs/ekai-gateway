@@ -2,6 +2,27 @@ provider: google
 currency: USD
 unit: MTok
 models:
+  # Gemini 3.x series
+  gemini-3.5-flash:
+    input: 1.5
+    cached_input: 0.15
+    output: 9.0
+  # gemini-3.1-pro-preview — keyed without "-preview" because cost lookup strips that suffix.
+  # Prices shown are the <=200k-token tier; >200k is 4.0 / 0.4 / 18.0.
+  gemini-3.1-pro:
+    input: 2.0
+    cached_input: 0.2
+    output: 12.0
+  gemini-3.1-flash-lite:
+    input: 0.25
+    cached_input: 0.025
+    output: 1.5
+  # gemini-3-flash-preview — keyed without "-preview" (cost lookup strips it).
+  gemini-3-flash:
+    input: 0.5
+    cached_input: 0.05
+    output: 3.0
+  # Gemini 2.5 series
   gemini-2.5-pro:
     input: 1.25
     cached_input: 0.125
@@ -14,12 +35,8 @@ models:
     input: 0.1
     cached_input: 0.025
     output: 0.4
-  gemini-3.0-pro-preview:
-    input: 2.0
-    cached_input: 0.2
-    output: 12.0
 metadata:
-  last_updated: "2025-01-15"
-  source: "https://ai.google.dev/pricing"
-  notes: "Gemini API pricing in USD per 1M tokens"
-  version: "1.0"
+  last_updated: "2026-05-29"
+  source: "https://ai.google.dev/gemini-api/docs/pricing"
+  notes: "Gemini API pricing in USD per 1M tokens. Pro tiers are priced by prompt length (<=200k base rate shown)."
+  version: "1.1"

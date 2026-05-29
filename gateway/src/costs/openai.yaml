@@ -2,7 +2,35 @@ provider: "openai"
 currency: "USD"
 unit: "MTok"
 models:
-  # GPT-5.2 series (latest flagship)
+  # GPT-5.5 / 5.4 series (latest flagship generation)
+  gpt-5.5:
+    input: 5.00
+    cached_input: 0.50
+    output: 30.00
+  gpt-5.5-pro:
+    input: 30.00
+    output: 180.00
+  gpt-5.4:
+    input: 2.50
+    cached_input: 0.25
+    output: 15.00
+  gpt-5.4-mini:
+    input: 0.75
+    cached_input: 0.075
+    output: 4.50
+  gpt-5.4-nano:
+    input: 0.20
+    cached_input: 0.02
+    output: 1.25
+  gpt-5.4-pro:
+    input: 30.00
+    output: 180.00
+  gpt-5.3-codex:
+    input: 1.75
+    cached_input: 0.175
+    output: 14.00
+
+  # GPT-5.2 series
   gpt-5.2:
     input: 1.75
     cached_input: 0.175
@@ -177,8 +205,8 @@ models:
     input: 3.00
     output: 4.00
 metadata:
-  last_updated: "2026-01-28"
+  last_updated: "2026-05-29"
   source: "https://platform.openai.com/docs/pricing"
   notes: "Prices in USD per 1M tokens for Standard tier processing. Cached input pricing included where available."
-  version: "0.2"
+  version: "0.3"
   tier: "standard"
