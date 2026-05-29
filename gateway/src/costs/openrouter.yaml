@@ -2,6 +2,976 @@ provider: openrouter
 currency: USD
 unit: MTok
 models:
+  stepfun/step-3.7-flash:
+    id: stepfun/step-3.7-flash
+    input: 0.2
+    output: 1.15
+    original_provider: stepfun
+  step-3.7-flash:
+    id: stepfun/step-3.7-flash
+    input: 0.2
+    output: 1.15
+    original_provider: stepfun
+  anthropic/claude-opus-4.8-fast:
+    id: anthropic/claude-opus-4.8-fast
+    input: 10
+    output: 50
+    original_provider: anthropic
+  claude-opus-4.8-fast:
+    id: anthropic/claude-opus-4.8-fast
+    input: 10
+    output: 50
+    original_provider: anthropic
+  anthropic/claude-opus-4.8:
+    id: anthropic/claude-opus-4.8
+    input: 5
+    output: 25
+    original_provider: anthropic
+  claude-opus-4.8:
+    id: anthropic/claude-opus-4.8
+    input: 5
+    output: 25
+    original_provider: anthropic
+  qwen/qwen3.7-max:
+    id: qwen/qwen3.7-max
+    input: 1.25
+    output: 3.75
+    original_provider: qwen
+  qwen3.7-max:
+    id: qwen/qwen3.7-max
+    input: 1.25
+    output: 3.75
+    original_provider: qwen
+  x-ai/grok-build-0.1:
+    id: x-ai/grok-build-0.1
+    input: 1
+    output: 2
+    original_provider: x-ai
+  grok-build-0.1:
+    id: x-ai/grok-build-0.1
+    input: 1
+    output: 2
+    original_provider: x-ai
+  google/gemini-3.5-flash:
+    id: google/gemini-3.5-flash
+    input: 1.5
+    output: 9
+    original_provider: google
+  gemini-3.5-flash:
+    id: google/gemini-3.5-flash
+    input: 1.5
+    output: 9
+    original_provider: google
+  anthropic/claude-opus-4.7-fast:
+    id: anthropic/claude-opus-4.7-fast
+    input: 30
+    output: 150
+    original_provider: anthropic
+  claude-opus-4.7-fast:
+    id: anthropic/claude-opus-4.7-fast
+    input: 30
+    output: 150
+    original_provider: anthropic
+  perceptron/perceptron-mk1:
+    id: perceptron/perceptron-mk1
+    input: 0.15
+    output: 1.5
+    original_provider: perceptron
+  perceptron-mk1:
+    id: perceptron/perceptron-mk1
+    input: 0.15
+    output: 1.5
+    original_provider: perceptron
+  inclusionai/ring-2.6-1t:
+    id: inclusionai/ring-2.6-1t
+    input: 0.075
+    output: 0.625
+    original_provider: inclusionai
+  ring-2.6-1t:
+    id: inclusionai/ring-2.6-1t
+    input: 0.075
+    output: 0.625
+    original_provider: inclusionai
+  google/gemini-3.1-flash-lite:
+    id: google/gemini-3.1-flash-lite
+    input: 0.25
+    output: 1.5
+    original_provider: google
+  gemini-3.1-flash-lite:
+    id: google/gemini-3.1-flash-lite
+    input: 0.25
+    output: 1.5
+    original_provider: google
+  openai/gpt-chat-latest:
+    id: openai/gpt-chat-latest
+    input: 5
+    output: 30
+    original_provider: openai
+  gpt-chat-latest:
+    id: openai/gpt-chat-latest
+    input: 5
+    output: 30
+    original_provider: openai
+  x-ai/grok-4.3:
+    id: x-ai/grok-4.3
+    input: 1.25
+    output: 2.5
+    original_provider: x-ai
+  grok-4.3:
+    id: x-ai/grok-4.3
+    input: 1.25
+    output: 2.5
+    original_provider: x-ai
+  ibm-granite/granite-4.1-8b:
+    id: ibm-granite/granite-4.1-8b
+    input: 0.05
+    output: 0.1
+    original_provider: ibm-granite
+  granite-4.1-8b:
+    id: ibm-granite/granite-4.1-8b
+    input: 0.05
+    output: 0.1
+    original_provider: ibm-granite
+  mistralai/mistral-medium-3-5:
+    id: mistralai/mistral-medium-3-5
+    input: 1.5
+    output: 7.5
+    original_provider: mistralai
+  mistral-medium-3-5:
+    id: mistralai/mistral-medium-3-5
+    input: 1.5
+    output: 7.5
+    original_provider: mistralai
+  openrouter/owl-alpha:
+    id: openrouter/owl-alpha
+    input: 0
+    output: 0
+    original_provider: openrouter
+  owl-alpha:
+    id: openrouter/owl-alpha
+    input: 0
+    output: 0
+    original_provider: openrouter
+  nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free:
+    id: nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+    input: 0
+    output: 0
+    original_provider: nvidia
+  nemotron-3-nano-omni-30b-a3b-reasoning:free:
+    id: nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+    input: 0
+    output: 0
+    original_provider: nvidia
+  poolside/laguna-xs.2:free:
+    id: poolside/laguna-xs.2:free
+    input: 0
+    output: 0
+    original_provider: poolside
+  laguna-xs.2:free:
+    id: poolside/laguna-xs.2:free
+    input: 0
+    output: 0
+    original_provider: poolside
+  poolside/laguna-m.1:free:
+    id: poolside/laguna-m.1:free
+    input: 0
+    output: 0
+    original_provider: poolside
+  laguna-m.1:free:
+    id: poolside/laguna-m.1:free
+    input: 0
+    output: 0
+    original_provider: poolside
+  ~anthropic/claude-haiku-latest:
+    id: ~anthropic/claude-haiku-latest
+    input: 1
+    output: 5
+    original_provider: ~anthropic
+  claude-haiku-latest:
+    id: ~anthropic/claude-haiku-latest
+    input: 1
+    output: 5
+    original_provider: ~anthropic
+  ~openai/gpt-mini-latest:
+    id: ~openai/gpt-mini-latest
+    input: 0.75
+    output: 4.5
+    original_provider: ~openai
+  gpt-mini-latest:
+    id: ~openai/gpt-mini-latest
+    input: 0.75
+    output: 4.5
+    original_provider: ~openai
+  ~google/gemini-pro-latest:
+    id: ~google/gemini-pro-latest
+    input: 2
+    output: 12
+    original_provider: ~google
+  gemini-pro-latest:
+    id: ~google/gemini-pro-latest
+    input: 2
+    output: 12
+    original_provider: ~google
+  ~moonshotai/kimi-latest:
+    id: ~moonshotai/kimi-latest
+    input: 0.73
+    output: 3.49
+    original_provider: ~moonshotai
+  kimi-latest:
+    id: ~moonshotai/kimi-latest
+    input: 0.73
+    output: 3.49
+    original_provider: ~moonshotai
+  ~google/gemini-flash-latest:
+    id: ~google/gemini-flash-latest
+    input: 1.5
+    output: 9
+    original_provider: ~google
+  gemini-flash-latest:
+    id: ~google/gemini-flash-latest
+    input: 1.5
+    output: 9
+    original_provider: ~google
+  ~anthropic/claude-sonnet-latest:
+    id: ~anthropic/claude-sonnet-latest
+    input: 3
+    output: 15
+    original_provider: ~anthropic
+  claude-sonnet-latest:
+    id: ~anthropic/claude-sonnet-latest
+    input: 3
+    output: 15
+    original_provider: ~anthropic
+  ~openai/gpt-latest:
+    id: ~openai/gpt-latest
+    input: 5
+    output: 30
+    original_provider: ~openai
+  gpt-latest:
+    id: ~openai/gpt-latest
+    input: 5
+    output: 30
+    original_provider: ~openai
+  qwen/qwen3.5-plus-20260420:
+    id: qwen/qwen3.5-plus-20260420
+    input: 0.3
+    output: 1.8
+    original_provider: qwen
+  qwen3.5-plus-20260420:
+    id: qwen/qwen3.5-plus-20260420
+    input: 0.3
+    output: 1.8
+    original_provider: qwen
+  qwen/qwen3.6-flash:
+    id: qwen/qwen3.6-flash
+    input: 0.1875
+    output: 1.125
+    original_provider: qwen
+  qwen3.6-flash:
+    id: qwen/qwen3.6-flash
+    input: 0.1875
+    output: 1.125
+    original_provider: qwen
+  qwen/qwen3.6-35b-a3b:
+    id: qwen/qwen3.6-35b-a3b
+    input: 0.14
+    output: 1
+    original_provider: qwen
+  qwen3.6-35b-a3b:
+    id: qwen/qwen3.6-35b-a3b
+    input: 0.14
+    output: 1
+    original_provider: qwen
+  qwen/qwen3.6-max-preview:
+    id: qwen/qwen3.6-max-preview
+    input: 1.04
+    output: 6.24
+    original_provider: qwen
+  qwen3.6-max-preview:
+    id: qwen/qwen3.6-max-preview
+    input: 1.04
+    output: 6.24
+    original_provider: qwen
+  qwen/qwen3.6-27b:
+    id: qwen/qwen3.6-27b
+    input: 0.29
+    output: 3.2
+    original_provider: qwen
+  qwen3.6-27b:
+    id: qwen/qwen3.6-27b
+    input: 0.29
+    output: 3.2
+    original_provider: qwen
+  openai/gpt-5.5-pro:
+    id: openai/gpt-5.5-pro
+    input: 30
+    output: 180
+    original_provider: openai
+  gpt-5.5-pro:
+    id: openai/gpt-5.5-pro
+    input: 30
+    output: 180
+    original_provider: openai
+  openai/gpt-5.5:
+    id: openai/gpt-5.5
+    input: 5
+    output: 30
+    original_provider: openai
+  gpt-5.5:
+    id: openai/gpt-5.5
+    input: 5
+    output: 30
+    original_provider: openai
+  deepseek/deepseek-v4-pro:
+    id: deepseek/deepseek-v4-pro
+    input: 0.435
+    output: 0.87
+    original_provider: deepseek
+  deepseek-v4-pro:
+    id: deepseek/deepseek-v4-pro
+    input: 0.435
+    output: 0.87
+    original_provider: deepseek
+  deepseek/deepseek-v4-flash:free:
+    id: deepseek/deepseek-v4-flash:free
+    input: 0
+    output: 0
+    original_provider: deepseek
+  deepseek-v4-flash:free:
+    id: deepseek/deepseek-v4-flash:free
+    input: 0
+    output: 0
+    original_provider: deepseek
+  deepseek/deepseek-v4-flash:
+    id: deepseek/deepseek-v4-flash
+    input: 0.1
+    output: 0.2
+    original_provider: deepseek
+  deepseek-v4-flash:
+    id: deepseek/deepseek-v4-flash
+    input: 0.1
+    output: 0.2
+    original_provider: deepseek
+  inclusionai/ling-2.6-1t:
+    id: inclusionai/ling-2.6-1t
+    input: 0.075
+    output: 0.625
+    original_provider: inclusionai
+  ling-2.6-1t:
+    id: inclusionai/ling-2.6-1t
+    input: 0.075
+    output: 0.625
+    original_provider: inclusionai
+  tencent/hy3-preview:
+    id: tencent/hy3-preview
+    input: 0.063
+    output: 0.21
+    original_provider: tencent
+  hy3-preview:
+    id: tencent/hy3-preview
+    input: 0.063
+    output: 0.21
+    original_provider: tencent
+  xiaomi/mimo-v2.5-pro:
+    id: xiaomi/mimo-v2.5-pro
+    input: 0.435
+    output: 0.87
+    original_provider: xiaomi
+  mimo-v2.5-pro:
+    id: xiaomi/mimo-v2.5-pro
+    input: 0.435
+    output: 0.87
+    original_provider: xiaomi
+  xiaomi/mimo-v2.5:
+    id: xiaomi/mimo-v2.5
+    input: 0.14
+    output: 0.28
+    original_provider: xiaomi
+  mimo-v2.5:
+    id: xiaomi/mimo-v2.5
+    input: 0.14
+    output: 0.28
+    original_provider: xiaomi
+  openai/gpt-5.4-image-2:
+    id: openai/gpt-5.4-image-2
+    input: 8
+    output: 15
+    original_provider: openai
+  gpt-5.4-image-2:
+    id: openai/gpt-5.4-image-2
+    input: 8
+    output: 15
+    original_provider: openai
+  inclusionai/ling-2.6-flash:
+    id: inclusionai/ling-2.6-flash
+    input: 0.01
+    output: 0.03
+    original_provider: inclusionai
+  ling-2.6-flash:
+    id: inclusionai/ling-2.6-flash
+    input: 0.01
+    output: 0.03
+    original_provider: inclusionai
+  ~anthropic/claude-opus-latest:
+    id: ~anthropic/claude-opus-latest
+    input: 5
+    output: 25
+    original_provider: ~anthropic
+  claude-opus-latest:
+    id: ~anthropic/claude-opus-latest
+    input: 5
+    output: 25
+    original_provider: ~anthropic
+  openrouter/pareto-code:
+    id: openrouter/pareto-code
+    input: -1000000
+    output: -1000000
+    original_provider: openrouter
+  pareto-code:
+    id: openrouter/pareto-code
+    input: -1000000
+    output: -1000000
+    original_provider: openrouter
+  moonshotai/kimi-k2.6:free:
+    id: moonshotai/kimi-k2.6:free
+    input: 0
+    output: 0
+    original_provider: moonshotai
+  kimi-k2.6:free:
+    id: moonshotai/kimi-k2.6:free
+    input: 0
+    output: 0
+    original_provider: moonshotai
+  moonshotai/kimi-k2.6:
+    id: moonshotai/kimi-k2.6
+    input: 0.73
+    output: 3.49
+    original_provider: moonshotai
+  kimi-k2.6:
+    id: moonshotai/kimi-k2.6
+    input: 0.73
+    output: 3.49
+    original_provider: moonshotai
+  anthropic/claude-opus-4.7:
+    id: anthropic/claude-opus-4.7
+    input: 5
+    output: 25
+    original_provider: anthropic
+  claude-opus-4.7:
+    id: anthropic/claude-opus-4.7
+    input: 5
+    output: 25
+    original_provider: anthropic
+  anthropic/claude-opus-4.6-fast:
+    id: anthropic/claude-opus-4.6-fast
+    input: 30
+    output: 150
+    original_provider: anthropic
+  claude-opus-4.6-fast:
+    id: anthropic/claude-opus-4.6-fast
+    input: 30
+    output: 150
+    original_provider: anthropic
+  z-ai/glm-5.1:
+    id: z-ai/glm-5.1
+    input: 0.98
+    output: 3.08
+    original_provider: z-ai
+  glm-5.1:
+    id: z-ai/glm-5.1
+    input: 0.98
+    output: 3.08
+    original_provider: z-ai
+  google/gemma-4-26b-a4b-it:free:
+    id: google/gemma-4-26b-a4b-it:free
+    input: 0
+    output: 0
+    original_provider: google
+  gemma-4-26b-a4b-it:free:
+    id: google/gemma-4-26b-a4b-it:free
+    input: 0
+    output: 0
+    original_provider: google
+  google/gemma-4-26b-a4b-it:
+    id: google/gemma-4-26b-a4b-it
+    input: 0.06
+    output: 0.33
+    original_provider: google
+  gemma-4-26b-a4b-it:
+    id: google/gemma-4-26b-a4b-it
+    input: 0.06
+    output: 0.33
+    original_provider: google
+  google/gemma-4-31b-it:free:
+    id: google/gemma-4-31b-it:free
+    input: 0
+    output: 0
+    original_provider: google
+  gemma-4-31b-it:free:
+    id: google/gemma-4-31b-it:free
+    input: 0
+    output: 0
+    original_provider: google
+  google/gemma-4-31b-it:
+    id: google/gemma-4-31b-it
+    input: 0.12
+    output: 0.37
+    original_provider: google
+  gemma-4-31b-it:
+    id: google/gemma-4-31b-it
+    input: 0.12
+    output: 0.37
+    original_provider: google
+  qwen/qwen3.6-plus:
+    id: qwen/qwen3.6-plus
+    input: 0.325
+    output: 1.95
+    original_provider: qwen
+  qwen3.6-plus:
+    id: qwen/qwen3.6-plus
+    input: 0.325
+    output: 1.95
+    original_provider: qwen
+  z-ai/glm-5v-turbo:
+    id: z-ai/glm-5v-turbo
+    input: 1.2
+    output: 4
+    original_provider: z-ai
+  glm-5v-turbo:
+    id: z-ai/glm-5v-turbo
+    input: 1.2
+    output: 4
+    original_provider: z-ai
+  arcee-ai/trinity-large-thinking:
+    id: arcee-ai/trinity-large-thinking
+    input: 0.22
+    output: 0.85
+    original_provider: arcee-ai
+  trinity-large-thinking:
+    id: arcee-ai/trinity-large-thinking
+    input: 0.22
+    output: 0.85
+    original_provider: arcee-ai
+  x-ai/grok-4.20-multi-agent:
+    id: x-ai/grok-4.20-multi-agent
+    input: 2
+    output: 6
+    original_provider: x-ai
+  grok-4.20-multi-agent:
+    id: x-ai/grok-4.20-multi-agent
+    input: 2
+    output: 6
+    original_provider: x-ai
+  x-ai/grok-4.20:
+    id: x-ai/grok-4.20
+    input: 1.25
+    output: 2.5
+    original_provider: x-ai
+  grok-4.20:
+    id: x-ai/grok-4.20
+    input: 1.25
+    output: 2.5
+    original_provider: x-ai
+  google/lyria-3-pro-preview:
+    id: google/lyria-3-pro-preview
+    input: 0
+    output: 0
+    original_provider: google
+  lyria-3-pro-preview:
+    id: google/lyria-3-pro-preview
+    input: 0
+    output: 0
+    original_provider: google
+  google/lyria-3-clip-preview:
+    id: google/lyria-3-clip-preview
+    input: 0
+    output: 0
+    original_provider: google
+  lyria-3-clip-preview:
+    id: google/lyria-3-clip-preview
+    input: 0
+    output: 0
+    original_provider: google
+  kwaipilot/kat-coder-pro-v2:
+    id: kwaipilot/kat-coder-pro-v2
+    input: 0.3
+    output: 1.2
+    original_provider: kwaipilot
+  kat-coder-pro-v2:
+    id: kwaipilot/kat-coder-pro-v2
+    input: 0.3
+    output: 1.2
+    original_provider: kwaipilot
+  rekaai/reka-edge:
+    id: rekaai/reka-edge
+    input: 0.1
+    output: 0.1
+    original_provider: rekaai
+  reka-edge:
+    id: rekaai/reka-edge
+    input: 0.1
+    output: 0.1
+    original_provider: rekaai
+  xiaomi/mimo-v2-omni:
+    id: xiaomi/mimo-v2-omni
+    input: 0.4
+    output: 2
+    original_provider: xiaomi
+  mimo-v2-omni:
+    id: xiaomi/mimo-v2-omni
+    input: 0.4
+    output: 2
+    original_provider: xiaomi
+  xiaomi/mimo-v2-pro:
+    id: xiaomi/mimo-v2-pro
+    input: 1
+    output: 3
+    original_provider: xiaomi
+  mimo-v2-pro:
+    id: xiaomi/mimo-v2-pro
+    input: 1
+    output: 3
+    original_provider: xiaomi
+  minimax/minimax-m2.7:
+    id: minimax/minimax-m2.7
+    input: 0.279
+    output: 1.2
+    original_provider: minimax
+  minimax-m2.7:
+    id: minimax/minimax-m2.7
+    input: 0.279
+    output: 1.2
+    original_provider: minimax
+  openai/gpt-5.4-nano:
+    id: openai/gpt-5.4-nano
+    input: 0.2
+    output: 1.25
+    original_provider: openai
+  gpt-5.4-nano:
+    id: openai/gpt-5.4-nano
+    input: 0.2
+    output: 1.25
+    original_provider: openai
+  openai/gpt-5.4-mini:
+    id: openai/gpt-5.4-mini
+    input: 0.75
+    output: 4.5
+    original_provider: openai
+  gpt-5.4-mini:
+    id: openai/gpt-5.4-mini
+    input: 0.75
+    output: 4.5
+    original_provider: openai
+  mistralai/mistral-small-2603:
+    id: mistralai/mistral-small-2603
+    input: 0.15
+    output: 0.6
+    original_provider: mistralai
+  mistral-small-2603:
+    id: mistralai/mistral-small-2603
+    input: 0.15
+    output: 0.6
+    original_provider: mistralai
+  z-ai/glm-5-turbo:
+    id: z-ai/glm-5-turbo
+    input: 1.2
+    output: 4
+    original_provider: z-ai
+  glm-5-turbo:
+    id: z-ai/glm-5-turbo
+    input: 1.2
+    output: 4
+    original_provider: z-ai
+  nvidia/nemotron-3-super-120b-a12b:free:
+    id: nvidia/nemotron-3-super-120b-a12b:free
+    input: 0
+    output: 0
+    original_provider: nvidia
+  nemotron-3-super-120b-a12b:free:
+    id: nvidia/nemotron-3-super-120b-a12b:free
+    input: 0
+    output: 0
+    original_provider: nvidia
+  nvidia/nemotron-3-super-120b-a12b:
+    id: nvidia/nemotron-3-super-120b-a12b
+    input: 0.09
+    output: 0.45
+    original_provider: nvidia
+  nemotron-3-super-120b-a12b:
+    id: nvidia/nemotron-3-super-120b-a12b
+    input: 0.09
+    output: 0.45
+    original_provider: nvidia
+  bytedance-seed/seed-2.0-lite:
+    id: bytedance-seed/seed-2.0-lite
+    input: 0.25
+    output: 2
+    original_provider: bytedance-seed
+  seed-2.0-lite:
+    id: bytedance-seed/seed-2.0-lite
+    input: 0.25
+    output: 2
+    original_provider: bytedance-seed
+  qwen/qwen3.5-9b:
+    id: qwen/qwen3.5-9b
+    input: 0.04
+    output: 0.15
+    original_provider: qwen
+  qwen3.5-9b:
+    id: qwen/qwen3.5-9b
+    input: 0.04
+    output: 0.15
+    original_provider: qwen
+  openai/gpt-5.4-pro:
+    id: openai/gpt-5.4-pro
+    input: 30
+    output: 180
+    original_provider: openai
+  gpt-5.4-pro:
+    id: openai/gpt-5.4-pro
+    input: 30
+    output: 180
+    original_provider: openai
+  openai/gpt-5.4:
+    id: openai/gpt-5.4
+    input: 2.5
+    output: 15
+    original_provider: openai
+  gpt-5.4:
+    id: openai/gpt-5.4
+    input: 2.5
+    output: 15
+    original_provider: openai
+  inception/mercury-2:
+    id: inception/mercury-2
+    input: 0.25
+    output: 0.75
+    original_provider: inception
+  mercury-2:
+    id: inception/mercury-2
+    input: 0.25
+    output: 0.75
+    original_provider: inception
+  openai/gpt-5.3-chat:
+    id: openai/gpt-5.3-chat
+    input: 1.75
+    output: 14
+    original_provider: openai
+  gpt-5.3-chat:
+    id: openai/gpt-5.3-chat
+    input: 1.75
+    output: 14
+    original_provider: openai
+  google/gemini-3.1-flash-lite-preview:
+    id: google/gemini-3.1-flash-lite-preview
+    input: 0.25
+    output: 1.5
+    original_provider: google
+  gemini-3.1-flash-lite-preview:
+    id: google/gemini-3.1-flash-lite-preview
+    input: 0.25
+    output: 1.5
+    original_provider: google
+  bytedance-seed/seed-2.0-mini:
+    id: bytedance-seed/seed-2.0-mini
+    input: 0.1
+    output: 0.4
+    original_provider: bytedance-seed
+  seed-2.0-mini:
+    id: bytedance-seed/seed-2.0-mini
+    input: 0.1
+    output: 0.4
+    original_provider: bytedance-seed
+  google/gemini-3.1-flash-image-preview:
+    id: google/gemini-3.1-flash-image-preview
+    input: 0.5
+    output: 3
+    original_provider: google
+  gemini-3.1-flash-image-preview:
+    id: google/gemini-3.1-flash-image-preview
+    input: 0.5
+    output: 3
+    original_provider: google
+  qwen/qwen3.5-35b-a3b:
+    id: qwen/qwen3.5-35b-a3b
+    input: 0.139
+    output: 1
+    original_provider: qwen
+  qwen3.5-35b-a3b:
+    id: qwen/qwen3.5-35b-a3b
+    input: 0.139
+    output: 1
+    original_provider: qwen
+  qwen/qwen3.5-27b:
+    id: qwen/qwen3.5-27b
+    input: 0.195
+    output: 1.56
+    original_provider: qwen
+  qwen3.5-27b:
+    id: qwen/qwen3.5-27b
+    input: 0.195
+    output: 1.56
+    original_provider: qwen
+  qwen/qwen3.5-122b-a10b:
+    id: qwen/qwen3.5-122b-a10b
+    input: 0.26
+    output: 2.08
+    original_provider: qwen
+  qwen3.5-122b-a10b:
+    id: qwen/qwen3.5-122b-a10b
+    input: 0.26
+    output: 2.08
+    original_provider: qwen
+  qwen/qwen3.5-flash-02-23:
+    id: qwen/qwen3.5-flash-02-23
+    input: 0.065
+    output: 0.26
+    original_provider: qwen
+  qwen3.5-flash-02-23:
+    id: qwen/qwen3.5-flash-02-23
+    input: 0.065
+    output: 0.26
+    original_provider: qwen
+  liquid/lfm-2-24b-a2b:
+    id: liquid/lfm-2-24b-a2b
+    input: 0.03
+    output: 0.12
+    original_provider: liquid
+  lfm-2-24b-a2b:
+    id: liquid/lfm-2-24b-a2b
+    input: 0.03
+    output: 0.12
+    original_provider: liquid
+  google/gemini-3.1-pro-preview-customtools:
+    id: google/gemini-3.1-pro-preview-customtools
+    input: 2
+    output: 12
+    original_provider: google
+  gemini-3.1-pro-preview-customtools:
+    id: google/gemini-3.1-pro-preview-customtools
+    input: 2
+    output: 12
+    original_provider: google
+  openai/gpt-5.3-codex:
+    id: openai/gpt-5.3-codex
+    input: 1.75
+    output: 14
+    original_provider: openai
+  gpt-5.3-codex:
+    id: openai/gpt-5.3-codex
+    input: 1.75
+    output: 14
+    original_provider: openai
+  aion-labs/aion-2.0:
+    id: aion-labs/aion-2.0
+    input: 0.8
+    output: 1.6
+    original_provider: aion-labs
+  aion-2.0:
+    id: aion-labs/aion-2.0
+    input: 0.8
+    output: 1.6
+    original_provider: aion-labs
+  google/gemini-3.1-pro-preview:
+    id: google/gemini-3.1-pro-preview
+    input: 2
+    output: 12
+    original_provider: google
+  gemini-3.1-pro-preview:
+    id: google/gemini-3.1-pro-preview
+    input: 2
+    output: 12
+    original_provider: google
+  anthropic/claude-sonnet-4.6:
+    id: anthropic/claude-sonnet-4.6
+    input: 3
+    output: 15
+    original_provider: anthropic
+  claude-sonnet-4.6:
+    id: anthropic/claude-sonnet-4.6
+    input: 3
+    output: 15
+    original_provider: anthropic
+  qwen/qwen3.5-plus-02-15:
+    id: qwen/qwen3.5-plus-02-15
+    input: 0.26
+    output: 1.56
+    original_provider: qwen
+  qwen3.5-plus-02-15:
+    id: qwen/qwen3.5-plus-02-15
+    input: 0.26
+    output: 1.56
+    original_provider: qwen
+  qwen/qwen3.5-397b-a17b:
+    id: qwen/qwen3.5-397b-a17b
+    input: 0.39
+    output: 2.34
+    original_provider: qwen
+  qwen3.5-397b-a17b:
+    id: qwen/qwen3.5-397b-a17b
+    input: 0.39
+    output: 2.34
+    original_provider: qwen
+  minimax/minimax-m2.5:free:
+    id: minimax/minimax-m2.5:free
+    input: 0
+    output: 0
+    original_provider: minimax
+  minimax-m2.5:free:
+    id: minimax/minimax-m2.5:free
+    input: 0
+    output: 0
+    original_provider: minimax
+  minimax/minimax-m2.5:
+    id: minimax/minimax-m2.5
+    input: 0.15
+    output: 1.15
+    original_provider: minimax
+  minimax-m2.5:
+    id: minimax/minimax-m2.5
+    input: 0.15
+    output: 1.15
+    original_provider: minimax
+  z-ai/glm-5:
+    id: z-ai/glm-5
+    input: 0.6
+    output: 1.92
+    original_provider: z-ai
+  glm-5:
+    id: z-ai/glm-5
+    input: 0.6
+    output: 1.92
+    original_provider: z-ai
+  qwen/qwen3-max-thinking:
+    id: qwen/qwen3-max-thinking
+    input: 0.78
+    output: 3.9
+    original_provider: qwen
+  qwen3-max-thinking:
+    id: qwen/qwen3-max-thinking
+    input: 0.78
+    output: 3.9
+    original_provider: qwen
+  anthropic/claude-opus-4.6:
+    id: anthropic/claude-opus-4.6
+    input: 5
+    output: 25
+    original_provider: anthropic
+  claude-opus-4.6:
+    id: anthropic/claude-opus-4.6
+    input: 5
+    output: 25
+    original_provider: anthropic
+  qwen/qwen3-coder-next:
+    id: qwen/qwen3-coder-next
+    input: 0.11
+    output: 0.8
+    original_provider: qwen
+  qwen3-coder-next:
+    id: qwen/qwen3-coder-next
+    input: 0.11
+    output: 0.8
+    original_provider: qwen
   openrouter/free:
     id: openrouter/free
     input: 0
@@ -12,45 +982,35 @@ models:
     input: 0
     output: 0
     original_provider: openrouter
-  stepfun/step-3.5-flash:free:
-    id: stepfun/step-3.5-flash:free
-    input: 0
-    output: 0
+  stepfun/step-3.5-flash:
+    id: stepfun/step-3.5-flash
+    input: 0.09
+    output: 0.3
     original_provider: stepfun
-  step-3.5-flash:free:
-    id: stepfun/step-3.5-flash:free
-    input: 0
-    output: 0
+  step-3.5-flash:
+    id: stepfun/step-3.5-flash
+    input: 0.09
+    output: 0.3
     original_provider: stepfun
-  arcee-ai/trinity-large-preview:free:
-    id: arcee-ai/trinity-large-preview:free
-    input: 0
-    output: 0
-    original_provider: arcee-ai
-  trinity-large-preview:free:
-    id: arcee-ai/trinity-large-preview:free
-    input: 0
-    output: 0
-    original_provider: arcee-ai
   moonshotai/kimi-k2.5:
     id: moonshotai/kimi-k2.5
-    input: 0.5
-    output: 2.8
+    input: 0.4
+    output: 1.9
     original_provider: moonshotai
   kimi-k2.5:
     id: moonshotai/kimi-k2.5
-    input: 0.5
-    output: 2.8
+    input: 0.4
+    output: 1.9
     original_provider: moonshotai
-  upstage/solar-pro-3:free:
-    id: upstage/solar-pro-3:free
-    input: 0
-    output: 0
+  upstage/solar-pro-3:
+    id: upstage/solar-pro-3
+    input: 0.15
+    output: 0.6
     original_provider: upstage
-  solar-pro-3:free:
-    id: upstage/solar-pro-3:free
-    input: 0
-    output: 0
+  solar-pro-3:
+    id: upstage/solar-pro-3
+    input: 0.15
+    output: 0.6
     original_provider: upstage
   minimax/minimax-m2-her:
     id: minimax/minimax-m2-her
@@ -114,12 +1074,12 @@ models:
     original_provider: openai
   z-ai/glm-4.7-flash:
     id: z-ai/glm-4.7-flash
-    input: 0.07
+    input: 0.06
     output: 0.4
     original_provider: z-ai
   glm-4.7-flash:
     id: z-ai/glm-4.7-flash
-    input: 0.07
+    input: 0.06
     output: 0.4
     original_provider: z-ai
   openai/gpt-5.2-codex:
@@ -132,26 +1092,6 @@ models:
     input: 1.75
     output: 14
     original_provider: openai
-  allenai/molmo-2-8b:free:
-    id: allenai/molmo-2-8b:free
-    input: 0
-    output: 0
-    original_provider: allenai
-  molmo-2-8b:free:
-    id: allenai/molmo-2-8b:free
-    input: 0
-    output: 0
-    original_provider: allenai
-  allenai/olmo-3.1-32b-instruct:
-    id: allenai/olmo-3.1-32b-instruct
-    input: 0.2
-    output: 0.6
-    original_provider: allenai
-  olmo-3.1-32b-instruct:
-    id: allenai/olmo-3.1-32b-instruct
-    input: 0.2
-    output: 0.6
-    original_provider: allenai
   bytedance-seed/seed-1.6-flash:
     id: bytedance-seed/seed-1.6-flash
     input: 0.075
@@ -174,23 +1114,23 @@ models:
     original_provider: bytedance-seed
   minimax/minimax-m2.1:
     id: minimax/minimax-m2.1
-    input: 0.27
-    output: 1.1
+    input: 0.29
+    output: 0.95
     original_provider: minimax
   minimax-m2.1:
     id: minimax/minimax-m2.1
-    input: 0.27
-    output: 1.1
+    input: 0.29
+    output: 0.95
     original_provider: minimax
   z-ai/glm-4.7:
     id: z-ai/glm-4.7
     input: 0.4
-    output: 1.5
+    output: 1.75
     original_provider: z-ai
   glm-4.7:
     id: z-ai/glm-4.7
     input: 0.4
-    output: 1.5
+    output: 1.75
     original_provider: z-ai
   google/gemini-3-flash-preview:
     id: google/gemini-3-flash-preview
@@ -202,35 +1142,15 @@ models:
     input: 0.5
     output: 3
     original_provider: google
-  mistralai/mistral-small-creative:
-    id: mistralai/mistral-small-creative
-    input: 0.1
-    output: 0.3
-    original_provider: mistralai
-  mistral-small-creative:
-    id: mistralai/mistral-small-creative
-    input: 0.1
-    output: 0.3
-    original_provider: mistralai
-  allenai/olmo-3.1-32b-think:
-    id: allenai/olmo-3.1-32b-think
-    input: 0.15
-    output: 0.5
-    original_provider: allenai
-  olmo-3.1-32b-think:
-    id: allenai/olmo-3.1-32b-think
-    input: 0.15
-    output: 0.5
-    original_provider: allenai
   xiaomi/mimo-v2-flash:
     id: xiaomi/mimo-v2-flash
-    input: 0.09
-    output: 0.29
+    input: 0.1
+    output: 0.3
     original_provider: xiaomi
   mimo-v2-flash:
     id: xiaomi/mimo-v2-flash
-    input: 0.09
-    output: 0.29
+    input: 0.1
+    output: 0.3
     original_provider: xiaomi
   nvidia/nemotron-3-nano-30b-a3b:free:
     id: nvidia/nemotron-3-nano-30b-a3b:free
@@ -284,13 +1204,13 @@ models:
     original_provider: openai
   mistralai/devstral-2512:
     id: mistralai/devstral-2512
-    input: 0.05
-    output: 0.22
+    input: 0.4
+    output: 2
     original_provider: mistralai
   devstral-2512:
     id: mistralai/devstral-2512
-    input: 0.05
-    output: 0.22
+    input: 0.4
+    output: 2
     original_provider: mistralai
   relace/relace-search:
     id: relace/relace-search
@@ -314,13 +1234,13 @@ models:
     original_provider: z-ai
   nex-agi/deepseek-v3.1-nex-n1:
     id: nex-agi/deepseek-v3.1-nex-n1
-    input: 0.27
-    output: 1
+    input: 0.135
+    output: 0.5
     original_provider: nex-agi
   deepseek-v3.1-nex-n1:
     id: nex-agi/deepseek-v3.1-nex-n1
-    input: 0.27
-    output: 1
+    input: 0.135
+    output: 0.5
     original_provider: nex-agi
   essentialai/rnj-1-instruct:
     id: essentialai/rnj-1-instruct
@@ -402,16 +1322,6 @@ models:
     input: 0.5
     output: 1.5
     original_provider: mistralai
-  arcee-ai/trinity-mini:free:
-    id: arcee-ai/trinity-mini:free
-    input: 0
-    output: 0
-    original_provider: arcee-ai
-  trinity-mini:free:
-    id: arcee-ai/trinity-mini:free
-    input: 0
-    output: 0
-    original_provider: arcee-ai
   arcee-ai/trinity-mini:
     id: arcee-ai/trinity-mini
     input: 0.045
@@ -422,25 +1332,15 @@ models:
     input: 0.045
     output: 0.15
     original_provider: arcee-ai
-  deepseek/deepseek-v3.2-speciale:
-    id: deepseek/deepseek-v3.2-speciale
-    input: 0.27
-    output: 0.41
-    original_provider: deepseek
-  deepseek-v3.2-speciale:
-    id: deepseek/deepseek-v3.2-speciale
-    input: 0.27
-    output: 0.41
-    original_provider: deepseek
   deepseek/deepseek-v3.2:
     id: deepseek/deepseek-v3.2
-    input: 0.25
-    output: 0.38
+    input: 0.252
+    output: 0.378
     original_provider: deepseek
   deepseek-v3.2:
     id: deepseek/deepseek-v3.2
-    input: 0.25
-    output: 0.38
+    input: 0.252
+    output: 0.378
     original_provider: deepseek
   prime-intellect/intellect-3:
     id: prime-intellect/intellect-3
@@ -452,26 +1352,6 @@ models:
     input: 0.2
     output: 1.1
     original_provider: prime-intellect
-  tngtech/tng-r1t-chimera:free:
-    id: tngtech/tng-r1t-chimera:free
-    input: 0
-    output: 0
-    original_provider: tngtech
-  tng-r1t-chimera:free:
-    id: tngtech/tng-r1t-chimera:free
-    input: 0
-    output: 0
-    original_provider: tngtech
-  tngtech/tng-r1t-chimera:
-    id: tngtech/tng-r1t-chimera
-    input: 0.25
-    output: 0.85
-    original_provider: tngtech
-  tng-r1t-chimera:
-    id: tngtech/tng-r1t-chimera
-    input: 0.25
-    output: 0.85
-    original_provider: tngtech
   anthropic/claude-opus-4.5:
     id: anthropic/claude-opus-4.5
     input: 5
@@ -492,26 +1372,6 @@ models:
     input: 0.15
     output: 0.5
     original_provider: allenai
-  allenai/olmo-3-7b-instruct:
-    id: allenai/olmo-3-7b-instruct
-    input: 0.1
-    output: 0.2
-    original_provider: allenai
-  olmo-3-7b-instruct:
-    id: allenai/olmo-3-7b-instruct
-    input: 0.1
-    output: 0.2
-    original_provider: allenai
-  allenai/olmo-3-7b-think:
-    id: allenai/olmo-3-7b-think
-    input: 0.12
-    output: 0.2
-    original_provider: allenai
-  olmo-3-7b-think:
-    id: allenai/olmo-3-7b-think
-    input: 0.12
-    output: 0.2
-    original_provider: allenai
   google/gemini-3-pro-image-preview:
     id: google/gemini-3-pro-image-preview
     input: 2
@@ -519,26 +1379,6 @@ models:
     original_provider: google
   gemini-3-pro-image-preview:
     id: google/gemini-3-pro-image-preview
-    input: 2
-    output: 12
-    original_provider: google
-  x-ai/grok-4.1-fast:
-    id: x-ai/grok-4.1-fast
-    input: 0.2
-    output: 0.5
-    original_provider: x-ai
-  grok-4.1-fast:
-    id: x-ai/grok-4.1-fast
-    input: 0.2
-    output: 0.5
-    original_provider: x-ai
-  google/gemini-3-pro-preview:
-    id: google/gemini-3-pro-preview
-    input: 2
-    output: 12
-    original_provider: google
-  gemini-3-pro-preview:
-    id: google/gemini-3-pro-preview
     input: 2
     output: 12
     original_provider: google
@@ -592,25 +1432,15 @@ models:
     input: 0.25
     output: 2
     original_provider: openai
-  kwaipilot/kat-coder-pro:
-    id: kwaipilot/kat-coder-pro
-    input: 0.207
-    output: 0.828
-    original_provider: kwaipilot
-  kat-coder-pro:
-    id: kwaipilot/kat-coder-pro
-    input: 0.207
-    output: 0.828
-    original_provider: kwaipilot
   moonshotai/kimi-k2-thinking:
     id: moonshotai/kimi-k2-thinking
-    input: 0.4
-    output: 1.75
+    input: 0.6
+    output: 2.5
     original_provider: moonshotai
   kimi-k2-thinking:
     id: moonshotai/kimi-k2-thinking
-    input: 0.4
-    output: 1.75
+    input: 0.6
+    output: 2.5
     original_provider: moonshotai
   amazon/nova-premier-v1:
     id: amazon/nova-premier-v1
@@ -662,16 +1492,6 @@ models:
     input: 0
     output: 0
     original_provider: nvidia
-  nvidia/nemotron-nano-12b-v2-vl:
-    id: nvidia/nemotron-nano-12b-v2-vl
-    input: 0.2
-    output: 0.6
-    original_provider: nvidia
-  nemotron-nano-12b-v2-vl:
-    id: nvidia/nemotron-nano-12b-v2-vl
-    input: 0.2
-    output: 0.6
-    original_provider: nvidia
   minimax/minimax-m2:
     id: minimax/minimax-m2
     input: 0.255
@@ -684,54 +1504,34 @@ models:
     original_provider: minimax
   qwen/qwen3-vl-32b-instruct:
     id: qwen/qwen3-vl-32b-instruct
-    input: 0.5
-    output: 1.5
+    input: 0.104
+    output: 0.416
     original_provider: qwen
   qwen3-vl-32b-instruct:
     id: qwen/qwen3-vl-32b-instruct
-    input: 0.5
-    output: 1.5
+    input: 0.104
+    output: 0.416
     original_provider: qwen
-  liquid/lfm2-8b-a1b:
-    id: liquid/lfm2-8b-a1b
-    input: 0.01
-    output: 0.02
-    original_provider: liquid
-  lfm2-8b-a1b:
-    id: liquid/lfm2-8b-a1b
-    input: 0.01
-    output: 0.02
-    original_provider: liquid
-  liquid/lfm-2.2-6b:
-    id: liquid/lfm-2.2-6b
-    input: 0.01
-    output: 0.02
-    original_provider: liquid
-  lfm-2.2-6b:
-    id: liquid/lfm-2.2-6b
-    input: 0.01
-    output: 0.02
-    original_provider: liquid
   ibm-granite/granite-4.0-h-micro:
     id: ibm-granite/granite-4.0-h-micro
     input: 0.017
-    output: 0.11
+    output: 0.112
     original_provider: ibm-granite
   granite-4.0-h-micro:
     id: ibm-granite/granite-4.0-h-micro
     input: 0.017
-    output: 0.11
+    output: 0.112
     original_provider: ibm-granite
-  deepcogito/cogito-v2-preview-llama-405b:
-    id: deepcogito/cogito-v2-preview-llama-405b
-    input: 3.5
-    output: 3.5
-    original_provider: deepcogito
-  cogito-v2-preview-llama-405b:
-    id: deepcogito/cogito-v2-preview-llama-405b
-    input: 3.5
-    output: 3.5
-    original_provider: deepcogito
+  microsoft/phi-4-mini-instruct:
+    id: microsoft/phi-4-mini-instruct
+    input: 0.08
+    output: 0.35
+    original_provider: microsoft
+  phi-4-mini-instruct:
+    id: microsoft/phi-4-mini-instruct
+    input: 0.08
+    output: 0.35
+    original_provider: microsoft
   openai/gpt-5-image-mini:
     id: openai/gpt-5-image-mini
     input: 2.5
@@ -754,13 +1554,13 @@ models:
     original_provider: anthropic
   qwen/qwen3-vl-8b-thinking:
     id: qwen/qwen3-vl-8b-thinking
-    input: 0.18
-    output: 2.1
+    input: 0.117
+    output: 1.365
     original_provider: qwen
   qwen3-vl-8b-thinking:
     id: qwen/qwen3-vl-8b-thinking
-    input: 0.18
-    output: 2.1
+    input: 0.117
+    output: 1.365
     original_provider: qwen
   qwen/qwen3-vl-8b-instruct:
     id: qwen/qwen3-vl-8b-instruct
@@ -834,23 +1634,23 @@ models:
     original_provider: google
   qwen/qwen3-vl-30b-a3b-thinking:
     id: qwen/qwen3-vl-30b-a3b-thinking
-    input: 0.2
-    output: 1
+    input: 0.13
+    output: 1.56
     original_provider: qwen
   qwen3-vl-30b-a3b-thinking:
     id: qwen/qwen3-vl-30b-a3b-thinking
-    input: 0.2
-    output: 1
+    input: 0.13
+    output: 1.56
     original_provider: qwen
   qwen/qwen3-vl-30b-a3b-instruct:
     id: qwen/qwen3-vl-30b-a3b-instruct
-    input: 0.15
-    output: 0.6
+    input: 0.13
+    output: 0.52
     original_provider: qwen
   qwen3-vl-30b-a3b-instruct:
     id: qwen/qwen3-vl-30b-a3b-instruct
-    input: 0.15
-    output: 0.6
+    input: 0.13
+    output: 0.52
     original_provider: qwen
   openai/gpt-5-pro:
     id: openai/gpt-5-pro
@@ -864,23 +1664,13 @@ models:
     original_provider: openai
   z-ai/glm-4.6:
     id: z-ai/glm-4.6
-    input: 0.35
-    output: 1.5
+    input: 0.43
+    output: 1.74
     original_provider: z-ai
   glm-4.6:
     id: z-ai/glm-4.6
-    input: 0.35
-    output: 1.5
-    original_provider: z-ai
-  z-ai/glm-4.6:exacto:
-    id: z-ai/glm-4.6:exacto
-    input: 0.44
-    output: 1.76
-    original_provider: z-ai
-  glm-4.6:exacto:
-    id: z-ai/glm-4.6:exacto
-    input: 0.44
-    output: 1.76
+    input: 0.43
+    output: 1.74
     original_provider: z-ai
   anthropic/claude-sonnet-4.5:
     id: anthropic/claude-sonnet-4.5
@@ -922,16 +1712,6 @@ models:
     input: 0.85
     output: 1.25
     original_provider: relace
-  google/gemini-2.5-flash-preview-09-2025:
-    id: google/gemini-2.5-flash-preview-09-2025
-    input: 0.3
-    output: 2.5
-    original_provider: google
-  gemini-2.5-flash-preview-09-2025:
-    id: google/gemini-2.5-flash-preview-09-2025
-    input: 0.3
-    output: 2.5
-    original_provider: google
   google/gemini-2.5-flash-lite-preview-09-2025:
     id: google/gemini-2.5-flash-lite-preview-09-2025
     input: 0.1
@@ -944,43 +1724,43 @@ models:
     original_provider: google
   qwen/qwen3-vl-235b-a22b-thinking:
     id: qwen/qwen3-vl-235b-a22b-thinking
-    input: 0.45
-    output: 3.5
+    input: 0.26
+    output: 2.6
     original_provider: qwen
   qwen3-vl-235b-a22b-thinking:
     id: qwen/qwen3-vl-235b-a22b-thinking
-    input: 0.45
-    output: 3.5
+    input: 0.26
+    output: 2.6
     original_provider: qwen
   qwen/qwen3-vl-235b-a22b-instruct:
     id: qwen/qwen3-vl-235b-a22b-instruct
     input: 0.2
-    output: 1.2
+    output: 0.88
     original_provider: qwen
   qwen3-vl-235b-a22b-instruct:
     id: qwen/qwen3-vl-235b-a22b-instruct
     input: 0.2
-    output: 1.2
+    output: 0.88
     original_provider: qwen
   qwen/qwen3-max:
     id: qwen/qwen3-max
-    input: 1.2
-    output: 6
+    input: 0.78
+    output: 3.9
     original_provider: qwen
   qwen3-max:
     id: qwen/qwen3-max
-    input: 1.2
-    output: 6
+    input: 0.78
+    output: 3.9
     original_provider: qwen
   qwen/qwen3-coder-plus:
     id: qwen/qwen3-coder-plus
-    input: 1
-    output: 5
+    input: 0.65
+    output: 3.25
     original_provider: qwen
   qwen3-coder-plus:
     id: qwen/qwen3-coder-plus
-    input: 1
-    output: 5
+    input: 0.65
+    output: 3.25
     original_provider: qwen
   openai/gpt-5-codex:
     id: openai/gpt-5-codex
@@ -992,75 +1772,35 @@ models:
     input: 1.25
     output: 10
     original_provider: openai
-  deepseek/deepseek-v3.1-terminus:exacto:
-    id: deepseek/deepseek-v3.1-terminus:exacto
-    input: 0.21
-    output: 0.79
-    original_provider: deepseek
-  deepseek-v3.1-terminus:exacto:
-    id: deepseek/deepseek-v3.1-terminus:exacto
-    input: 0.21
-    output: 0.79
-    original_provider: deepseek
   deepseek/deepseek-v3.1-terminus:
     id: deepseek/deepseek-v3.1-terminus
-    input: 0.21
-    output: 0.79
+    input: 0.27
+    output: 0.95
     original_provider: deepseek
   deepseek-v3.1-terminus:
     id: deepseek/deepseek-v3.1-terminus
-    input: 0.21
-    output: 0.79
+    input: 0.27
+    output: 0.95
     original_provider: deepseek
-  x-ai/grok-4-fast:
-    id: x-ai/grok-4-fast
-    input: 0.2
-    output: 0.5
-    original_provider: x-ai
-  grok-4-fast:
-    id: x-ai/grok-4-fast
-    input: 0.2
-    output: 0.5
-    original_provider: x-ai
-  alibaba/tongyi-deepresearch-30b-a3b:
-    id: alibaba/tongyi-deepresearch-30b-a3b
-    input: 0.09
-    output: 0.4
-    original_provider: alibaba
-  tongyi-deepresearch-30b-a3b:
-    id: alibaba/tongyi-deepresearch-30b-a3b
-    input: 0.09
-    output: 0.4
-    original_provider: alibaba
   qwen/qwen3-coder-flash:
     id: qwen/qwen3-coder-flash
-    input: 0.3
-    output: 1.5
+    input: 0.195
+    output: 0.975
     original_provider: qwen
   qwen3-coder-flash:
     id: qwen/qwen3-coder-flash
-    input: 0.3
-    output: 1.5
+    input: 0.195
+    output: 0.975
     original_provider: qwen
-  opengvlab/internvl3-78b:
-    id: opengvlab/internvl3-78b
-    input: 0.1
-    output: 0.39
-    original_provider: opengvlab
-  internvl3-78b:
-    id: opengvlab/internvl3-78b
-    input: 0.1
-    output: 0.39
-    original_provider: opengvlab
   qwen/qwen3-next-80b-a3b-thinking:
     id: qwen/qwen3-next-80b-a3b-thinking
-    input: 0.15
-    output: 1.2
+    input: 0.0975
+    output: 0.78
     original_provider: qwen
   qwen3-next-80b-a3b-thinking:
     id: qwen/qwen3-next-80b-a3b-thinking
-    input: 0.15
-    output: 1.2
+    input: 0.0975
+    output: 0.78
     original_provider: qwen
   qwen/qwen3-next-80b-a3b-instruct:free:
     id: qwen/qwen3-next-80b-a3b-instruct:free
@@ -1082,35 +1822,25 @@ models:
     input: 0.09
     output: 1.1
     original_provider: qwen
-  meituan/longcat-flash-chat:
-    id: meituan/longcat-flash-chat
-    input: 0.2
-    output: 0.8
-    original_provider: meituan
-  longcat-flash-chat:
-    id: meituan/longcat-flash-chat
-    input: 0.2
-    output: 0.8
-    original_provider: meituan
-  qwen/qwen-plus-2025-07-28:
-    id: qwen/qwen-plus-2025-07-28
-    input: 0.4
-    output: 1.2
-    original_provider: qwen
-  qwen-plus-2025-07-28:
-    id: qwen/qwen-plus-2025-07-28
-    input: 0.4
-    output: 1.2
-    original_provider: qwen
   qwen/qwen-plus-2025-07-28:thinking:
     id: qwen/qwen-plus-2025-07-28:thinking
-    input: 0.4
-    output: 4
+    input: 0.26
+    output: 0.78
     original_provider: qwen
   qwen-plus-2025-07-28:thinking:
     id: qwen/qwen-plus-2025-07-28:thinking
-    input: 0.4
-    output: 4
+    input: 0.26
+    output: 0.78
+    original_provider: qwen
+  qwen/qwen-plus-2025-07-28:
+    id: qwen/qwen-plus-2025-07-28
+    input: 0.26
+    output: 0.78
+    original_provider: qwen
+  qwen-plus-2025-07-28:
+    id: qwen/qwen-plus-2025-07-28
+    input: 0.26
+    output: 0.78
     original_provider: qwen
   nvidia/nemotron-nano-9b-v2:free:
     id: nvidia/nemotron-nano-9b-v2:free
@@ -1134,83 +1864,33 @@ models:
     original_provider: nvidia
   moonshotai/kimi-k2-0905:
     id: moonshotai/kimi-k2-0905
-    input: 0.39
-    output: 1.9
+    input: 0.6
+    output: 2.5
     original_provider: moonshotai
   kimi-k2-0905:
     id: moonshotai/kimi-k2-0905
-    input: 0.39
-    output: 1.9
-    original_provider: moonshotai
-  moonshotai/kimi-k2-0905:exacto:
-    id: moonshotai/kimi-k2-0905:exacto
     input: 0.6
     output: 2.5
     original_provider: moonshotai
-  kimi-k2-0905:exacto:
-    id: moonshotai/kimi-k2-0905:exacto
-    input: 0.6
-    output: 2.5
-    original_provider: moonshotai
-  deepcogito/cogito-v2-preview-llama-70b:
-    id: deepcogito/cogito-v2-preview-llama-70b
-    input: 0.88
-    output: 0.88
-    original_provider: deepcogito
-  cogito-v2-preview-llama-70b:
-    id: deepcogito/cogito-v2-preview-llama-70b
-    input: 0.88
-    output: 0.88
-    original_provider: deepcogito
-  deepcogito/cogito-v2-preview-llama-109b-moe:
-    id: deepcogito/cogito-v2-preview-llama-109b-moe
-    input: 0.18
-    output: 0.59
-    original_provider: deepcogito
-  cogito-v2-preview-llama-109b-moe:
-    id: deepcogito/cogito-v2-preview-llama-109b-moe
-    input: 0.18
-    output: 0.59
-    original_provider: deepcogito
-  stepfun-ai/step3:
-    id: stepfun-ai/step3
-    input: 0.57
-    output: 1.42
-    original_provider: stepfun-ai
-  step3:
-    id: stepfun-ai/step3
-    input: 0.57
-    output: 1.42
-    original_provider: stepfun-ai
   qwen/qwen3-30b-a3b-thinking-2507:
     id: qwen/qwen3-30b-a3b-thinking-2507
-    input: 0.051
-    output: 0.34
+    input: 0.08
+    output: 0.4
     original_provider: qwen
   qwen3-30b-a3b-thinking-2507:
     id: qwen/qwen3-30b-a3b-thinking-2507
-    input: 0.051
-    output: 0.34
+    input: 0.08
+    output: 0.4
     original_provider: qwen
-  x-ai/grok-code-fast-1:
-    id: x-ai/grok-code-fast-1
-    input: 0.2
-    output: 1.5
-    original_provider: x-ai
-  grok-code-fast-1:
-    id: x-ai/grok-code-fast-1
-    input: 0.2
-    output: 1.5
-    original_provider: x-ai
   nousresearch/hermes-4-70b:
     id: nousresearch/hermes-4-70b
-    input: 0.11
-    output: 0.38
+    input: 0.13
+    output: 0.4
     original_provider: nousresearch
   hermes-4-70b:
     id: nousresearch/hermes-4-70b
-    input: 0.11
-    output: 0.38
+    input: 0.13
+    output: 0.4
     original_provider: nousresearch
   nousresearch/hermes-4-405b:
     id: nousresearch/hermes-4-405b
@@ -1224,13 +1904,13 @@ models:
     original_provider: nousresearch
   deepseek/deepseek-chat-v3.1:
     id: deepseek/deepseek-chat-v3.1
-    input: 0.15
-    output: 0.75
+    input: 0.21
+    output: 0.79
     original_provider: deepseek
   deepseek-chat-v3.1:
     id: deepseek/deepseek-chat-v3.1
-    input: 0.15
-    output: 0.75
+    input: 0.21
+    output: 0.79
     original_provider: deepseek
   openai/gpt-4o-audio-preview:
     id: openai/gpt-4o-audio-preview
@@ -1282,16 +1962,6 @@ models:
     input: 0.6
     output: 1.8
     original_provider: z-ai
-  ai21/jamba-mini-1.7:
-    id: ai21/jamba-mini-1.7
-    input: 0.2
-    output: 0.4
-    original_provider: ai21
-  jamba-mini-1.7:
-    id: ai21/jamba-mini-1.7
-    input: 0.2
-    output: 0.4
-    original_provider: ai21
   ai21/jamba-large-1.7:
     id: ai21/jamba-large-1.7
     input: 2
@@ -1355,22 +2025,12 @@ models:
   openai/gpt-oss-120b:
     id: openai/gpt-oss-120b
     input: 0.039
-    output: 0.19
+    output: 0.18
     original_provider: openai
   gpt-oss-120b:
     id: openai/gpt-oss-120b
     input: 0.039
-    output: 0.19
-    original_provider: openai
-  openai/gpt-oss-120b:exacto:
-    id: openai/gpt-oss-120b:exacto
-    input: 0.039
-    output: 0.19
-    original_provider: openai
-  gpt-oss-120b:exacto:
-    id: openai/gpt-oss-120b:exacto
-    input: 0.039
-    output: 0.19
+    output: 0.18
     original_provider: openai
   openai/gpt-oss-20b:free:
     id: openai/gpt-oss-20b:free
@@ -1384,13 +2044,13 @@ models:
     original_provider: openai
   openai/gpt-oss-20b:
     id: openai/gpt-oss-20b
-    input: 0.02
-    output: 0.1
+    input: 0.03
+    output: 0.14
     original_provider: openai
   gpt-oss-20b:
     id: openai/gpt-oss-20b
-    input: 0.02
-    output: 0.1
+    input: 0.03
+    output: 0.14
     original_provider: openai
   anthropic/claude-opus-4.1:
     id: anthropic/claude-opus-4.1
@@ -1424,23 +2084,23 @@ models:
     original_provider: qwen
   qwen/qwen3-30b-a3b-instruct-2507:
     id: qwen/qwen3-30b-a3b-instruct-2507
-    input: 0.08
-    output: 0.33
+    input: 0.09
+    output: 0.3
     original_provider: qwen
   qwen3-30b-a3b-instruct-2507:
     id: qwen/qwen3-30b-a3b-instruct-2507
-    input: 0.08
-    output: 0.33
+    input: 0.09
+    output: 0.3
     original_provider: qwen
   z-ai/glm-4.5:
     id: z-ai/glm-4.5
-    input: 0.35
-    output: 1.55
+    input: 0.6
+    output: 2.2
     original_provider: z-ai
   glm-4.5:
     id: z-ai/glm-4.5
-    input: 0.35
-    output: 1.55
+    input: 0.6
+    output: 2.2
     original_provider: z-ai
   z-ai/glm-4.5-air:free:
     id: z-ai/glm-4.5-air:free
@@ -1454,23 +2114,23 @@ models:
     original_provider: z-ai
   z-ai/glm-4.5-air:
     id: z-ai/glm-4.5-air
-    input: 0.05
-    output: 0.22
+    input: 0.125
+    output: 0.85
     original_provider: z-ai
   glm-4.5-air:
     id: z-ai/glm-4.5-air
-    input: 0.05
-    output: 0.22
+    input: 0.125
+    output: 0.85
     original_provider: z-ai
   qwen/qwen3-235b-a22b-thinking-2507:
     id: qwen/qwen3-235b-a22b-thinking-2507
-    input: 0.11
-    output: 0.6
+    input: 0.1495
+    output: 1.495
     original_provider: qwen
   qwen3-235b-a22b-thinking-2507:
     id: qwen/qwen3-235b-a22b-thinking-2507
-    input: 0.11
-    output: 0.6
+    input: 0.1495
+    output: 1.495
     original_provider: qwen
   z-ai/glm-4-32b:
     id: z-ai/glm-4-32b
@@ -1495,20 +2155,10 @@ models:
   qwen/qwen3-coder:
     id: qwen/qwen3-coder
     input: 0.22
-    output: 0.95
+    output: 1.8
     original_provider: qwen
   qwen3-coder:
     id: qwen/qwen3-coder
-    input: 0.22
-    output: 0.95
-    original_provider: qwen
-  qwen/qwen3-coder:exacto:
-    id: qwen/qwen3-coder:exacto
-    input: 0.22
-    output: 1.8
-    original_provider: qwen
-  qwen3-coder:exacto:
-    id: qwen/qwen3-coder:exacto
     input: 0.22
     output: 1.8
     original_provider: qwen
@@ -1535,12 +2185,12 @@ models:
   qwen/qwen3-235b-a22b-2507:
     id: qwen/qwen3-235b-a22b-2507
     input: 0.071
-    output: 0.463
+    output: 0.1
     original_provider: qwen
   qwen3-235b-a22b-2507:
     id: qwen/qwen3-235b-a22b-2507
     input: 0.071
-    output: 0.463
+    output: 0.1
     original_provider: qwen
   switchpoint/router:
     id: switchpoint/router
@@ -1554,13 +2204,13 @@ models:
     original_provider: switchpoint
   moonshotai/kimi-k2:
     id: moonshotai/kimi-k2
-    input: 0.5
-    output: 2.4
+    input: 0.57
+    output: 2.3
     original_provider: moonshotai
   kimi-k2:
     id: moonshotai/kimi-k2
-    input: 0.5
-    output: 2.4
+    input: 0.57
+    output: 2.3
     original_provider: moonshotai
   mistralai/devstral-medium:
     id: mistralai/devstral-medium
@@ -1592,26 +2242,6 @@ models:
     input: 0
     output: 0
     original_provider: cognitivecomputations
-  x-ai/grok-4:
-    id: x-ai/grok-4
-    input: 3
-    output: 15
-    original_provider: x-ai
-  grok-4:
-    id: x-ai/grok-4
-    input: 3
-    output: 15
-    original_provider: x-ai
-  google/gemma-3n-e2b-it:free:
-    id: google/gemma-3n-e2b-it:free
-    input: 0
-    output: 0
-    original_provider: google
-  gemma-3n-e2b-it:free:
-    id: google/gemma-3n-e2b-it:free
-    input: 0
-    output: 0
-    original_provider: google
   tencent/hunyuan-a13b-instruct:
     id: tencent/hunyuan-a13b-instruct
     input: 0.14
@@ -1622,26 +2252,6 @@ models:
     input: 0.14
     output: 0.57
     original_provider: tencent
-  tngtech/deepseek-r1t2-chimera:free:
-    id: tngtech/deepseek-r1t2-chimera:free
-    input: 0
-    output: 0
-    original_provider: tngtech
-  deepseek-r1t2-chimera:free:
-    id: tngtech/deepseek-r1t2-chimera:free
-    input: 0
-    output: 0
-    original_provider: tngtech
-  tngtech/deepseek-r1t2-chimera:
-    id: tngtech/deepseek-r1t2-chimera
-    input: 0.25
-    output: 0.85
-    original_provider: tngtech
-  deepseek-r1t2-chimera:
-    id: tngtech/deepseek-r1t2-chimera
-    input: 0.25
-    output: 0.85
-    original_provider: tngtech
   morph/morph-v3-large:
     id: morph/morph-v3-large
     input: 0.9
@@ -1682,25 +2292,15 @@ models:
     input: 0.28
     output: 1.1
     original_provider: baidu
-  inception/mercury:
-    id: inception/mercury
-    input: 0.25
-    output: 1
-    original_provider: inception
-  mercury:
-    id: inception/mercury
-    input: 0.25
-    output: 1
-    original_provider: inception
   mistralai/mistral-small-3.2-24b-instruct:
     id: mistralai/mistral-small-3.2-24b-instruct
-    input: 0.06
-    output: 0.18
+    input: 0.075
+    output: 0.2
     original_provider: mistralai
   mistral-small-3.2-24b-instruct:
     id: mistralai/mistral-small-3.2-24b-instruct
-    input: 0.06
-    output: 0.18
+    input: 0.075
+    output: 0.2
     original_provider: mistralai
   minimax/minimax-m1:
     id: minimax/minimax-m1
@@ -1732,16 +2332,6 @@ models:
     input: 1.25
     output: 10
     original_provider: google
-  moonshotai/kimi-dev-72b:
-    id: moonshotai/kimi-dev-72b
-    input: 0.29
-    output: 1.15
-    original_provider: moonshotai
-  kimi-dev-72b:
-    id: moonshotai/kimi-dev-72b
-    input: 0.29
-    output: 1.15
-    original_provider: moonshotai
   openai/o3-pro:
     id: openai/o3-pro
     input: 20
@@ -1752,26 +2342,6 @@ models:
     input: 20
     output: 80
     original_provider: openai
-  x-ai/grok-3-mini:
-    id: x-ai/grok-3-mini
-    input: 0.3
-    output: 0.5
-    original_provider: x-ai
-  grok-3-mini:
-    id: x-ai/grok-3-mini
-    input: 0.3
-    output: 0.5
-    original_provider: x-ai
-  x-ai/grok-3:
-    id: x-ai/grok-3
-    input: 3
-    output: 15
-    original_provider: x-ai
-  grok-3:
-    id: x-ai/grok-3
-    input: 3
-    output: 15
-    original_provider: x-ai
   google/gemini-2.5-pro-preview:
     id: google/gemini-2.5-pro-preview
     input: 1.25
@@ -1782,25 +2352,15 @@ models:
     input: 1.25
     output: 10
     original_provider: google
-  deepseek/deepseek-r1-0528:free:
-    id: deepseek/deepseek-r1-0528:free
-    input: 0
-    output: 0
-    original_provider: deepseek
-  deepseek-r1-0528:free:
-    id: deepseek/deepseek-r1-0528:free
-    input: 0
-    output: 0
-    original_provider: deepseek
   deepseek/deepseek-r1-0528:
     id: deepseek/deepseek-r1-0528
-    input: 0.4
-    output: 1.75
+    input: 0.5
+    output: 2.15
     original_provider: deepseek
   deepseek-r1-0528:
     id: deepseek/deepseek-r1-0528
-    input: 0.4
-    output: 1.75
+    input: 0.5
+    output: 2.15
     original_provider: deepseek
   anthropic/claude-opus-4:
     id: anthropic/claude-opus-4
@@ -1822,36 +2382,16 @@ models:
     input: 3
     output: 15
     original_provider: anthropic
-  google/gemma-3n-e4b-it:free:
-    id: google/gemma-3n-e4b-it:free
-    input: 0
-    output: 0
-    original_provider: google
-  gemma-3n-e4b-it:free:
-    id: google/gemma-3n-e4b-it:free
-    input: 0
-    output: 0
-    original_provider: google
   google/gemma-3n-e4b-it:
     id: google/gemma-3n-e4b-it
-    input: 0.02
-    output: 0.04
+    input: 0.06
+    output: 0.12
     original_provider: google
   gemma-3n-e4b-it:
     id: google/gemma-3n-e4b-it
-    input: 0.02
-    output: 0.04
+    input: 0.06
+    output: 0.12
     original_provider: google
-  nousresearch/deephermes-3-mistral-24b-preview:
-    id: nousresearch/deephermes-3-mistral-24b-preview
-    input: 0.02
-    output: 0.1
-    original_provider: nousresearch
-  deephermes-3-mistral-24b-preview:
-    id: nousresearch/deephermes-3-mistral-24b-preview
-    input: 0.02
-    output: 0.1
-    original_provider: nousresearch
   mistralai/mistral-medium-3:
     id: mistralai/mistral-medium-3
     input: 0.4
@@ -1912,26 +2452,6 @@ models:
     input: 0.5
     output: 0.8
     original_provider: arcee-ai
-  inception/mercury-coder:
-    id: inception/mercury-coder
-    input: 0.25
-    output: 1
-    original_provider: inception
-  mercury-coder:
-    id: inception/mercury-coder
-    input: 0.25
-    output: 1
-    original_provider: inception
-  qwen/qwen3-4b:free:
-    id: qwen/qwen3-4b:free
-    input: 0
-    output: 0
-    original_provider: qwen
-  qwen3-4b:free:
-    id: qwen/qwen3-4b:free
-    input: 0
-    output: 0
-    original_provider: qwen
   meta-llama/llama-guard-4-12b:
     id: meta-llama/llama-guard-4-12b
     input: 0.18
@@ -1944,13 +2464,13 @@ models:
     original_provider: meta-llama
   qwen/qwen3-30b-a3b:
     id: qwen/qwen3-30b-a3b
-    input: 0.06
-    output: 0.22
+    input: 0.09
+    output: 0.45
     original_provider: qwen
   qwen3-30b-a3b:
     id: qwen/qwen3-30b-a3b
-    input: 0.06
-    output: 0.22
+    input: 0.09
+    output: 0.45
     original_provider: qwen
   qwen/qwen3-8b:
     id: qwen/qwen3-8b
@@ -1964,54 +2484,34 @@ models:
     original_provider: qwen
   qwen/qwen3-14b:
     id: qwen/qwen3-14b
-    input: 0.05
-    output: 0.22
+    input: 0.1
+    output: 0.24
     original_provider: qwen
   qwen3-14b:
     id: qwen/qwen3-14b
-    input: 0.05
-    output: 0.22
+    input: 0.1
+    output: 0.24
     original_provider: qwen
   qwen/qwen3-32b:
     id: qwen/qwen3-32b
     input: 0.08
-    output: 0.24
+    output: 0.28
     original_provider: qwen
   qwen3-32b:
     id: qwen/qwen3-32b
     input: 0.08
-    output: 0.24
+    output: 0.28
     original_provider: qwen
   qwen/qwen3-235b-a22b:
     id: qwen/qwen3-235b-a22b
-    input: 0.2
-    output: 0.6
+    input: 0.455
+    output: 1.82
     original_provider: qwen
   qwen3-235b-a22b:
     id: qwen/qwen3-235b-a22b
-    input: 0.2
-    output: 0.6
+    input: 0.455
+    output: 1.82
     original_provider: qwen
-  tngtech/deepseek-r1t-chimera:free:
-    id: tngtech/deepseek-r1t-chimera:free
-    input: 0
-    output: 0
-    original_provider: tngtech
-  deepseek-r1t-chimera:free:
-    id: tngtech/deepseek-r1t-chimera:free
-    input: 0
-    output: 0
-    original_provider: tngtech
-  tngtech/deepseek-r1t-chimera:
-    id: tngtech/deepseek-r1t-chimera
-    input: 0.3
-    output: 1.2
-    original_provider: tngtech
-  deepseek-r1t-chimera:
-    id: tngtech/deepseek-r1t-chimera
-    input: 0.3
-    output: 1.2
-    original_provider: tngtech
   openai/o4-mini-high:
     id: openai/o4-mini-high
     input: 1.1
@@ -2042,16 +2542,6 @@ models:
     input: 1.1
     output: 4.4
     original_provider: openai
-  qwen/qwen2.5-coder-7b-instruct:
-    id: qwen/qwen2.5-coder-7b-instruct
-    input: 0.03
-    output: 0.09
-    original_provider: qwen
-  qwen2.5-coder-7b-instruct:
-    id: qwen/qwen2.5-coder-7b-instruct
-    input: 0.03
-    output: 0.09
-    original_provider: qwen
   openai/gpt-4.1:
     id: openai/gpt-4.1
     input: 2
@@ -2082,16 +2572,6 @@ models:
     input: 0.1
     output: 0.4
     original_provider: openai
-  eleutherai/llemma_7b:
-    id: eleutherai/llemma_7b
-    input: 0.8
-    output: 1.2
-    original_provider: eleutherai
-  llemma_7b:
-    id: eleutherai/llemma_7b
-    input: 0.8
-    output: 1.2
-    original_provider: eleutherai
   alfredpros/codellama-7b-instruct-solidity:
     id: alfredpros/codellama-7b-instruct-solidity
     input: 0.8
@@ -2102,36 +2582,6 @@ models:
     input: 0.8
     output: 1.2
     original_provider: alfredpros
-  x-ai/grok-3-mini-beta:
-    id: x-ai/grok-3-mini-beta
-    input: 0.3
-    output: 0.5
-    original_provider: x-ai
-  grok-3-mini-beta:
-    id: x-ai/grok-3-mini-beta
-    input: 0.3
-    output: 0.5
-    original_provider: x-ai
-  x-ai/grok-3-beta:
-    id: x-ai/grok-3-beta
-    input: 3
-    output: 15
-    original_provider: x-ai
-  grok-3-beta:
-    id: x-ai/grok-3-beta
-    input: 3
-    output: 15
-    original_provider: x-ai
-  nvidia/llama-3.1-nemotron-ultra-253b-v1:
-    id: nvidia/llama-3.1-nemotron-ultra-253b-v1
-    input: 0.6
-    output: 1.8
-    original_provider: nvidia
-  llama-3.1-nemotron-ultra-253b-v1:
-    id: nvidia/llama-3.1-nemotron-ultra-253b-v1
-    input: 0.6
-    output: 1.8
-    original_provider: nvidia
   meta-llama/llama-4-maverick:
     id: meta-llama/llama-4-maverick
     input: 0.15
@@ -2152,25 +2602,15 @@ models:
     input: 0.08
     output: 0.3
     original_provider: meta-llama
-  qwen/qwen2.5-vl-32b-instruct:
-    id: qwen/qwen2.5-vl-32b-instruct
-    input: 0.05
-    output: 0.22
-    original_provider: qwen
-  qwen2.5-vl-32b-instruct:
-    id: qwen/qwen2.5-vl-32b-instruct
-    input: 0.05
-    output: 0.22
-    original_provider: qwen
   deepseek/deepseek-chat-v3-0324:
     id: deepseek/deepseek-chat-v3-0324
-    input: 0.19
-    output: 0.87
+    input: 0.2
+    output: 0.77
     original_provider: deepseek
   deepseek-chat-v3-0324:
     id: deepseek/deepseek-chat-v3-0324
-    input: 0.19
-    output: 0.87
+    input: 0.2
+    output: 0.77
     original_provider: deepseek
   openai/o1-pro:
     id: openai/o1-pro
@@ -2182,75 +2622,35 @@ models:
     input: 150
     output: 600
     original_provider: openai
-  mistralai/mistral-small-3.1-24b-instruct:free:
-    id: mistralai/mistral-small-3.1-24b-instruct:free
-    input: 0
-    output: 0
-    original_provider: mistralai
-  mistral-small-3.1-24b-instruct:free:
-    id: mistralai/mistral-small-3.1-24b-instruct:free
-    input: 0
-    output: 0
-    original_provider: mistralai
   mistralai/mistral-small-3.1-24b-instruct:
     id: mistralai/mistral-small-3.1-24b-instruct
-    input: 0.03
-    output: 0.11
+    input: 0.351
+    output: 0.555
     original_provider: mistralai
   mistral-small-3.1-24b-instruct:
     id: mistralai/mistral-small-3.1-24b-instruct
-    input: 0.03
-    output: 0.11
+    input: 0.351
+    output: 0.555
     original_provider: mistralai
-  allenai/olmo-2-0325-32b-instruct:
-    id: allenai/olmo-2-0325-32b-instruct
-    input: 0.05
-    output: 0.2
-    original_provider: allenai
-  olmo-2-0325-32b-instruct:
-    id: allenai/olmo-2-0325-32b-instruct
-    input: 0.05
-    output: 0.2
-    original_provider: allenai
-  google/gemma-3-4b-it:free:
-    id: google/gemma-3-4b-it:free
-    input: 0
-    output: 0
-    original_provider: google
-  gemma-3-4b-it:free:
-    id: google/gemma-3-4b-it:free
-    input: 0
-    output: 0
-    original_provider: google
   google/gemma-3-4b-it:
     id: google/gemma-3-4b-it
-    input: 0.01703
-    output: 0.068154
+    input: 0.04
+    output: 0.08
     original_provider: google
   gemma-3-4b-it:
     id: google/gemma-3-4b-it
-    input: 0.01703
-    output: 0.068154
-    original_provider: google
-  google/gemma-3-12b-it:free:
-    id: google/gemma-3-12b-it:free
-    input: 0
-    output: 0
-    original_provider: google
-  gemma-3-12b-it:free:
-    id: google/gemma-3-12b-it:free
-    input: 0
-    output: 0
+    input: 0.04
+    output: 0.08
     original_provider: google
   google/gemma-3-12b-it:
     id: google/gemma-3-12b-it
-    input: 0.03
-    output: 0.1
+    input: 0.04
+    output: 0.13
     original_provider: google
   gemma-3-12b-it:
     id: google/gemma-3-12b-it
-    input: 0.03
-    output: 0.1
+    input: 0.04
+    output: 0.13
     original_provider: google
   cohere/command-a:
     id: cohere/command-a
@@ -2282,25 +2682,25 @@ models:
     input: 2.5
     output: 10
     original_provider: openai
-  google/gemma-3-27b-it:free:
-    id: google/gemma-3-27b-it:free
-    input: 0
-    output: 0
-    original_provider: google
-  gemma-3-27b-it:free:
-    id: google/gemma-3-27b-it:free
-    input: 0
-    output: 0
-    original_provider: google
+  rekaai/reka-flash-3:
+    id: rekaai/reka-flash-3
+    input: 0.1
+    output: 0.2
+    original_provider: rekaai
+  reka-flash-3:
+    id: rekaai/reka-flash-3
+    input: 0.1
+    output: 0.2
+    original_provider: rekaai
   google/gemma-3-27b-it:
     id: google/gemma-3-27b-it
-    input: 0.04
-    output: 0.15
+    input: 0.08
+    output: 0.16
     original_provider: google
   gemma-3-27b-it:
     id: google/gemma-3-27b-it
-    input: 0.04
-    output: 0.15
+    input: 0.08
+    output: 0.16
     original_provider: google
   thedrummer/skyfall-36b-v2:
     id: thedrummer/skyfall-36b-v2
@@ -2342,16 +2742,6 @@ models:
     input: 2
     output: 8
     original_provider: perplexity
-  qwen/qwq-32b:
-    id: qwen/qwq-32b
-    input: 0.15
-    output: 0.4
-    original_provider: qwen
-  qwq-32b:
-    id: qwen/qwq-32b
-    input: 0.15
-    output: 0.4
-    original_provider: qwen
   google/gemini-2.0-flash-lite-001:
     id: google/gemini-2.0-flash-lite-001
     input: 0.075
@@ -2362,26 +2752,6 @@ models:
     input: 0.075
     output: 0.3
     original_provider: google
-  anthropic/claude-3.7-sonnet:thinking:
-    id: anthropic/claude-3.7-sonnet:thinking
-    input: 3
-    output: 15
-    original_provider: anthropic
-  claude-3.7-sonnet:thinking:
-    id: anthropic/claude-3.7-sonnet:thinking
-    input: 3
-    output: 15
-    original_provider: anthropic
-  anthropic/claude-3.7-sonnet:
-    id: anthropic/claude-3.7-sonnet
-    input: 3
-    output: 15
-    original_provider: anthropic
-  claude-3.7-sonnet:
-    id: anthropic/claude-3.7-sonnet
-    input: 3
-    output: 15
-    original_provider: anthropic
   mistralai/mistral-saba:
     id: mistralai/mistral-saba
     input: 0.2
@@ -2394,13 +2764,13 @@ models:
     original_provider: mistralai
   meta-llama/llama-guard-3-8b:
     id: meta-llama/llama-guard-3-8b
-    input: 0.02
-    output: 0.06
+    input: 0.484
+    output: 0.03
     original_provider: meta-llama
   llama-guard-3-8b:
     id: meta-llama/llama-guard-3-8b
-    input: 0.02
-    output: 0.06
+    input: 0.484
+    output: 0.03
     original_provider: meta-llama
   openai/o3-mini-high:
     id: openai/o3-mini-high
@@ -2422,16 +2792,6 @@ models:
     input: 0.1
     output: 0.4
     original_provider: google
-  qwen/qwen-vl-plus:
-    id: qwen/qwen-vl-plus
-    input: 0.21
-    output: 0.63
-    original_provider: qwen
-  qwen-vl-plus:
-    id: qwen/qwen-vl-plus
-    input: 0.21
-    output: 0.63
-    original_provider: qwen
   aion-labs/aion-1.0:
     id: aion-labs/aion-1.0
     input: 4
@@ -2462,55 +2822,25 @@ models:
     input: 0.8
     output: 1.6
     original_provider: aion-labs
-  qwen/qwen-vl-max:
-    id: qwen/qwen-vl-max
-    input: 0.8
-    output: 3.2
-    original_provider: qwen
-  qwen-vl-max:
-    id: qwen/qwen-vl-max
-    input: 0.8
-    output: 3.2
-    original_provider: qwen
-  qwen/qwen-turbo:
-    id: qwen/qwen-turbo
-    input: 0.05
-    output: 0.2
-    original_provider: qwen
-  qwen-turbo:
-    id: qwen/qwen-turbo
-    input: 0.05
-    output: 0.2
-    original_provider: qwen
   qwen/qwen2.5-vl-72b-instruct:
     id: qwen/qwen2.5-vl-72b-instruct
-    input: 0.15
-    output: 0.6
+    input: 0.25
+    output: 0.75
     original_provider: qwen
   qwen2.5-vl-72b-instruct:
     id: qwen/qwen2.5-vl-72b-instruct
-    input: 0.15
-    output: 0.6
+    input: 0.25
+    output: 0.75
     original_provider: qwen
   qwen/qwen-plus:
     id: qwen/qwen-plus
-    input: 0.4
-    output: 1.2
+    input: 0.26
+    output: 0.78
     original_provider: qwen
   qwen-plus:
     id: qwen/qwen-plus
-    input: 0.4
-    output: 1.2
-    original_provider: qwen
-  qwen/qwen-max:
-    id: qwen/qwen-max
-    input: 1.6
-    output: 6.4
-    original_provider: qwen
-  qwen-max:
-    id: qwen/qwen-max
-    input: 1.6
-    output: 6.4
+    input: 0.26
+    output: 0.78
     original_provider: qwen
   openai/o3-mini:
     id: openai/o3-mini
@@ -2524,13 +2854,13 @@ models:
     original_provider: openai
   mistralai/mistral-small-24b-instruct-2501:
     id: mistralai/mistral-small-24b-instruct-2501
-    input: 0.03
-    output: 0.11
+    input: 0.05
+    output: 0.08
     original_provider: mistralai
   mistral-small-24b-instruct-2501:
     id: mistralai/mistral-small-24b-instruct-2501
-    input: 0.03
-    output: 0.11
+    input: 0.05
+    output: 0.08
     original_provider: mistralai
   deepseek/deepseek-r1-distill-qwen-32b:
     id: deepseek/deepseek-r1-distill-qwen-32b
@@ -2554,13 +2884,13 @@ models:
     original_provider: perplexity
   deepseek/deepseek-r1-distill-llama-70b:
     id: deepseek/deepseek-r1-distill-llama-70b
-    input: 0.03
-    output: 0.11
+    input: 0.7
+    output: 0.8
     original_provider: deepseek
   deepseek-r1-distill-llama-70b:
     id: deepseek/deepseek-r1-distill-llama-70b
-    input: 0.03
-    output: 0.11
+    input: 0.7
+    output: 0.8
     original_provider: deepseek
   deepseek/deepseek-r1:
     id: deepseek/deepseek-r1
@@ -2584,12 +2914,12 @@ models:
     original_provider: minimax
   microsoft/phi-4:
     id: microsoft/phi-4
-    input: 0.06
+    input: 0.065
     output: 0.14
     original_provider: microsoft
   phi-4:
     id: microsoft/phi-4
-    input: 0.06
+    input: 0.065
     output: 0.14
     original_provider: microsoft
   sao10k/l3.1-70b-hanami-x1:
@@ -2604,13 +2934,13 @@ models:
     original_provider: sao10k
   deepseek/deepseek-chat:
     id: deepseek/deepseek-chat
-    input: 0.3
-    output: 1.2
+    input: 0.2288
+    output: 0.9144
     original_provider: deepseek
   deepseek-chat:
     id: deepseek/deepseek-chat
-    input: 0.3
-    output: 1.2
+    input: 0.2288
+    output: 0.9144
     original_provider: deepseek
   sao10k/l3.3-euryale-70b:
     id: sao10k/l3.3-euryale-70b
@@ -2734,24 +3064,14 @@ models:
     original_provider: mistralai
   qwen/qwen-2.5-coder-32b-instruct:
     id: qwen/qwen-2.5-coder-32b-instruct
-    input: 0.03
-    output: 0.11
+    input: 0.66
+    output: 1
     original_provider: qwen
   qwen-2.5-coder-32b-instruct:
     id: qwen/qwen-2.5-coder-32b-instruct
-    input: 0.03
-    output: 0.11
+    input: 0.66
+    output: 1
     original_provider: qwen
-  raifle/sorcererlm-8x22b:
-    id: raifle/sorcererlm-8x22b
-    input: 4.5
-    output: 4.5
-    original_provider: raifle
-  sorcererlm-8x22b:
-    id: raifle/sorcererlm-8x22b
-    input: 4.5
-    output: 4.5
-    original_provider: raifle
   thedrummer/unslopnemo-12b:
     id: thedrummer/unslopnemo-12b
     input: 0.4
@@ -2782,36 +3102,6 @@ models:
     input: 3
     output: 5
     original_provider: anthracite-org
-  anthropic/claude-3.5-sonnet:
-    id: anthropic/claude-3.5-sonnet
-    input: 6
-    output: 30
-    original_provider: anthropic
-  claude-3.5-sonnet:
-    id: anthropic/claude-3.5-sonnet
-    input: 6
-    output: 30
-    original_provider: anthropic
-  mistralai/ministral-8b:
-    id: mistralai/ministral-8b
-    input: 0.1
-    output: 0.1
-    original_provider: mistralai
-  ministral-8b:
-    id: mistralai/ministral-8b
-    input: 0.1
-    output: 0.1
-    original_provider: mistralai
-  mistralai/ministral-3b:
-    id: mistralai/ministral-3b
-    input: 0.04
-    output: 0.04
-    original_provider: mistralai
-  ministral-3b:
-    id: mistralai/ministral-3b
-    input: 0.04
-    output: 0.04
-    original_provider: mistralai
   qwen/qwen-2.5-7b-instruct:
     id: qwen/qwen-2.5-7b-instruct
     input: 0.04
@@ -2822,16 +3112,6 @@ models:
     input: 0.04
     output: 0.1
     original_provider: qwen
-  nvidia/llama-3.1-nemotron-70b-instruct:
-    id: nvidia/llama-3.1-nemotron-70b-instruct
-    input: 1.2
-    output: 1.2
-    original_provider: nvidia
-  llama-3.1-nemotron-70b-instruct:
-    id: nvidia/llama-3.1-nemotron-70b-instruct
-    input: 1.2
-    output: 1.2
-    original_provider: nvidia
   inflection/inflection-3-pi:
     id: inflection/inflection-3-pi
     input: 2.5
@@ -2862,6 +3142,26 @@ models:
     input: 0.17
     output: 0.43
     original_provider: thedrummer
+  meta-llama/llama-3.2-1b-instruct:
+    id: meta-llama/llama-3.2-1b-instruct
+    input: 0.027
+    output: 0.201
+    original_provider: meta-llama
+  llama-3.2-1b-instruct:
+    id: meta-llama/llama-3.2-1b-instruct
+    input: 0.027
+    output: 0.201
+    original_provider: meta-llama
+  meta-llama/llama-3.2-11b-vision-instruct:
+    id: meta-llama/llama-3.2-11b-vision-instruct
+    input: 0.245
+    output: 0.245
+    original_provider: meta-llama
+  llama-3.2-11b-vision-instruct:
+    id: meta-llama/llama-3.2-11b-vision-instruct
+    input: 0.245
+    output: 0.245
+    original_provider: meta-llama
   meta-llama/llama-3.2-3b-instruct:free:
     id: meta-llama/llama-3.2-3b-instruct:free
     input: 0
@@ -2874,64 +3174,24 @@ models:
     original_provider: meta-llama
   meta-llama/llama-3.2-3b-instruct:
     id: meta-llama/llama-3.2-3b-instruct
-    input: 0.02
-    output: 0.02
+    input: 0.0509
+    output: 0.335
     original_provider: meta-llama
   llama-3.2-3b-instruct:
     id: meta-llama/llama-3.2-3b-instruct
-    input: 0.02
-    output: 0.02
-    original_provider: meta-llama
-  meta-llama/llama-3.2-1b-instruct:
-    id: meta-llama/llama-3.2-1b-instruct
-    input: 0.027
-    output: 0.2
-    original_provider: meta-llama
-  llama-3.2-1b-instruct:
-    id: meta-llama/llama-3.2-1b-instruct
-    input: 0.027
-    output: 0.2
-    original_provider: meta-llama
-  meta-llama/llama-3.2-11b-vision-instruct:
-    id: meta-llama/llama-3.2-11b-vision-instruct
-    input: 0.049
-    output: 0.049
-    original_provider: meta-llama
-  llama-3.2-11b-vision-instruct:
-    id: meta-llama/llama-3.2-11b-vision-instruct
-    input: 0.049
-    output: 0.049
+    input: 0.0509
+    output: 0.335
     original_provider: meta-llama
   qwen/qwen-2.5-72b-instruct:
     id: qwen/qwen-2.5-72b-instruct
-    input: 0.12
-    output: 0.39
+    input: 0.36
+    output: 0.4
     original_provider: qwen
   qwen-2.5-72b-instruct:
     id: qwen/qwen-2.5-72b-instruct
-    input: 0.12
-    output: 0.39
+    input: 0.36
+    output: 0.4
     original_provider: qwen
-  neversleep/llama-3.1-lumimaid-8b:
-    id: neversleep/llama-3.1-lumimaid-8b
-    input: 0.09
-    output: 0.6
-    original_provider: neversleep
-  llama-3.1-lumimaid-8b:
-    id: neversleep/llama-3.1-lumimaid-8b
-    input: 0.09
-    output: 0.6
-    original_provider: neversleep
-  mistralai/pixtral-12b:
-    id: mistralai/pixtral-12b
-    input: 0.1
-    output: 0.1
-    original_provider: mistralai
-  pixtral-12b:
-    id: mistralai/pixtral-12b
-    input: 0.1
-    output: 0.1
-    original_provider: mistralai
   cohere/command-r-08-2024:
     id: cohere/command-r-08-2024
     input: 0.15
@@ -2954,34 +3214,14 @@ models:
     original_provider: cohere
   sao10k/l3.1-euryale-70b:
     id: sao10k/l3.1-euryale-70b
-    input: 0.65
-    output: 0.75
+    input: 0.85
+    output: 0.85
     original_provider: sao10k
   l3.1-euryale-70b:
     id: sao10k/l3.1-euryale-70b
-    input: 0.65
-    output: 0.75
+    input: 0.85
+    output: 0.85
     original_provider: sao10k
-  qwen/qwen-2.5-vl-7b-instruct:free:
-    id: qwen/qwen-2.5-vl-7b-instruct:free
-    input: 0
-    output: 0
-    original_provider: qwen
-  qwen-2.5-vl-7b-instruct:free:
-    id: qwen/qwen-2.5-vl-7b-instruct:free
-    input: 0
-    output: 0
-    original_provider: qwen
-  qwen/qwen-2.5-vl-7b-instruct:
-    id: qwen/qwen-2.5-vl-7b-instruct
-    input: 0.2
-    output: 0.2
-    original_provider: qwen
-  qwen-2.5-vl-7b-instruct:
-    id: qwen/qwen-2.5-vl-7b-instruct
-    input: 0.2
-    output: 0.2
-    original_provider: qwen
   nousresearch/hermes-3-llama-3.1-70b:
     id: nousresearch/hermes-3-llama-3.1-70b
     input: 0.3
@@ -3012,16 +3252,6 @@ models:
     input: 1
     output: 1
     original_provider: nousresearch
-  openai/chatgpt-4o-latest:
-    id: openai/chatgpt-4o-latest
-    input: 5
-    output: 15
-    original_provider: openai
-  chatgpt-4o-latest:
-    id: openai/chatgpt-4o-latest
-    input: 5
-    output: 15
-    original_provider: openai
   sao10k/l3-lunaris-8b:
     id: sao10k/l3-lunaris-8b
     input: 0.04
@@ -3042,16 +3272,6 @@ models:
     input: 2.5
     output: 10
     original_provider: openai
-  meta-llama/llama-3.1-405b:
-    id: meta-llama/llama-3.1-405b
-    input: 4
-    output: 4
-    original_provider: meta-llama
-  llama-3.1-405b:
-    id: meta-llama/llama-3.1-405b
-    input: 4
-    output: 4
-    original_provider: meta-llama
   meta-llama/llama-3.1-8b-instruct:
     id: meta-llama/llama-3.1-8b-instruct
     input: 0.02
@@ -3061,26 +3281,6 @@ models:
     id: meta-llama/llama-3.1-8b-instruct
     input: 0.02
     output: 0.05
-    original_provider: meta-llama
-  meta-llama/llama-3.1-405b-instruct:free:
-    id: meta-llama/llama-3.1-405b-instruct:free
-    input: 0
-    output: 0
-    original_provider: meta-llama
-  llama-3.1-405b-instruct:free:
-    id: meta-llama/llama-3.1-405b-instruct:free
-    input: 0
-    output: 0
-    original_provider: meta-llama
-  meta-llama/llama-3.1-405b-instruct:
-    id: meta-llama/llama-3.1-405b-instruct
-    input: 3.5
-    output: 3.5
-    original_provider: meta-llama
-  llama-3.1-405b-instruct:
-    id: meta-llama/llama-3.1-405b-instruct
-    input: 3.5
-    output: 3.5
     original_provider: meta-llama
   meta-llama/llama-3.1-70b-instruct:
     id: meta-llama/llama-3.1-70b-instruct
@@ -3095,23 +3295,13 @@ models:
   mistralai/mistral-nemo:
     id: mistralai/mistral-nemo
     input: 0.02
-    output: 0.04
+    output: 0.03
     original_provider: mistralai
   mistral-nemo:
     id: mistralai/mistral-nemo
     input: 0.02
-    output: 0.04
+    output: 0.03
     original_provider: mistralai
-  openai/gpt-4o-mini-2024-07-18:
-    id: openai/gpt-4o-mini-2024-07-18
-    input: 0.15
-    output: 0.6
-    original_provider: openai
-  gpt-4o-mini-2024-07-18:
-    id: openai/gpt-4o-mini-2024-07-18
-    input: 0.15
-    output: 0.6
-    original_provider: openai
   openai/gpt-4o-mini:
     id: openai/gpt-4o-mini
     input: 0.15
@@ -3119,6 +3309,16 @@ models:
     original_provider: openai
   gpt-4o-mini:
     id: openai/gpt-4o-mini
+    input: 0.15
+    output: 0.6
+    original_provider: openai
+  openai/gpt-4o-mini-2024-07-18:
+    id: openai/gpt-4o-mini-2024-07-18
+    input: 0.15
+    output: 0.6
+    original_provider: openai
+  gpt-4o-mini-2024-07-18:
+    id: openai/gpt-4o-mini-2024-07-18
     input: 0.15
     output: 0.6
     original_provider: openai
@@ -3131,16 +3331,6 @@ models:
     id: google/gemma-2-27b-it
     input: 0.65
     output: 0.65
-    original_provider: google
-  google/gemma-2-9b-it:
-    id: google/gemma-2-9b-it
-    input: 0.03
-    output: 0.09
-    original_provider: google
-  gemma-2-9b-it:
-    id: google/gemma-2-9b-it
-    input: 0.03
-    output: 0.09
     original_provider: google
   sao10k/l3-euryale-70b:
     id: sao10k/l3-euryale-70b
@@ -3162,36 +3352,6 @@ models:
     input: 0.14
     output: 0.14
     original_provider: nousresearch
-  mistralai/mistral-7b-instruct:
-    id: mistralai/mistral-7b-instruct
-    input: 0.2
-    output: 0.2
-    original_provider: mistralai
-  mistral-7b-instruct:
-    id: mistralai/mistral-7b-instruct
-    input: 0.2
-    output: 0.2
-    original_provider: mistralai
-  mistralai/mistral-7b-instruct-v0.3:
-    id: mistralai/mistral-7b-instruct-v0.3
-    input: 0.2
-    output: 0.2
-    original_provider: mistralai
-  mistral-7b-instruct-v0.3:
-    id: mistralai/mistral-7b-instruct-v0.3
-    input: 0.2
-    output: 0.2
-    original_provider: mistralai
-  meta-llama/llama-guard-2-8b:
-    id: meta-llama/llama-guard-2-8b
-    input: 0.2
-    output: 0.2
-    original_provider: meta-llama
-  llama-guard-2-8b:
-    id: meta-llama/llama-guard-2-8b
-    input: 0.2
-    output: 0.2
-    original_provider: meta-llama
   openai/gpt-4o-2024-05-13:
     id: openai/gpt-4o-2024-05-13
     input: 5
@@ -3212,16 +3372,6 @@ models:
     input: 2.5
     output: 10
     original_provider: openai
-  openai/gpt-4o:extended:
-    id: openai/gpt-4o:extended
-    input: 6
-    output: 18
-    original_provider: openai
-  gpt-4o:extended:
-    id: openai/gpt-4o:extended
-    input: 6
-    output: 18
-    original_provider: openai
   meta-llama/llama-3-70b-instruct:
     id: meta-llama/llama-3-70b-instruct
     input: 0.51
@@ -3234,13 +3384,13 @@ models:
     original_provider: meta-llama
   meta-llama/llama-3-8b-instruct:
     id: meta-llama/llama-3-8b-instruct
-    input: 0.03
-    output: 0.06
+    input: 0.04
+    output: 0.04
     original_provider: meta-llama
   llama-3-8b-instruct:
     id: meta-llama/llama-3-8b-instruct
-    input: 0.03
-    output: 0.06
+    input: 0.04
+    output: 0.04
     original_provider: meta-llama
   mistralai/mixtral-8x22b-instruct:
     id: mistralai/mixtral-8x22b-instruct
@@ -3254,13 +3404,13 @@ models:
     original_provider: mistralai
   microsoft/wizardlm-2-8x22b:
     id: microsoft/wizardlm-2-8x22b
-    input: 0.48
-    output: 0.48
+    input: 0.62
+    output: 0.62
     original_provider: microsoft
   wizardlm-2-8x22b:
     id: microsoft/wizardlm-2-8x22b
-    input: 0.48
-    output: 0.48
+    input: 0.62
+    output: 0.62
     original_provider: microsoft
   openai/gpt-4-turbo:
     id: openai/gpt-4-turbo
@@ -3312,56 +3462,6 @@ models:
     input: 10
     output: 30
     original_provider: openai
-  mistralai/mistral-tiny:
-    id: mistralai/mistral-tiny
-    input: 0.25
-    output: 0.25
-    original_provider: mistralai
-  mistral-tiny:
-    id: mistralai/mistral-tiny
-    input: 0.25
-    output: 0.25
-    original_provider: mistralai
-  mistralai/mistral-7b-instruct-v0.2:
-    id: mistralai/mistral-7b-instruct-v0.2
-    input: 0.2
-    output: 0.2
-    original_provider: mistralai
-  mistral-7b-instruct-v0.2:
-    id: mistralai/mistral-7b-instruct-v0.2
-    input: 0.2
-    output: 0.2
-    original_provider: mistralai
-  mistralai/mixtral-8x7b-instruct:
-    id: mistralai/mixtral-8x7b-instruct
-    input: 0.54
-    output: 0.54
-    original_provider: mistralai
-  mixtral-8x7b-instruct:
-    id: mistralai/mixtral-8x7b-instruct
-    input: 0.54
-    output: 0.54
-    original_provider: mistralai
-  neversleep/noromaid-20b:
-    id: neversleep/noromaid-20b
-    input: 1
-    output: 1.75
-    original_provider: neversleep
-  noromaid-20b:
-    id: neversleep/noromaid-20b
-    input: 1
-    output: 1.75
-    original_provider: neversleep
-  alpindale/goliath-120b:
-    id: alpindale/goliath-120b
-    input: 3.75
-    output: 7.5
-    original_provider: alpindale
-  goliath-120b:
-    id: alpindale/goliath-120b
-    input: 3.75
-    output: 7.5
-    original_provider: alpindale
   openrouter/auto:
     id: openrouter/auto
     input: -1000000
@@ -3452,16 +3552,6 @@ models:
     input: 30
     output: 60
     original_provider: openai
-  openai/gpt-4:
-    id: openai/gpt-4
-    input: 30
-    output: 60
-    original_provider: openai
-  gpt-4:
-    id: openai/gpt-4
-    input: 30
-    output: 60
-    original_provider: openai
   openai/gpt-3.5-turbo:
     id: openai/gpt-3.5-turbo
     input: 0.5
@@ -3472,8 +3562,18 @@ models:
     input: 0.5
     output: 1.5
     original_provider: openai
+  openai/gpt-4:
+    id: openai/gpt-4
+    input: 30
+    output: 60
+    original_provider: openai
+  gpt-4:
+    id: openai/gpt-4
+    input: 30
+    output: 60
+    original_provider: openai
 metadata:
-  last_updated: '2026-02-03'
+  last_updated: '2026-05-29'
   source: https://openrouter.ai/api/v1/models
   notes: Auto-refreshed from OpenRouter models API
   version: auto
