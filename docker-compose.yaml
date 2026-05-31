@@ -1,7 +1,7 @@
 services:
   gateway:
     build: .
-    image: ghcr.io/ekailabs/ekai-gateway:oasis@sha256:a3b96bf85642a3697f2fbf05d8d6f69f5872b3a51ac3b4875dd087fdf14f7ee8
+    image: ghcr.io/ekailabs/ekai-gateway:oasis@sha256:d943bfe5fa4f4ad42f6b52fe54a99bc84b72887ba95a11296d36be7755373375
     environment:
       PORT: ${PORT:-3001}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
