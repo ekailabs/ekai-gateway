@@ -5,6 +5,7 @@ import { CONTENT_TYPES } from '../../domain/types/provider.js';
 import { ModelUtils } from '../utils/model-utils.js';
 import { getApiKeyFromUserContext } from '../crypto/key-manager.js';
 import { getUsageLogger } from '../logging/usage-logger.js';
+import { createSapphireContext, type SapphireRequestContext } from '../middleware/sapphire-context.js';
 
 type UsageFormat = 'anthropic_messages';
 
@@ -107,6 +108,21 @@ export class MessagesPassthrough {
       throw new AuthenticationError('Request context not available', { provider: this.config.provider });
     }
     return getApiKeyFromUserContext(this.currentRequest, this.config.provider, this.currentModel);
+  }
+
+  /**
+   * Resolve the Sapphire context for on-chain receipt logging.
+   *
+   * The global sapphireContext middleware is not registered, so req.sapphireContext
+   * is normally undefined on passthrough requests. Build it on the fly from the
+   * authenticated user (set by auth) and this passthrough's known provider/model.
+   * Returns undefined when there is no authenticated user (no owner to attribute).
+   */
+  private resolveSapphireContext(model: string): SapphireRequestContext | undefined {
+    if (!this.currentRequest) return undefined;
+    return this.currentRequest.sapphireContext
+      ?? createSapphireContext(this.currentRequest, this.config.provider, model)
+      ?? undefined;
   }
 
   private async buildAuthHeader(): Promise<string | undefined> {
@@ -386,15 +402,14 @@ export class MessagesPassthrough {
               });
 
             // Log usage on-chain (async, non-blocking)
-            const sapphireContext = this.currentRequest?.sapphireContext;
+            const sapphireContext = this.resolveSapphireContext(model);
             if (sapphireContext) {
               const usageLogger = getUsageLogger();
               usageLogger.logReceipt(sapphireContext, {
                 promptTokens: inputTokens,
                 completionTokens: outputTokens,
               }).catch(err => {
-                logger.warn('Failed to log usage receipt on-chain', {
-                  error: err,
+                logger.error('Failed to log usage receipt on-chain', err, {
                   provider: this.config.provider,
                   module: 'messages-passthrough',
                 });
@@ -497,15 +512,14 @@ export class MessagesPassthrough {
         });
 
       // Log usage on-chain (async, non-blocking)
-      const sapphireContext = this.currentRequest?.sapphireContext;
+      const sapphireContext = this.resolveSapphireContext(request.model);
       if (sapphireContext) {
         const usageLogger = getUsageLogger();
         usageLogger.logReceipt(sapphireContext, {
           promptTokens: inputTokens,
           completionTokens: outputTokens,
         }).catch(err => {
-          logger.warn('Failed to log usage receipt on-chain', {
-            error: err,
+          logger.error('Failed to log usage receipt on-chain', err, {
             provider: this.config.provider,
             module: 'messages-passthrough',
           });
