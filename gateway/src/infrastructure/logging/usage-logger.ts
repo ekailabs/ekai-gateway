@@ -13,6 +13,7 @@
 
 import { createPublicClient, createWalletClient, http, type Hex, encodeFunctionData } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import * as oasis from '@oasisprotocol/client';
 import { getConfig } from '../config/app-config.js';
 import { createLogger } from '../utils/logger.js';
 import {
@@ -52,6 +53,51 @@ const LogReceiptABI = [
 export interface TokenUsage {
   promptTokens: number;
   completionTokens: number;
+}
+
+/**
+ * Decode the CBOR-encoded `CallResult` returned by the ROFL runtime's
+ * sign-submit endpoint.
+ *
+ * The runtime CallResult is a single-key map: `{ ok }` (success),
+ * `{ fail: { module, code, message } }` (revert/error), or `{ unknown }`
+ * (opaque/encrypted result). `oasis.misc.fromCBOR` decodes maps into plain
+ * objects with string keys.
+ *
+ * @returns a short status string ('ok' | 'unknown') on success
+ * @throws if the call failed on-chain, so the caller's error handling fires
+ */
+export function decodeCallResult(result: Uint8Array): string {
+  let decoded: unknown;
+  try {
+    decoded = oasis.misc.fromCBOR(result);
+  } catch (err) {
+    throw new Error(`Failed to decode ROFL CallResult CBOR: ${(err as Error).message}`);
+  }
+
+  if (!decoded || typeof decoded !== 'object') {
+    throw new Error('Unexpected ROFL CallResult: not a CBOR map');
+  }
+
+  const callResult = decoded as Record<string, unknown>;
+
+  if ('fail' in callResult) {
+    const fail = (callResult.fail ?? {}) as { module?: string; code?: number; message?: string };
+    throw new Error(
+      `logReceipt reverted: module=${fail.module ?? '?'} code=${fail.code ?? '?'} ${fail.message ?? ''}`.trim()
+    );
+  }
+
+  if ('ok' in callResult) {
+    return 'ok';
+  }
+
+  if ('unknown' in callResult) {
+    // Result came back encrypted/opaque (should not happen with encrypt:false).
+    return 'unknown';
+  }
+
+  throw new Error(`Unexpected ROFL CallResult shape: keys=[${Object.keys(callResult).join(',')}]`);
 }
 
 /**
@@ -250,11 +296,14 @@ export class UsageLogger {
         completionTokens,
       }, 'Logging receipt on-chain');
 
-      let txHash: string;
+      // For the wallet path this is a real Ethereum tx hash; for the ROFL path
+      // signAndSubmit does not return one, so it carries the decoded CallResult
+      // status ('ok'). Either way it throws above on revert/failure.
+      let submitResult: string;
 
       if (this.roflClient) {
         // Use ROFL client for signing (inside ROFL container)
-        txHash = await this.logReceiptViaRofl(
+        submitResult = await this.logReceiptViaRofl(
           config.sapphire.controlPlaneAddress as Hex,
           requestHash,
           context,
@@ -263,7 +312,7 @@ export class UsageLogger {
         );
       } else if (this.walletClient && this.account && this.chain) {
         // Use wallet client (fallback)
-        txHash = await this.walletClient.writeContract({
+        submitResult = await this.walletClient.writeContract({
           address: config.sapphire.controlPlaneAddress as Hex,
           abi: LogReceiptABI,
           functionName: 'logReceipt',
@@ -284,7 +333,8 @@ export class UsageLogger {
       }
 
       logger.info({
-        txHash,
+        submitResult,
+        requestHash,
         owner: context.owner,
         provider: context.providerName,
         model: context.modelName,
@@ -328,20 +378,29 @@ export class UsageLogger {
       ],
     });
 
-    // Use ROFL client to sign and submit the transaction
-    // The ROFL runtime handles authentication via roflEnsureAuthorizedOrigin
-    const result = await this.roflClient.signAndSubmit({
-      kind: 'eth',
-      to: contractAddress,
-      data,
-      value: '0',
-      gas_limit: 500000, // Reasonable gas limit for logReceipt call
-    });
+    // Use ROFL client to sign and submit the transaction.
+    // The ROFL runtime handles authentication via roflEnsureAuthorizedOrigin.
+    //
+    // Submit unencrypted: logReceipt's arguments are all public (they are
+    // emitted as a ReceiptLogged event), and an encrypted result comes back as
+    // an opaque `unknown` envelope we cannot inspect. Plaintext lets us read
+    // the CallResult and detect reverts.
+    const result: Uint8Array = await this.roflClient.signAndSubmit(
+      {
+        kind: 'eth',
+        to: contractAddress,
+        data,
+        value: '0',
+        gas_limit: 500000, // Reasonable gas limit for logReceipt call
+      },
+      { encrypt: false }
+    );
 
-    // signAndSubmit returns CBOR-encoded CallResult bytes
-    // For now, we'll use a hash of the result as the tx identifier
-    const txHash = Buffer.from(result).toString('hex').slice(0, 64);
-    return `0x${txHash}`;
+    // signAndSubmit returns CBOR-encoded CallResult bytes. It only throws on
+    // transport errors, so an on-chain revert (e.g. roflEnsureAuthorizedOrigin
+    // app-id mismatch, owner not registered, contract paused) is encoded here
+    // and would otherwise be silent. Decode it and surface failures.
+    return decodeCallResult(result);
   }
 
   /**
