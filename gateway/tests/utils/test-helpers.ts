@@ -104,6 +104,7 @@ export const expectValidUsageSummary = (summary: any) => {
   expect(summary).toHaveProperty('tokensByModel');
   expect(summary).toHaveProperty('modelUsage');
   expect(summary).toHaveProperty('topModelsByTokens');
+  expect(summary).toHaveProperty('dailyUsage');
   expect(summary).toHaveProperty('records');
   
   expect(typeof summary.totalRequests).toBe('number');
@@ -112,6 +113,7 @@ export const expectValidUsageSummary = (summary: any) => {
   expect(Array.isArray(summary.records)).toBe(true);
   expect(Array.isArray(summary.modelUsage)).toBe(true);
   expect(Array.isArray(summary.topModelsByTokens)).toBe(true);
+  expect(Array.isArray(summary.dailyUsage)).toBe(true);
   expect(typeof summary.costByProvider).toBe('object');
   expect(typeof summary.costByModel).toBe('object');
   expect(typeof summary.tokensByModel).toBe('object');

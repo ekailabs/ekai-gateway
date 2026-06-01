@@ -47,6 +47,10 @@ describe('UsageHandler', () => {
         totalTokens: 750,
         costByProvider: { openai: 0.015 },
         costByModel: { 'gpt-4o': 0.015 },
+        tokensByModel: { 'gpt-4o': 750 },
+        modelUsage: [],
+        topModelsByTokens: [],
+        dailyUsage: [],
         records: []
       };
       
@@ -55,8 +59,8 @@ describe('UsageHandler', () => {
       await usageHandler.getUsage(mockReq, mockRes);
 
       expect(usageTracker.getUsageFromDatabase).toHaveBeenCalledWith(
-        expect.any(String), // startDate (7 days ago)
-        expect.any(String)  // endDate (now)
+        new Date(0).toISOString(),
+        expect.any(String)
       );
       expect(mockRes.json).toHaveBeenCalledWith(mockUsageData);
     });
@@ -74,6 +78,10 @@ describe('UsageHandler', () => {
         totalTokens: 0,
         costByProvider: {},
         costByModel: {},
+        tokensByModel: {},
+        modelUsage: [],
+        topModelsByTokens: [],
+        dailyUsage: [],
         records: []
       };
       
@@ -91,7 +99,8 @@ describe('UsageHandler', () => {
         
         (usageTracker.getUsageFromDatabase as any).mockReturnValue({
           totalRequests: 0, totalCost: 0, totalTokens: 0,
-          costByProvider: {}, costByModel: {}, records: []
+          costByProvider: {}, costByModel: {}, tokensByModel: {},
+          modelUsage: [], topModelsByTokens: [], dailyUsage: [], records: []
         });
 
         await usageHandler.getUsage(mockReq, mockRes);
@@ -114,7 +123,8 @@ describe('UsageHandler', () => {
         
         (usageTracker.getUsageFromDatabase as any).mockReturnValue({
           totalRequests: 0, totalCost: 0, totalTokens: 0,
-          costByProvider: {}, costByModel: {}, records: []
+          costByProvider: {}, costByModel: {}, tokensByModel: {},
+          modelUsage: [], topModelsByTokens: [], dailyUsage: [], records: []
         });
 
         await usageHandler.getUsage(mockReq, mockRes);
@@ -195,7 +205,8 @@ describe('UsageHandler', () => {
         
         (usageTracker.getUsageFromDatabase as any).mockReturnValue({
           totalRequests: 0, totalCost: 0, totalTokens: 0,
-          costByProvider: {}, costByModel: {}, records: []
+          costByProvider: {}, costByModel: {}, tokensByModel: {},
+          modelUsage: [], topModelsByTokens: [], dailyUsage: [], records: []
         });
 
         await usageHandler.getUsage(mockReq, mockRes);
@@ -217,7 +228,7 @@ describe('UsageHandler', () => {
           vi.mocked(usageTracker.getUsageFromDatabase).mockReturnValue({
             totalRequests: 0, totalCost: 0, totalTokens: 0,
             costByProvider: {}, costByModel: {}, tokensByModel: {},
-            modelUsage: [], topModelsByTokens: [], records: []
+            modelUsage: [], topModelsByTokens: [], dailyUsage: [], records: []
           });
 
           await usageHandler.getUsage(mockReq, mockRes);
@@ -246,6 +257,10 @@ describe('UsageHandler', () => {
           totalTokens: 0,
           costByProvider: {},
           costByModel: {},
+          tokensByModel: {},
+          modelUsage: [],
+          topModelsByTokens: [],
+          dailyUsage: [],
           records: []
         });
 
@@ -286,6 +301,18 @@ describe('UsageHandler', () => {
             { model: 'gpt-4o', totalTokens: 900, totalCost: 0.015, totalRequests: 6 },
             { model: 'claude-3-5-sonnet', totalTokens: 600, totalCost: 0.010, totalRequests: 4 }
           ],
+          dailyUsage: [
+            {
+              date: '2024-01-01',
+              cost: 0.025,
+              tokens: 1500,
+              requests: 10,
+              inputTokens: 1000,
+              cacheWriteTokens: 0,
+              cacheReadTokens: 0,
+              outputTokens: 500
+            }
+          ],
           records: [
             {
               id: 1,
@@ -322,6 +349,7 @@ describe('UsageHandler', () => {
           tokensByModel: {},
           modelUsage: [],
           topModelsByTokens: [],
+          dailyUsage: [],
           records: []
         };
         
@@ -379,7 +407,8 @@ describe('UsageHandler', () => {
       
       (usageTracker.getUsageFromDatabase as any).mockReturnValue({
         totalRequests: 0, totalCost: 0, totalTokens: 0,
-        costByProvider: {}, costByModel: {}, records: []
+        costByProvider: {}, costByModel: {}, tokensByModel: {},
+        modelUsage: [], topModelsByTokens: [], dailyUsage: [], records: []
       });
 
       await handleUsageRequest(mockReq, mockRes);

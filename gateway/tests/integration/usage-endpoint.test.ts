@@ -67,6 +67,7 @@ describe.sequential('Usage Endpoint Integration', () => {
         expect(response.body.tokensByModel).toEqual({});
         expect(response.body.modelUsage).toEqual([]);
         expect(response.body.topModelsByTokens).toEqual([]);
+        expect(response.body.dailyUsage).toEqual([]);
       });
 
       it('should handle large datasets efficiently', async () => {
@@ -89,6 +90,7 @@ describe.sequential('Usage Endpoint Integration', () => {
         expect(response.body.records.length).toBeLessThanOrEqual(100); // Default limit
         expect(response.body.modelUsage.length).toBeGreaterThan(0);
         expect(response.body.topModelsByTokens.length).toBeLessThanOrEqual(5);
+        expect(response.body.dailyUsage.length).toBeGreaterThan(0);
         expect(t1 - t0).toBeLessThan(2000);
       });
 
@@ -125,6 +127,11 @@ describe.sequential('Usage Endpoint Integration', () => {
           totalRequests: 1
         });
         expect(response.body.tokensByModel['old-high-volume-model']).toBe(100000);
+        expect(response.body.dailyUsage[0]).toMatchObject({
+          date: '2024-01-01',
+          tokens: 102300,
+          requests: 24
+        });
       });
     });
 
@@ -303,6 +310,19 @@ describe.sequential('Usage Endpoint Integration', () => {
           { model: 'grok-4', totalTokens: 120, totalCost: 0.008, totalRequests: 1 }
         ]);
         expect(response.body.topModelsByTokens).toEqual(response.body.modelUsage.slice(0, 5));
+      });
+
+      it('should aggregate daily usage across the full date range', async () => {
+        const response = await request(app).get('/usage');
+
+        RequestHelpers.expectValidUsageResponse(response);
+
+        expect(response.body.dailyUsage.length).toBeGreaterThan(0);
+        expect(response.body.dailyUsage.reduce((sum: number, day: any) => sum + day.tokens, 0)).toBe(650);
+        expect(response.body.dailyUsage.reduce((sum: number, day: any) => sum + day.requests, 0)).toBe(4);
+        expect(response.body.dailyUsage.reduce((sum: number, day: any) => sum + day.inputTokens, 0)).toBe(400);
+        expect(response.body.dailyUsage.reduce((sum: number, day: any) => sum + day.outputTokens, 0)).toBe(200);
+        expect(response.body.dailyUsage.reduce((sum: number, day: any) => sum + day.cost, 0)).toBeCloseTo(0.040, 6);
       });
 
       it('should calculate total metrics correctly', async () => {

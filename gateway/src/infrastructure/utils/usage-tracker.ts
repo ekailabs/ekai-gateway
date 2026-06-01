@@ -1,5 +1,5 @@
 import { pricingLoader, CostCalculation } from './pricing-loader.js';
-import { dbQueries, type ModelUsageSummary, type UsageRecord } from '../db/queries.js';
+import { dbQueries, type DailyUsageSummary, type ModelUsageSummary, type UsageRecord } from '../db/queries.js';
 import { ModelUtils } from './model-utils.js';
 import { logger } from './logger.js';
 import { recordUsage } from '../telemetry/usage.js';
@@ -16,6 +16,7 @@ export interface UsageSummary {
   tokensByModel: Record<string, number>;
   modelUsage: ModelUsageSummary[];
   topModelsByTokens: ModelUsageSummary[];
+  dailyUsage: DailyUsageSummary[];
   records: UsageRecord[];
 }
 
@@ -200,6 +201,7 @@ export class UsageTracker {
         tokensByModel: dbQueries.getTokensByModel(startDate, endDate),
         modelUsage: dbQueries.getModelUsage(startDate, endDate),
         topModelsByTokens: dbQueries.getModelUsage(startDate, endDate, 5),
+        dailyUsage: dbQueries.getDailyUsage(startDate, endDate),
         records: dbQueries.getAllUsageRecords(recordLimit, startDate, endDate)
       };
     } catch (error) {
@@ -214,6 +216,7 @@ export class UsageTracker {
         tokensByModel: {},
         modelUsage: [],
         topModelsByTokens: [],
+        dailyUsage: [],
         records: []
       };
     }

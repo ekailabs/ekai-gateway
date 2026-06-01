@@ -10,9 +10,8 @@ export class UsageHandler {
       const { startTime, endTime, timezone, format } = req.query;
       
       
-      // Default to last 7 days if no startTime provided
-      const defaultStartTime = new Date();
-      defaultStartTime.setDate(defaultStartTime.getDate() - 7);
+      // Default to all stored usage if no startTime provided.
+      const defaultStartTime = new Date(0);
       
       const start = startTime ? new Date(String(startTime)) : defaultStartTime;
       const end = endTime ? new Date(String(endTime)) : new Date();

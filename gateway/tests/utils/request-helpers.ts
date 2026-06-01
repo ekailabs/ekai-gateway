@@ -117,6 +117,7 @@ export class RequestHelpers {
     expect(response.body).toHaveProperty('tokensByModel');
     expect(response.body).toHaveProperty('modelUsage');
     expect(response.body).toHaveProperty('topModelsByTokens');
+    expect(response.body).toHaveProperty('dailyUsage');
     expect(response.body).toHaveProperty('records');
     
     expect(typeof response.body.totalRequests).toBe('number');
@@ -125,6 +126,7 @@ export class RequestHelpers {
     expect(Array.isArray(response.body.records)).toBe(true);
     expect(Array.isArray(response.body.modelUsage)).toBe(true);
     expect(Array.isArray(response.body.topModelsByTokens)).toBe(true);
+    expect(Array.isArray(response.body.dailyUsage)).toBe(true);
     expect(typeof response.body.tokensByModel).toBe('object');
   }
 

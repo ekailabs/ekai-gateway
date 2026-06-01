@@ -44,6 +44,17 @@ export interface ModelUsageSummary {
   totalRequests: number;
 }
 
+export interface DailyUsageSummary {
+  date: string;
+  cost: number;
+  tokens: number;
+  requests: number;
+  inputTokens: number;
+  cacheWriteTokens: number;
+  cacheReadTokens: number;
+  outputTokens: number;
+}
+
 export class DatabaseQueries {
   private db = dbConnection.getDatabase();
 
@@ -202,6 +213,27 @@ export class DatabaseQueries {
     `);
     const params = limitClause ? [startDate, endDate, limit] : [startDate, endDate];
     return stmt.all(...params) as ModelUsageSummary[];
+  }
+
+  // Get daily token usage summaries sorted chronologically (with date range)
+  getDailyUsage(startDate: string, endDate: string): DailyUsageSummary[] {
+    const stmt = this.db.prepare(`
+      SELECT
+        date(timestamp) as date,
+        COALESCE(SUM(total_cost), 0) as cost,
+        COALESCE(SUM(total_tokens), 0) as tokens,
+        COUNT(*) as requests,
+        COALESCE(SUM(input_tokens), 0) as inputTokens,
+        COALESCE(SUM(cache_write_input_tokens), 0) as cacheWriteTokens,
+        COALESCE(SUM(cache_read_input_tokens), 0) as cacheReadTokens,
+        COALESCE(SUM(output_tokens), 0) as outputTokens
+      FROM usage_records
+      WHERE timestamp >= ? AND timestamp < ?
+      GROUP BY date(timestamp)
+      ORDER BY date ASC
+    `);
+
+    return stmt.all(startDate, endDate) as DailyUsageSummary[];
   }
 
   // Get global spend limit (single row)

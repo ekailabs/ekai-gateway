@@ -552,6 +552,78 @@ describe('DatabaseQueries', () => {
     });
   });
 
+  describe('getDailyUsage', () => {
+    beforeEach(() => {
+      const records = [
+        createMockUsageRecord({
+          request_id: 'daily-usage-1',
+          timestamp: '2024-01-01T00:00:00Z',
+          input_tokens: 100,
+          cache_write_input_tokens: 10,
+          cache_read_input_tokens: 5,
+          output_tokens: 50,
+          total_tokens: 165,
+          total_cost: 0.001
+        }),
+        createMockUsageRecord({
+          request_id: 'daily-usage-2',
+          timestamp: '2024-01-01T12:00:00Z',
+          input_tokens: 200,
+          cache_write_input_tokens: 20,
+          cache_read_input_tokens: 10,
+          output_tokens: 100,
+          total_tokens: 330,
+          total_cost: 0.002
+        }),
+        createMockUsageRecord({
+          request_id: 'daily-usage-3',
+          timestamp: '2024-01-02T01:00:00Z',
+          input_tokens: 300,
+          cache_write_input_tokens: 30,
+          cache_read_input_tokens: 15,
+          output_tokens: 150,
+          total_tokens: 495,
+          total_cost: 0.003
+        })
+      ];
+
+      records.forEach(record => queries.insertUsageRecord(record));
+    });
+
+    it('should return usage grouped by day', () => {
+      const result = queries.getDailyUsage('2024-01-01T00:00:00Z', '2024-01-03T00:00:00Z');
+
+      expect(result).toEqual([
+        {
+          date: '2024-01-01',
+          cost: 0.003,
+          tokens: 495,
+          requests: 2,
+          inputTokens: 300,
+          cacheWriteTokens: 30,
+          cacheReadTokens: 15,
+          outputTokens: 150
+        },
+        {
+          date: '2024-01-02',
+          cost: 0.003,
+          tokens: 495,
+          requests: 1,
+          inputTokens: 300,
+          cacheWriteTokens: 30,
+          cacheReadTokens: 15,
+          outputTokens: 150
+        }
+      ]);
+    });
+
+    it('should return empty array for date range with no data', () => {
+      const result = queries.getDailyUsage('2023-01-01T00:00:00Z', '2023-01-02T00:00:00Z');
+
+      expect(result).toEqual([]);
+    });
+  });
+
   describe('Edge Cases', () => {
     it('should handle very large numbers', () => {
       const record = createMockUsageRecord({
