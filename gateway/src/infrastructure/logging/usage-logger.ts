@@ -101,6 +101,35 @@ export function decodeCallResult(result: Uint8Array): string {
 }
 
 /**
+ * Reject if a promise does not settle within `ms`. The ROFL appd socket can
+ * hang (observed: generateKey timing out), which would otherwise make
+ * logReceipt await forever with no log line and no on-chain event.
+ */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); }
+    );
+  });
+}
+
+/**
+ * Receipt-logging milestones are emitted via console (not just pino) because
+ * the gateway's pino streams do not surface in `oasis rofl machine logs` inside
+ * the TEE, whereas console output does. Mirrors the key-decryptor's
+ * [ROFL-DEBUG] convention so on-chain logging is observable in production.
+ */
+function receiptLog(msg: string, data?: Record<string, unknown>): void {
+  try {
+    console.warn(`[RECEIPT] ${msg}`, data ? JSON.stringify(data) : '');
+  } catch {
+    /* never let logging break the request */
+  }
+}
+
+/**
  * Base Sapphire chain shape. The concrete id/name/rpcUrls are filled in at
  * runtime from config.sapphire so the same code targets testnet or mainnet.
  */
@@ -261,12 +290,14 @@ export class UsageLogger {
     const initialized = await this.initialize();
     if (!initialized) {
       logger.warn({}, 'UsageLogger not initialized - skipping receipt logging');
+      receiptLog('skipped: UsageLogger not initialized');
       return;
     }
 
     // Check if we have any signing capability
     if (!this.roflClient && !this.walletClient) {
       logger.warn({}, 'No signing capability available - skipping receipt logging');
+      receiptLog('skipped: no signing capability', { isInsideRofl: this.isInsideRofl });
       return;
     }
 
@@ -295,6 +326,16 @@ export class UsageLogger {
         promptTokens,
         completionTokens,
       }, 'Logging receipt on-chain');
+
+      receiptLog('submitting', {
+        owner: context.owner,
+        delegate: context.delegate,
+        provider: context.providerName,
+        model: context.modelName,
+        promptTokens,
+        completionTokens,
+        via: this.roflClient ? 'rofl' : 'wallet',
+      });
 
       // For the wallet path this is a real Ethereum tx hash; for the ROFL path
       // signAndSubmit does not return one, so it carries the decoded CallResult
@@ -341,6 +382,7 @@ export class UsageLogger {
         promptTokens,
         completionTokens,
       }, 'Receipt logged on-chain');
+      receiptLog('OK', { submitResult, requestHash });
 
     } catch (error) {
       // Don't throw - logging failures shouldn't break the API response
@@ -350,6 +392,7 @@ export class UsageLogger {
         provider: context.providerName,
         model: context.modelName,
       }, 'Failed to log receipt on-chain');
+      receiptLog('FAILED', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -385,15 +428,19 @@ export class UsageLogger {
     // emitted as a ReceiptLogged event), and an encrypted result comes back as
     // an opaque `unknown` envelope we cannot inspect. Plaintext lets us read
     // the CallResult and detect reverts.
-    const result: Uint8Array = await this.roflClient.signAndSubmit(
-      {
-        kind: 'eth',
-        to: contractAddress,
-        data,
-        value: '0',
-        gas_limit: 500000, // Reasonable gas limit for logReceipt call
-      },
-      { encrypt: false }
+    const result: Uint8Array = await withTimeout(
+      this.roflClient.signAndSubmit(
+        {
+          kind: 'eth',
+          to: contractAddress,
+          data,
+          value: '0',
+          gas_limit: 500000, // Reasonable gas limit for logReceipt call
+        },
+        { encrypt: false }
+      ),
+      25_000,
+      'ROFL signAndSubmit'
     );
 
     // signAndSubmit returns CBOR-encoded CallResult bytes. It only throws on
