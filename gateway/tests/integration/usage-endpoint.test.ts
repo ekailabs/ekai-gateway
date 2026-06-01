@@ -3,7 +3,7 @@ import request from 'supertest';
 import express from 'express';
 // We'll import the handler after we mock the DB
 import { TestDatabase, setupTestDatabase } from '../utils/database-helpers.js';
-import { createBulkUsageRecords, createRealisticMockUsageRecord } from '../utils/test-helpers.js';
+import { createBulkUsageRecords, createMockUsageRecord, createRealisticMockUsageRecord } from '../utils/test-helpers.js';
 import { RequestHelpers } from '../utils/request-helpers.js';
 import { MockFactories } from '../utils/mock-factories.js';
 
@@ -64,6 +64,9 @@ describe.sequential('Usage Endpoint Integration', () => {
         expect(response.body.records).toHaveLength(0);
         expect(response.body.costByProvider).toEqual({});
         expect(response.body.costByModel).toEqual({});
+        expect(response.body.tokensByModel).toEqual({});
+        expect(response.body.modelUsage).toEqual([]);
+        expect(response.body.topModelsByTokens).toEqual([]);
       });
 
       it('should handle large datasets efficiently', async () => {
@@ -84,7 +87,44 @@ describe.sequential('Usage Endpoint Integration', () => {
         RequestHelpers.expectValidUsageResponse(response);
         expect(response.body.totalRequests).toBe(1000);
         expect(response.body.records.length).toBeLessThanOrEqual(100); // Default limit
+        expect(response.body.modelUsage.length).toBeGreaterThan(0);
+        expect(response.body.topModelsByTokens.length).toBeLessThanOrEqual(5);
         expect(t1 - t0).toBeLessThan(2000);
+      });
+
+      it('should rank top models using all matching records, not only recent records', async () => {
+        const base = new Date('2024-01-01T00:00:00Z');
+        const records = Array.from({ length: 150 }, (_, index) => {
+          const timestamp = new Date(base.getTime() + index * 60 * 60 * 1000).toISOString();
+          return createMockUsageRecord({
+            request_id: `full-range-model-ranking-${index}`,
+            timestamp,
+            provider: 'openrouter',
+            model: index === 0 ? 'old-high-volume-model' : `recent-model-${index % 6}`,
+            total_tokens: index === 0 ? 100000 : 100,
+            input_tokens: index === 0 ? 90000 : 60,
+            output_tokens: index === 0 ? 10000 : 40,
+            total_cost: 0
+          });
+        });
+        testDb.insertBulkUsageRecords(records);
+
+        const response = await request(app)
+          .get('/usage')
+          .query({
+            startTime: base.toISOString(),
+            endTime: new Date(base.getTime() + 151 * 60 * 60 * 1000).toISOString()
+          });
+
+        RequestHelpers.expectValidUsageResponse(response);
+        expect(response.body.records).toHaveLength(100);
+        expect(response.body.records.some((record: any) => record.model === 'old-high-volume-model')).toBe(false);
+        expect(response.body.topModelsByTokens[0]).toMatchObject({
+          model: 'old-high-volume-model',
+          totalTokens: 100000,
+          totalRequests: 1
+        });
+        expect(response.body.tokensByModel['old-high-volume-model']).toBe(100000);
       });
     });
 
@@ -243,6 +283,26 @@ describe.sequential('Usage Endpoint Integration', () => {
         expect(response.body.costByModel['gpt-3.5-turbo']).toBeCloseTo(0.005, 6);
         expect(response.body.costByModel['claude-3-5-sonnet']).toBeCloseTo(0.012, 6);
         expect(response.body.costByModel['grok-4']).toBeCloseTo(0.008, 6);
+      });
+
+      it('should aggregate tokens by model across the full date range', async () => {
+        const response = await request(app).get('/usage');
+
+        RequestHelpers.expectValidUsageResponse(response);
+
+        expect(response.body.tokensByModel).toEqual({
+          'gpt-3.5-turbo': 200,
+          'claude-3-5-sonnet': 180,
+          'gpt-4o': 150,
+          'grok-4': 120
+        });
+        expect(response.body.modelUsage).toEqual([
+          { model: 'gpt-3.5-turbo', totalTokens: 200, totalCost: 0.005, totalRequests: 1 },
+          { model: 'claude-3-5-sonnet', totalTokens: 180, totalCost: 0.012, totalRequests: 1 },
+          { model: 'gpt-4o', totalTokens: 150, totalCost: 0.015, totalRequests: 1 },
+          { model: 'grok-4', totalTokens: 120, totalCost: 0.008, totalRequests: 1 }
+        ]);
+        expect(response.body.topModelsByTokens).toEqual(response.body.modelUsage.slice(0, 5));
       });
 
       it('should calculate total metrics correctly', async () => {

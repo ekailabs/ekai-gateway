@@ -101,14 +101,20 @@ export const expectValidUsageSummary = (summary: any) => {
   expect(summary).toHaveProperty('totalTokens');
   expect(summary).toHaveProperty('costByProvider');
   expect(summary).toHaveProperty('costByModel');
+  expect(summary).toHaveProperty('tokensByModel');
+  expect(summary).toHaveProperty('modelUsage');
+  expect(summary).toHaveProperty('topModelsByTokens');
   expect(summary).toHaveProperty('records');
   
   expect(typeof summary.totalRequests).toBe('number');
   expect(typeof summary.totalCost).toBe('number');
   expect(typeof summary.totalTokens).toBe('number');
   expect(Array.isArray(summary.records)).toBe(true);
+  expect(Array.isArray(summary.modelUsage)).toBe(true);
+  expect(Array.isArray(summary.topModelsByTokens)).toBe(true);
   expect(typeof summary.costByProvider).toBe('object');
   expect(typeof summary.costByModel).toBe('object');
+  expect(typeof summary.tokensByModel).toBe('object');
 };
 
 export const expectValidUsageRecord = (record: any) => {

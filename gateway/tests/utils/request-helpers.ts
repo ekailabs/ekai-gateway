@@ -114,12 +114,18 @@ export class RequestHelpers {
     expect(response.body).toHaveProperty('totalTokens');
     expect(response.body).toHaveProperty('costByProvider');
     expect(response.body).toHaveProperty('costByModel');
+    expect(response.body).toHaveProperty('tokensByModel');
+    expect(response.body).toHaveProperty('modelUsage');
+    expect(response.body).toHaveProperty('topModelsByTokens');
     expect(response.body).toHaveProperty('records');
     
     expect(typeof response.body.totalRequests).toBe('number');
     expect(typeof response.body.totalCost).toBe('number');
     expect(typeof response.body.totalTokens).toBe('number');
     expect(Array.isArray(response.body.records)).toBe(true);
+    expect(Array.isArray(response.body.modelUsage)).toBe(true);
+    expect(Array.isArray(response.body.topModelsByTokens)).toBe(true);
+    expect(typeof response.body.tokensByModel).toBe('object');
   }
 
   static expectErrorResponse(response: any, statusCode: number = 400) {

@@ -1,5 +1,5 @@
 import { pricingLoader, CostCalculation } from './pricing-loader.js';
-import { dbQueries, type UsageRecord } from '../db/queries.js';
+import { dbQueries, type ModelUsageSummary, type UsageRecord } from '../db/queries.js';
 import { ModelUtils } from './model-utils.js';
 import { logger } from './logger.js';
 import { recordUsage } from '../telemetry/usage.js';
@@ -13,6 +13,9 @@ export interface UsageSummary {
   totalTokens: number;
   costByProvider: Record<string, number>;
   costByModel: Record<string, number>;
+  tokensByModel: Record<string, number>;
+  modelUsage: ModelUsageSummary[];
+  topModelsByTokens: ModelUsageSummary[];
   records: UsageRecord[];
 }
 
@@ -64,8 +67,6 @@ export class UsageTracker {
 
     const now = new Date();
     
-    const pricing = pricingLoader.getModelPricing(provider, model);
-
     // For x402 payments, use actual payment amount instead of YAML pricing
     let costCalculation: CostCalculation | null;
     
@@ -107,65 +108,75 @@ export class UsageTracker {
       costCalculation = pricingLoader.calculateCost(provider, model, inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens);
     }
 
-    if (costCalculation) {
-      // Generate unique request ID
-      const requestId = this.generateRequestId(provider, model, now);
-      
-      // Save to database
-      try {
-        dbQueries.insertUsageRecord({
-          request_id: requestId,
-          provider: provider.toLowerCase(),
-          model,
-          timestamp: now.toISOString(),
-          input_tokens: inputTokens,
-          cache_write_input_tokens: cacheWriteTokens,
-          cache_read_input_tokens: cacheReadTokens,
-          output_tokens: outputTokens,
-          total_tokens: inputTokens + cacheWriteTokens + cacheReadTokens + outputTokens,
-          input_cost: costCalculation.inputCost,
-          cache_write_cost: costCalculation.cacheWriteCost,
-          cache_read_cost: costCalculation.cacheReadCost,
-          output_cost: costCalculation.outputCost,
-          total_cost: costCalculation.totalCost,
-          currency: costCalculation.currency,
-          payment_method: paymentMethod
-        });
+    if (!costCalculation) {
+      logger.warn('No pricing data found', { model, provider, operation: 'usage_tracking', module: 'usage-tracker' });
+    }
 
-        logger.info('Usage tracked', {
-          requestId,
+    const costForStorage = costCalculation ?? {
+      inputCost: 0,
+      cacheWriteCost: 0,
+      cacheReadCost: 0,
+      outputCost: 0,
+      totalCost: 0,
+      currency: 'USD',
+      unit: 'unknown'
+    };
+
+    // Generate unique request ID
+    const requestId = this.generateRequestId(provider, model, now);
+    const totalTokens = inputTokens + cacheWriteTokens + cacheReadTokens + outputTokens;
+
+    // Save to database even when pricing is unavailable. Cost can be backfilled later.
+    try {
+      dbQueries.insertUsageRecord({
+        request_id: requestId,
+        provider: provider.toLowerCase(),
+        model,
+        timestamp: now.toISOString(),
+        input_tokens: inputTokens,
+        cache_write_input_tokens: cacheWriteTokens,
+        cache_read_input_tokens: cacheReadTokens,
+        output_tokens: outputTokens,
+        total_tokens: totalTokens,
+        input_cost: costForStorage.inputCost,
+        cache_write_cost: costForStorage.cacheWriteCost,
+        cache_read_cost: costForStorage.cacheReadCost,
+        output_cost: costForStorage.outputCost,
+        total_cost: costForStorage.totalCost,
+        currency: costForStorage.currency,
+        payment_method: paymentMethod
+      });
+
+      logger.info('Usage tracked', {
+        requestId,
+        model,
+        provider,
+        cost: costForStorage.totalCost.toFixed(6),
+        inputTokens,
+        outputTokens,
+        pricingAvailable: Boolean(costCalculation),
+        module: 'usage-tracker'
+      });
+
+      // Record telemetry event for total token usage with context
+      try {
+        recordUsage({
+          totalTokens,
           model,
-          provider,
-          cost: costCalculation.totalCost.toFixed(6),
-          inputTokens,
-          outputTokens,
+          provider: provider.toLowerCase(),
+          requestId,
+          clientIp
+        });
+      } catch (telemetryError) {
+        // Non-blocking: log warning but don't fail the request
+        logger.warn('Failed to record telemetry', {
+          error: telemetryError instanceof Error ? telemetryError.message : telemetryError,
           module: 'usage-tracker'
         });
-
-        // Record telemetry event for total token usage with context
-        const totalTokens = inputTokens + cacheWriteTokens + cacheReadTokens + outputTokens;
-        try {
-          recordUsage({
-            totalTokens,
-            model,
-            provider: provider.toLowerCase(),
-            requestId,
-            clientIp
-          });
-        } catch (telemetryError) {
-          // Non-blocking: log warning but don't fail the request
-          logger.warn('Failed to record telemetry', { 
-            error: telemetryError instanceof Error ? telemetryError.message : telemetryError,
-            module: 'usage-tracker' 
-          });
-        }
-
-      } catch (error) {
-        logger.error('Failed to save usage record', error, { operation: 'usage_tracking', module: 'usage-tracker' });
-        throw error instanceof Error ? error : new Error(String(error));
       }
-    } else {
-      logger.warn('No pricing data found', { model, provider, operation: 'usage_tracking', module: 'usage-tracker' });
+    } catch (error) {
+      logger.error('Failed to save usage record', error, { operation: 'usage_tracking', module: 'usage-tracker' });
+      throw error instanceof Error ? error : new Error(String(error));
     }
 
     return costCalculation;
@@ -186,6 +197,9 @@ export class UsageTracker {
         totalTokens: dbQueries.getTotalTokens(startDate, endDate),
         costByProvider: dbQueries.getCostByProvider(startDate, endDate),
         costByModel: dbQueries.getCostByModel(startDate, endDate),
+        tokensByModel: dbQueries.getTokensByModel(startDate, endDate),
+        modelUsage: dbQueries.getModelUsage(startDate, endDate),
+        topModelsByTokens: dbQueries.getModelUsage(startDate, endDate, 5),
         records: dbQueries.getAllUsageRecords(recordLimit, startDate, endDate)
       };
     } catch (error) {
@@ -197,6 +211,9 @@ export class UsageTracker {
         totalTokens: 0,
         costByProvider: {},
         costByModel: {},
+        tokensByModel: {},
+        modelUsage: [],
+        topModelsByTokens: [],
         records: []
       };
     }

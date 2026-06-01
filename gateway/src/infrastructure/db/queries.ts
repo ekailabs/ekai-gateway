@@ -37,6 +37,13 @@ export interface UserPreferences {
   updated_at: string;
 }
 
+export interface ModelUsageSummary {
+  model: string;
+  totalTokens: number;
+  totalCost: number;
+  totalRequests: number;
+}
+
 export class DatabaseQueries {
   private db = dbConnection.getDatabase();
 
@@ -157,6 +164,44 @@ export class DatabaseQueries {
     });
     
     return costByModel;
+  }
+
+  // Get token usage by model (with date range)
+  getTokensByModel(startDate: string, endDate: string): Record<string, number> {
+    const stmt = this.db.prepare(`
+      SELECT model, SUM(total_tokens) as total
+      FROM usage_records
+      WHERE timestamp >= ? AND timestamp < ?
+      GROUP BY model
+      ORDER BY total DESC, model ASC
+    `);
+    const results = stmt.all(startDate, endDate) as Array<{ model: string; total: number }>;
+
+    const tokensByModel: Record<string, number> = {};
+    results.forEach(row => {
+      tokensByModel[row.model] = row.total;
+    });
+
+    return tokensByModel;
+  }
+
+  // Get model usage summaries sorted by token volume (with date range)
+  getModelUsage(startDate: string, endDate: string, limit?: number): ModelUsageSummary[] {
+    const limitClause = limit && limit > 0 ? 'LIMIT ?' : '';
+    const stmt = this.db.prepare(`
+      SELECT
+        model,
+        SUM(total_tokens) as totalTokens,
+        SUM(total_cost) as totalCost,
+        COUNT(*) as totalRequests
+      FROM usage_records
+      WHERE timestamp >= ? AND timestamp < ?
+      GROUP BY model
+      ORDER BY totalTokens DESC, model ASC
+      ${limitClause}
+    `);
+    const params = limitClause ? [startDate, endDate, limit] : [startDate, endDate];
+    return stmt.all(...params) as ModelUsageSummary[];
   }
 
   // Get global spend limit (single row)

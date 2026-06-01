@@ -440,6 +440,118 @@ describe('DatabaseQueries', () => {
     });
   });
 
+  describe('getTokensByModel', () => {
+    beforeEach(() => {
+      const records = [
+        createMockUsageRecord({
+          timestamp: '2024-01-01T00:00:00Z',
+          model: 'gpt-4o',
+          total_tokens: 150
+        }),
+        createMockUsageRecord({
+          timestamp: '2024-01-01T01:00:00Z',
+          model: 'gpt-4o',
+          total_tokens: 200
+        }),
+        createMockUsageRecord({
+          timestamp: '2024-01-01T02:00:00Z',
+          model: 'claude-3-5-sonnet',
+          total_tokens: 180
+        }),
+        createMockUsageRecord({
+          timestamp: '2024-01-01T03:00:00Z',
+          model: 'grok-4',
+          total_tokens: 120
+        })
+      ];
+
+      records.forEach(record => queries.insertUsageRecord(record));
+    });
+
+    it('should return tokens grouped by model', () => {
+      const startDate = '2024-01-01T00:00:00Z';
+      const endDate = '2024-01-01T04:00:00Z';
+
+      const tokensByModel = queries.getTokensByModel(startDate, endDate);
+
+      expect(tokensByModel).toEqual({
+        'gpt-4o': 350,
+        'claude-3-5-sonnet': 180,
+        'grok-4': 120
+      });
+    });
+
+    it('should return empty object for date range with no data', () => {
+      const startDate = '2023-01-01T00:00:00Z';
+      const endDate = '2023-01-02T00:00:00Z';
+
+      const tokensByModel = queries.getTokensByModel(startDate, endDate);
+
+      expect(tokensByModel).toEqual({});
+    });
+  });
+
+  describe('getModelUsage', () => {
+    beforeEach(() => {
+      const models = [
+        { model: 'model-a', total_tokens: 600, total_cost: 0.006 },
+        { model: 'model-b', total_tokens: 500, total_cost: 0.005 },
+        { model: 'model-c', total_tokens: 400, total_cost: 0.004 },
+        { model: 'model-d', total_tokens: 300, total_cost: 0.003 },
+        { model: 'model-e', total_tokens: 200, total_cost: 0.002 },
+        { model: 'model-f', total_tokens: 100, total_cost: 0.001 }
+      ];
+
+      models.forEach((modelData, index) => {
+        queries.insertUsageRecord(createMockUsageRecord({
+          request_id: `model-usage-${index}-1`,
+          timestamp: `2024-01-01T0${index}:00:00Z`,
+          model: modelData.model,
+          total_tokens: modelData.total_tokens,
+          total_cost: modelData.total_cost
+        }));
+      });
+
+      queries.insertUsageRecord(createMockUsageRecord({
+        request_id: 'model-usage-extra-a',
+        timestamp: '2024-01-01T06:00:00Z',
+        model: 'model-a',
+        total_tokens: 50,
+        total_cost: 0.0005
+      }));
+    });
+
+    it('should return all model usage sorted by token volume', () => {
+      const result = queries.getModelUsage('2024-01-01T00:00:00Z', '2024-01-01T07:00:00Z');
+
+      expect(result.map((row: any) => row.model)).toEqual([
+        'model-a',
+        'model-b',
+        'model-c',
+        'model-d',
+        'model-e',
+        'model-f'
+      ]);
+      expect(result[0].model).toBe('model-a');
+      expect(result[0].totalTokens).toBe(650);
+      expect(result[0].totalCost).toBeCloseTo(0.0065, 6);
+      expect(result[0].totalRequests).toBe(2);
+    });
+
+    it('should limit top model usage when requested', () => {
+      const result = queries.getModelUsage('2024-01-01T00:00:00Z', '2024-01-01T07:00:00Z', 5);
+
+      expect(result).toHaveLength(5);
+      expect(result.map((row: any) => row.model)).toEqual([
+        'model-a',
+        'model-b',
+        'model-c',
+        'model-d',
+        'model-e'
+      ]);
+    });
+  });
+
   describe('Edge Cases', () => {
     it('should handle very large numbers', () => {
       const record = createMockUsageRecord({

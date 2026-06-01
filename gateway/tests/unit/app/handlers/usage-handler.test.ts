@@ -216,7 +216,8 @@ describe('UsageHandler', () => {
           
           vi.mocked(usageTracker.getUsageFromDatabase).mockReturnValue({
             totalRequests: 0, totalCost: 0, totalTokens: 0,
-            costByProvider: {}, costByModel: {}, records: []
+            costByProvider: {}, costByModel: {}, tokensByModel: {},
+            modelUsage: [], topModelsByTokens: [], records: []
           });
 
           await usageHandler.getUsage(mockReq, mockRes);
@@ -265,14 +266,26 @@ describe('UsageHandler', () => {
           totalRequests: 10,
           totalCost: 0.025,
           totalTokens: 1500,
-          costByProvider: { 
+          costByProvider: {
             openai: 0.015,
-            anthropic: 0.010 
+            anthropic: 0.010
           },
-          costByModel: { 
+          costByModel: {
             'gpt-4o': 0.015,
-            'claude-3-5-sonnet': 0.010 
+            'claude-3-5-sonnet': 0.010
           },
+          tokensByModel: {
+            'gpt-4o': 900,
+            'claude-3-5-sonnet': 600
+          },
+          modelUsage: [
+            { model: 'gpt-4o', totalTokens: 900, totalCost: 0.015, totalRequests: 6 },
+            { model: 'claude-3-5-sonnet', totalTokens: 600, totalCost: 0.010, totalRequests: 4 }
+          ],
+          topModelsByTokens: [
+            { model: 'gpt-4o', totalTokens: 900, totalCost: 0.015, totalRequests: 6 },
+            { model: 'claude-3-5-sonnet', totalTokens: 600, totalCost: 0.010, totalRequests: 4 }
+          ],
           records: [
             {
               id: 1,
@@ -306,6 +319,9 @@ describe('UsageHandler', () => {
           totalTokens: 0,
           costByProvider: {},
           costByModel: {},
+          tokensByModel: {},
+          modelUsage: [],
+          topModelsByTokens: [],
           records: []
         };
         
