@@ -1,13 +1,12 @@
 /**
  * KeyManager - ROFL Authorization Workflow
  *
- * Implements the full 9-step ROFL authorization workflow:
+ * Implements the ROFL authorization workflow:
  * 1. isDelegatePermitted(owner, delegate) - Check delegation
  * 2. isModelPermitted(owner, providerId, modelId) - Check model access
  * 3. getSecretCiphertext(owner, providerId) - Retrieve encrypted key
  * 4. Decrypt using ROFL private key in TEE
  * 5. Return plaintext key to provider for API call
- * 6-9. After API call: Log usage via UsageLogger
  *
  * Security: No caching, fail-closed on any error
  */

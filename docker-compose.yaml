@@ -13,6 +13,13 @@ services:
       EKAI_CONTROL_PLANE_ADDRESS: ${EKAI_CONTROL_PLANE_ADDRESS:-0x8212Da9695946dc97B89d2F7D2B47E623CE5d87b}
     ports:
       - "3001:3001"
+    # Defense-in-depth against FD exhaustion. The per-request on-chain receipt
+    # submission that previously leaked appd sockets under load has been removed, but
+    # keep a high descriptor ceiling so no future burst trips "Too many open files".
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     volumes:
       - /run/rofl-appd.sock:/run/rofl-appd.sock
       - gateway_logs:/app/gateway/logs

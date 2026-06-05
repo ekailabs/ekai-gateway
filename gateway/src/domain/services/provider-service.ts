@@ -9,7 +9,6 @@ import {
   createDefaultProviderRegistry
 } from './provider-registry.js';
 import { createSapphireContext } from '../../infrastructure/middleware/sapphire-context.js';
-import { getUsageLogger } from '../../infrastructure/logging/usage-logger.js';
 import type { ApiKeyContext } from '../providers/base-provider.js';
 
 export class ProviderService {
@@ -125,17 +124,6 @@ export class ProviderService {
     });
 
     const resp = await provider.chatCompletion(request, context);
-
-    // Log usage on-chain (async, non-blocking)
-    if (context?.sapphireContext && resp.usage) {
-      const usageLogger = getUsageLogger();
-      usageLogger.logReceipt(context.sapphireContext, {
-        promptTokens: resp.usage.inputTokens || 0,
-        completionTokens: resp.usage.outputTokens || 0,
-      }).catch(err => {
-        logger.warn('Failed to log usage receipt on-chain', { error: err, requestId });
-      });
-    }
 
     // attach IP on response object for downstream (optional)
     (resp as any)._clientIp = clientIp;

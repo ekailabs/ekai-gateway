@@ -4,7 +4,6 @@ import { AuthenticationError, PaymentError, ProviderError } from '../../shared/e
 import { CONTENT_TYPES } from '../../domain/types/provider.js';
 import { ModelUtils } from '../utils/model-utils.js';
 import { getApiKeyFromUserContext } from '../crypto/key-manager.js';
-import { getUsageLogger } from '../logging/usage-logger.js';
 import { createSapphireContext, type SapphireRequestContext } from '../middleware/sapphire-context.js';
 
 type UsageFormat = 'anthropic_messages';
@@ -401,21 +400,6 @@ export class MessagesPassthrough {
                 });
               });
 
-            // Log usage on-chain (async, non-blocking)
-            const sapphireContext = this.resolveSapphireContext(model);
-            if (sapphireContext) {
-              const usageLogger = getUsageLogger();
-              usageLogger.logReceipt(sapphireContext, {
-                promptTokens: inputTokens,
-                completionTokens: outputTokens,
-              }).catch(err => {
-                logger.error('Failed to log usage receipt on-chain', err, {
-                  provider: this.config.provider,
-                  module: 'messages-passthrough',
-                });
-              });
-            }
-
             this.initialUsage = null;
             continue;
           }
@@ -510,21 +494,6 @@ export class MessagesPassthrough {
             module: 'messages-passthrough',
           });
         });
-
-      // Log usage on-chain (async, non-blocking)
-      const sapphireContext = this.resolveSapphireContext(request.model);
-      if (sapphireContext) {
-        const usageLogger = getUsageLogger();
-        usageLogger.logReceipt(sapphireContext, {
-          promptTokens: inputTokens,
-          completionTokens: outputTokens,
-        }).catch(err => {
-          logger.error('Failed to log usage receipt on-chain', err, {
-            provider: this.config.provider,
-            module: 'messages-passthrough',
-          });
-        });
-      }
     }
 
     res.json(json);
